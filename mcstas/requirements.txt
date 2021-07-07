@@ -1,0 +1,3 @@
+mcstasscript
+ipywidgets
+pytest

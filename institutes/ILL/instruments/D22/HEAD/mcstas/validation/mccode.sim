@@ -1,0 +1,118 @@
+McStas simulation description file for D22_quick.
+Date:    Fri May 13 11:36:24 2022
+Program: McStas 2.7 - Nov. 27, 2020
+
+begin instrument: D22_quick
+  File: /tmp/validation/D22_quick/mccode
+  Source: D22_quick.instr
+  Parameters:  lambda(double) dlambda(double) D22_collimation(double) D22_sample(string) sample_size_r(double) sample_size_y(double) Vin_filename(string) stage(double)
+  Trace_enabled: yes
+  Default_main: yes
+  Embedded_runtime: yes
+end instrument
+
+begin simulation: /tmp/validation/D22_quick
+  Format: McCode with text headers
+  URL: http://www.mccode.org
+  Creator: McStas 2.7 - Nov. 27, 2020
+  Instrument: D22_quick.instr
+  Ncount: 1000000
+  Trace: no
+  Gravitation: no
+  Seed: 654321
+  Directory: /tmp/validation/D22_quick
+  Param: lambda=4.5
+  Param: dlambda=0.45
+  Param: D22_collimation=2
+  Param: D22_sample=H2O_liq.qSq
+  Param: sample_size_r=0.005
+  Param: sample_size_y=0.05
+  Param: Vin_filename=none
+  Param: stage=-1
+end simulation
+
+begin data
+  Date: Fri May 13 11:36:26 2022 (1652434586)
+  type: array_2d(100, 100)
+  Source: D22_quick (D22_quick.instr)
+  component: H51_D22_Sample_Div
+  position: 0 0 20.6
+  title:  Intensity Divergence Divergence Monitor (Square) per bin
+  Ncount: 1000000
+  filename: H51_D22_Sample_Div_1652434584.hd_vd
+  statistics: X0=-1.184e-05; dX=0.0360228; Y0=7.95999e-05; dY=0.0525214;
+  signal: Min=0; Max=8.12205e+06; Mean=8483.34;
+  values: 8.48334e+07 84833.4 1e+06
+  xvar: Hor.
+  yvar: Vert.
+  xlabel: Hor. Divergence [deg]
+  ylabel: Vert. Divergence [deg]
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: -2 2 -2 2
+  variables: I I_err N
+end data
+
+begin data
+  Date: Fri May 13 11:36:26 2022 (1652434586)
+  type: array_2d(50, 50)
+  Source: D22_quick (D22_quick.instr)
+  component: H51_D22_Sample_XY
+  position: 0 0 20.6
+  title:  Intensity Position Position Monitor (Square) per bin
+  Ncount: 1000000
+  filename: H51_D22_Sample_XY_1652434584.x_y
+  statistics: X0=-1.866e-06; dX=0.00145038; Y0=1.053e-05; dY=0.0144315;
+  signal: Min=0; Max=146083; Mean=33933.4;
+  values: 8.48334e+07 84833.4 1e+06
+  xvar: x
+  yvar: y
+  xlabel: x [m]
+  ylabel: y [m]
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: -0.01 0.01 -0.025 0.025
+  variables: I I_err N
+end data
+
+begin data
+  Date: Fri May 13 11:36:26 2022 (1652434586)
+  type: array_1d(50)
+  Source: D22_quick (D22_quick.instr)
+  component: H51_D22_Sample_L
+  position: 0 0 20.6
+  title: Wavelength [Angs] monitor
+  Ncount: 1000000
+  filename: H51_D22_Sample_L_1652434584.L
+  statistics: X0=4.49991; dX=0.25773;
+  signal: Min=0; Max=1.70003e+07; Mean=1.69667e+06;
+  values: 8.48334e+07 84833.4 1e+06
+  xvar: L
+  yvar: (I,I_err)
+  xlabel: Wavelength [Angs]
+  ylabel: Intensity [n/s/bin]
+  xlimits: 1 10
+  variables: L I I_err N
+end data
+
+begin data
+  Date: Fri May 13 11:36:26 2022 (1652434586)
+  type: array_2d(128, 256)
+  Source: D22_quick (D22_quick.instr)
+  component: Detector
+  position: 0 0 22.6
+  title:  Intensity Position Position Monitor (Square) per bin
+  Ncount: 1000000
+  filename: Detector_1652434584.x_y
+  statistics: X0=0.001087; dX=0.279614; Y0=-0.000785438; dY=0.27242;
+  signal: Min=0; Max=257.804; Mean=44.9409;
+  values: 1.47262e+06 5735.16 73412
+  xvar: x
+  yvar: y
+  xlabel: x [m]
+  ylabel: y [m]
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: -0.49 0.49 -0.512 0.512
+  variables: I I_err N
+end data
