@@ -35,10 +35,18 @@ add_custom_target(python_env.done
   )
 
 add_custom_target(mcstasscript.done
-  ALL
   COMMENT "Install fresh release of McStasScript"
   DEPENDS python_env.done
   COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/pip ${PROXY} install -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt
   COMMAND touch mcstasscript.done
+  VERBATIM
+  )
+
+set(ENV{PYTHONPATH} ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/D22/HEAD/)
+message(${CMAKE_CURRENT_BINARY_DIR})
+add_custom_target(D22_quick
+  ALL
+  DEPENDS mcstasscript.done
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 -c "from D22_quick import D22_quick"
   VERBATIM
   )

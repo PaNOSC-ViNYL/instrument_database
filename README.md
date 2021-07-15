@@ -8,7 +8,9 @@ git clone git://github.com/PaNOSC-ViNYL/instrument_database.git
 
 ## Dependencies
  - [McStasScripts](https://github.com/PaNOSC-ViNYL/McStasScript)
-
+ - Python virtual env
+   - Ubuntu: python3-venv
+   
 ## Repository structure
   - mcstas/
     - components/
