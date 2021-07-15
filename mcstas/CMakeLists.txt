@@ -23,6 +23,7 @@ message(STATUS "MCSTAS: ${MCSTAS}")
 include_directories(${MCSTAS}/libs/mcpl)
 link_directories(${MCSTAS}/libs/mcpl/)
 
+#------------------------------ Python environment with isolated version of Mcstasscript
 add_custom_command(OUTPUT python_env.done
   COMMENT "Creating python virtual environment"
   COMMAND ${Python_EXECUTABLE} -m venv ${CMAKE_CURRENT_BINARY_DIR}/python_env
@@ -39,9 +40,8 @@ add_custom_command(OUTPUT mcstasscript.done
   VERBATIM
   )
 
-#set(ENV{PYTHONPATH} ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/D22/HEAD/)
-#message(${CMAKE_CURRENT_BINARY_DIR})
 
+#------------------------------ Function to convert and compile mcstas instruments
 set(ILL_INSTRUMENTS ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/)
 # instrument_file should be relative to ILL_INSTRUMENTS
 function(run_mcstas instrument_file)
@@ -66,8 +66,11 @@ function(run_mcstas instrument_file)
 endfunction()
 
 
+#------------------------------ List of instruments to be compiled
 run_mcstas(D22/HEAD/D22_quick.py)
 
+
+#------------------------------ Testing
 enable_testing()
 add_test(D22_quick ${CMAKE_CURRENT_BINARY_DIR}/D22_quick.out  lambda=4.51  -s 554321 -n 200000)
 set_tests_properties(D22_quick PROPERTIES LABELS mcstas)
