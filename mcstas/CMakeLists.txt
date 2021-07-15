@@ -47,6 +47,7 @@ message(${CMAKE_CURRENT_BINARY_DIR})
 add_custom_target(D22_quick
   ALL
   DEPENDS mcstasscript.done
-  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 -c "from D22_quick import D22_quick"
+  #COMMAND /usr/bin/fish -c "set -l PYTHONPATH $ENV{PYTHONPATH}; echo \$PYTHONPATH"
+  COMMAND PYTHONPATH=$ENV{PYTHONPATH} ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/D22/HEAD/D22_quick.py D22_quick
   VERBATIM
   )
