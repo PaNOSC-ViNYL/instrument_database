@@ -44,10 +44,20 @@ add_custom_target(mcstasscript.done
 
 set(ENV{PYTHONPATH} ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/D22/HEAD/)
 message(${CMAKE_CURRENT_BINARY_DIR})
-add_custom_target(D22_quick
-  ALL
-  DEPENDS mcstasscript.done
-  #COMMAND /usr/bin/fish -c "set -l PYTHONPATH $ENV{PYTHONPATH}; echo \$PYTHONPATH"
-  COMMAND PYTHONPATH=$ENV{PYTHONPATH} ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/D22/HEAD/D22_quick.py D22_quick
-  VERBATIM
-  )
+
+function(run_mcstas outname )
+  add_custom_command(OUTPUT ${outname}.c
+	COMMENT "creation of ${outname}.c"
+	DEPENDS mcstasscript.done
+	#DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${outname}.instr #${CMAKE_CURRENT_SOURCE_DIR}/MCPL_input.comp
+	COMMAND PYTHONPATH=$ENV{PYTHONPATH} ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/D22/HEAD/D22_quick.py D22_quick
+	COMMAND mcstas -t -o ${CMAKE_CURRENT_BINARY_DIR}/${outname}.c -I ${CMAKE_CURRENT_SOURCE_DIR}/ ${CMAKE_CURRENT_BINARY_DIR}/${outname}.instr 
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/
+	VERBATIM
+	)
+  add_executable(${outname}.out ${outname}.c)
+  target_link_libraries(${outname}.out PUBLIC m mcpl)
+endfunction()
+
+
+run_mcstas(D22_quick)
