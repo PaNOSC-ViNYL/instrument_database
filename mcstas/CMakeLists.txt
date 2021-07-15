@@ -57,11 +57,11 @@ function(run_mcstas instrument_file)
   	COMMENT "creation of ${outname}.c for version: ${version}"
   	DEPENDS mcstasscript.done
   	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${instrument_file_full_path} ${outname}
-  	COMMAND mcstas -t -o ${CMAKE_CURRENT_BINARY_DIR}/${outname}.c -I ${CMAKE_CURRENT_SOURCE_DIR}/ ${CMAKE_CURRENT_BINARY_DIR}/${outname}.instr 
+  	COMMAND mcstas -t -o ${outname}.c  ${outname}.instr 
   	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir}
   	VERBATIM
   	)
-  add_executable(${outname}.out ${outname}.c)
+  add_executable(${outname}.out ${CMAKE_CURRENT_BINARY_DIR}/${dir}/${outname}.c)
   target_link_libraries(${outname}.out PUBLIC m mcpl)
 endfunction()
 
@@ -72,5 +72,5 @@ run_mcstas(D22/HEAD/D22_quick.py)
 
 #------------------------------ Testing
 enable_testing()
-add_test(D22_quick ${CMAKE_CURRENT_BINARY_DIR}/D22_quick.out  lambda=4.51  -s 554321 -n 200000)
+add_test(D22_quick ${ILL_INSTRUMENTS}/D22/HEAD/D22_quick.out  lambda=4.51  -s 554321 -n 200000)
 set_tests_properties(D22_quick PROPERTIES LABELS mcstas)
