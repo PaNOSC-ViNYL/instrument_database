@@ -14,7 +14,12 @@ set(component_instruments ${component_instruments})
 
 # mcstas code generates plenty of warnings!!! 
 set(CMAKE_C_FLAGS "-O3 -Wno-error -Wno-all -Wno-extra -Wno-unused-result -Wno-format-truncation -Wno-format-overflow -Wno-format")
-set(MCSTAS $ENV{MCSTAS} CACHE PATH "Path of the mcstas installation [MANDATORY]")
+
+if(NOT DEFINED ENV{MCSTAS})
+  message(FATAL_ERROR "MCSTAS environment not defined")
+else()
+  set(MCSTAS $ENV{MCSTAS} CACHE PATH "Path of the mcstas installation [MANDATORY]")
+endif()
 set(PROXY "--proxy=$ENV{http_proxy}" CACHE STRING "http proxy")
 ############################# MCSTAS
 message(STATUS "MCSTAS: ${MCSTAS}")
@@ -53,9 +58,11 @@ function(run_mcstas instrument_file)
   cmake_path(REMOVE_EXTENSION outname)
 
   file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir})
-  add_custom_command(OUTPUT ${outname}.c
+  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${dir}/${outname}.c
   	COMMENT "creation of ${outname}.c for version: ${version}"
   	DEPENDS mcstasscript.done
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py
+	DEPENDS ${instrument_file_full_path}
   	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${instrument_file_full_path} ${outname}
   	COMMAND mcstas -t -o ${outname}.c  ${outname}.instr 
   	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir}
