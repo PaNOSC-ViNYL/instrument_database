@@ -48,6 +48,7 @@ add_custom_command(OUTPUT mcstasscript.done
 
 #------------------------------ Function to convert and compile mcstas instruments
 set(ILL_INSTRUMENTS ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/)
+set(ILL_INSTRUMENTS_BUILD ${CMAKE_CURRENT_BINARY_DIR}/ILL/instruments/)
 # instrument_file should be relative to ILL_INSTRUMENTS
 function(run_mcstas instrument_file)
   cmake_path(SET instrument_file_full_path ${ILL_INSTRUMENTS}/${instrument_file})
@@ -79,5 +80,6 @@ run_mcstas(D22/HEAD/D22_quick.py)
 
 #------------------------------ Testing
 enable_testing()
-add_test(D22_quick ${ILL_INSTRUMENTS}/D22/HEAD/D22_quick.out  lambda=4.51  -s 554321 -n 200000)
+
+add_test(D22_quick D22_quick.out  lambda=4.51  -s 554321 -n 200000)
 set_tests_properties(D22_quick PROPERTIES LABELS mcstas)
