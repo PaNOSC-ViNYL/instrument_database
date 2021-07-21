@@ -16,4 +16,5 @@ exec(open(instrument_file).read())
 #print(vars())
 
 instrument = locals()[instrument_name]
+#instrument = D22_quick()
 instrument.write_full_instrument()

@@ -40,6 +40,7 @@ add_custom_command(OUTPUT python_env.done
 add_custom_command(OUTPUT mcstasscript.done
   COMMENT "Install fresh release of McStasScript"
   DEPENDS python_env.done
+  DEPENDS requirements.txt
   COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/pip ${PROXY} install -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt
   COMMAND touch mcstasscript.done
   VERBATIM
@@ -49,6 +50,10 @@ add_custom_command(OUTPUT mcstasscript.done
 #------------------------------ Function to convert and compile mcstas instruments
 set(ILL_INSTRUMENTS ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/)
 set(ILL_INSTRUMENTS_BUILD ${CMAKE_CURRENT_BINARY_DIR}/ILL/instruments/)
+set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/Test_outputs)
+file(MAKE_DIRECTORY ${TEST_DIR})
+
+  
 # instrument_file should be relative to ILL_INSTRUMENTS
 function(run_mcstas instrument_file)
   cmake_path(SET instrument_file_full_path ${ILL_INSTRUMENTS}/${instrument_file})
@@ -57,6 +62,8 @@ function(run_mcstas instrument_file)
 
   cmake_path(GET instrument_file FILENAME outname)
   cmake_path(REMOVE_EXTENSION outname)
+
+  set(TEST_REFERENCE_DIR ${ILL_INSTRUMENTS}/${dir}/test/)
 
   file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir})
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${dir}/${outname}.c
@@ -71,6 +78,17 @@ function(run_mcstas instrument_file)
   	)
   add_executable(${outname}.out ${CMAKE_CURRENT_BINARY_DIR}/${dir}/${outname}.c)
   target_link_libraries(${outname}.out PUBLIC m mcpl)
+
+  file(MAKE_DIRECTORY ${TEST_DIR}/${outname}/)
+  add_test(NAME ${outname}
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_test_simulation.sh ${CMAKE_CURRENT_BINARY_DIR} ${outname} ${TEST_DIR}
+	)
+  set_tests_properties(${outname} PROPERTIES LABELS mcstas)
+  
+  add_test(NAME ${outname}_output
+	COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compare_test.sh ${CMAKE_CURRENT_BINARY_DIR} ${outname} ${TEST_REFERENCE_DIR} ${TEST_DIR}/${outname} 
+
+	)
 endfunction()
 
 
@@ -80,6 +98,3 @@ run_mcstas(D22/HEAD/D22_quick.py)
 
 #------------------------------ Testing
 enable_testing()
-
-add_test(D22_quick D22_quick.out  lambda=4.51  -s 554321 -n 200000)
-set_tests_properties(D22_quick PROPERTIES LABELS mcstas)
