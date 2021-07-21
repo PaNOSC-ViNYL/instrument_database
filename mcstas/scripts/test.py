@@ -30,8 +30,8 @@ for name in list(reference_results):
     if name not in test_results:
         print("[ERROR] Monitor defined in reference but not in test")
         sys.exit(1)
+    print("Testing: name")
     assert np.array_equal(reference_results[name].Intensity, test_results[name].Intensity)
     assert np.array_equal(reference_results[name].Error, test_results[name].Error)
     assert np.array_equal(reference_results[name].Ncount, test_results[name].Ncount)
 
-#sys.exit(1)

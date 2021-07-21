@@ -28,6 +28,14 @@ git clone git://github.com/PaNOSC-ViNYL/instrument_database.git
   - simex
   
 
+## Developer
+### Examples
+```
+cmake -S . -B /dev/shm/instrument_database/
+cmake --build /dev/shm/instrument_database/
+ctest --test-dir /dev/shm/instrument_database/ --rerunfailed --output-on-failure
+```
+
 ## TODO
  - [ ]
 
