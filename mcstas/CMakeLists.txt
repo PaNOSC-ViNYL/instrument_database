@@ -49,6 +49,7 @@ add_custom_command(OUTPUT mcstasscript.done
 
 #------------------------------ Function to convert and compile mcstas instruments
 set(ILL_INSTRUMENTS ${CMAKE_CURRENT_SOURCE_DIR}/ILL/instruments/)
+set(ILL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/ILL/sources/)
 set(ILL_INSTRUMENTS_BUILD ${CMAKE_CURRENT_BINARY_DIR}/ILL/instruments/)
 set(TEST_DIR ${CMAKE_CURRENT_BINARY_DIR}/Test_outputs)
 file(MAKE_DIRECTORY ${TEST_DIR})
@@ -71,6 +72,7 @@ function(run_mcstas instrument_file)
   	DEPENDS mcstasscript.done
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py
 	DEPENDS ${instrument_file_full_path}
+	DEPENDS ${ILL_SOURCES} # any source file, trigger the recompilation of all the instruments...
   	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${instrument_file_full_path}
   	COMMAND mcstas -t -o ${outname}.c  ${outname}.instr 
   	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir}
