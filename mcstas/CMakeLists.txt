@@ -71,7 +71,7 @@ function(run_mcstas instrument_file)
   	DEPENDS mcstasscript.done
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py
 	DEPENDS ${instrument_file_full_path}
-  	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${instrument_file_full_path} ${outname}
+  	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/python_env/bin/python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/py_to_instr.py ${instrument_file_full_path}
   	COMMAND mcstas -t -o ${outname}.c  ${outname}.instr 
   	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir}
   	VERBATIM

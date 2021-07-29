@@ -4,8 +4,9 @@ McStas instrument file. It is advised to check
 the content to ensure it is as expected.
 """
 from mcstasscript.interface import instr, plotter, functions
+import sources.QuickSource_D22
 
-def D22_quick_fun():
+def def_instrument():
     D22_quick = instr.McStas_instr("D22_quick")
     D22_quick.add_parameter("double", "lambda", value=4.5)
     D22_quick.add_parameter("double", "dlambda", value=0.45)
@@ -30,15 +31,12 @@ def D22_quick_fun():
     H512_Before_VS = D22_quick.add_component("H512_Before_VS", "Progress_bar")
     H512_Before_VS.set_AT(['0', '0', '0'], RELATIVE="ABSOLUTE")
 
-    QuickSource = D22_quick.add_component("QuickSource", "Source_simple")
-    QuickSource.yheight = 0.04
-    QuickSource.xwidth = 0.04
+    QuickSource = sources.QuickSource_D22.D22_quick(D22_quick)
+    # following are the values changed from the default and that make sense only in this instrument description
     QuickSource.focus_xw = "sample_size_r"
     QuickSource.focus_yh = "sample_size_y"
     QuickSource.lambda0 = "lambda"
     QuickSource.dlambda = "dlambda"
-    QuickSource.flux = 1e13
-    QuickSource.gauss = 0
     QuickSource.target_index = +5
     QuickSource.set_AT(['0', ' 0', ' 0'], RELATIVE="H512_Before_VS")
     
@@ -98,4 +96,4 @@ def D22_quick_fun():
     
     return D22_quick
 
-D22_quick = D22_quick_fun()
+#D22_quick = D22_quick_fun()
