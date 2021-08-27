@@ -27,7 +27,9 @@ git clone git://github.com/PaNOSC-ViNYL/instrument_database.git
           - share/
   - simex
   
-
+## File content conventions
+The PYTHONPATH variable should point to the facility directory. In a python script for example
+sys.path.append("mcstas/ILL")
 ## Developer
 ### Examples
 ```
@@ -37,7 +39,13 @@ ctest --test-dir /dev/shm/instrument_database/ --rerunfailed --output-on-failure
 ```
 
 ## TODO
- - [ ]
+	SimEx SPB_instrument.py:
+	- [ ] import from pyvinyl parameters 
+	- [ ] declare the instrument class as collection of the defined parameters
+	McStas:
+	- [ ] define D22 as instrument class object
+	- [ ] Add the parameters
+	
 
 
 ## Examples

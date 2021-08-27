@@ -4,7 +4,9 @@ McStas instrument file. It is advised to check
 the content to ensure it is as expected.
 """
 from mcstasscript.interface import instr, plotter, functions
-import sources.QuickSource_D22
+
+# list here all the common parts to be imported
+import sources.HEAD.QuickSource_D22
 
 def def_instrument():
     D22_quick = instr.McStas_instr("D22_quick")
@@ -31,7 +33,7 @@ def def_instrument():
     H512_Before_VS = D22_quick.add_component("H512_Before_VS", "Progress_bar")
     H512_Before_VS.set_AT(['0', '0', '0'], RELATIVE="ABSOLUTE")
 
-    QuickSource = sources.QuickSource_D22.D22_quick(D22_quick)
+    QuickSource = sources.HEAD.QuickSource_D22.D22_quick(D22_quick)
     # following are the values changed from the default and that make sense only in this instrument description
     QuickSource.focus_xw = "sample_size_r"
     QuickSource.focus_yh = "sample_size_y"
