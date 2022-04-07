@@ -1,5 +1,9 @@
-import sys
-from pathlib import Path
+"""
+Test example for simexlite
+
+"""
+# import sys
+# from pathlib import Path
 
 # WPG_path = "/home/juncheng/GPFS/exfel/data/user/juncheng/WPG"
 # sys.path.insert(0, WPG_path)
@@ -70,6 +74,6 @@ def test_CalculationInstrument(tmpdir):
     pmi.output.get_data()
 
 
-if __name__ == "__main__":
-    my_path = Path("./")
-    test_CalculationInstrument(my_path)
+# if __name__ == "__main__":
+#    my_path = Path("./")
+#    test_CalculationInstrument(my_path)
