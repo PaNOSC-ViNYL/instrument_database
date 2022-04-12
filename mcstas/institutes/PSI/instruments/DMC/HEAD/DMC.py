@@ -1,5 +1,3 @@
-import compare_data
-
 from mcstasscript.interface import instr, plotter, functions
 
 def def_instrument():
