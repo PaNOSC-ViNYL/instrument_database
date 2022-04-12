@@ -10,6 +10,7 @@ git clone git://github.com/PaNOSC-ViNYL/instrument_database.git
  - [McStasScripts](https://github.com/PaNOSC-ViNYL/McStasScript)
  - Python virtual env
    - Ubuntu: python3-venv
+
 ### Testing dependencies:
  - McStas
  
@@ -30,8 +31,10 @@ git clone git://github.com/PaNOSC-ViNYL/instrument_database.git
 ## File content conventions
 The PYTHONPATH variable should point to the facility directory. In a python script for example
 sys.path.append("mcstas/ILL")
+
+
 ## Developer
-### Examples
+### Examples & testing
 ```
 cmake -S . -B /dev/shm/instrument_database/
 cmake --build /dev/shm/instrument_database/
@@ -48,23 +51,25 @@ ctest --test-dir /dev/shm/instrument_database/ --rerunfailed --output-on-failure
 	
 
 
+
 ## Examples
 
 ### Convert mcstas format into python script for McStasScripts
 
 ```
+import os
+MCSTAS_PATH = os.environ['MCSTAS']
+mcstas_instrument_file = "/tmp/ILL_D22_quick.instr"
 from mcstasscript.interface import functions
 my_configurator = functions.Configurator()
-my_configurator.set_mcrun_path("/usr/bin/")
-my_configurator.set_mcstas_path("/usr/share/mcstas/2.5/")
-my_configurator.set_mxrun_path("/usr/bin/")
-my_configurator.set_mcxtrace_path("/usr/share/mcxtrace/1.5/")
-my_configurator.set_mcstas_path("/usr/share/mcstas/2.7/")
-my_configurator.set_mcstas_path("/usr/share/mcstas/2.6.1/")
+#my_configurator.set_mcrun_path("/usr/bin/")
+my_configurator.set_mcstas_path(MCSTAS_PATH)
+#my_configurator.set_mxrun_path("/usr/bin/")
+#my_configurator.set_mcxtrace_path("/usr/share/mcxtrace/1.5/")
 
 from mcstasscript.interface import reader
-Reader = reader.McStas_file("/tmp/ILL_D22_quick.instr")
-Reader.write_python_file("/tmp/D22_quick.py")
+Reader = reader.McStas_file(mcstas_instrument_file)
+Reader.write_python_file("/tmp/myinstrument.py")
 ```
 
 ### Convert McStasScripts python script into original McStas format
