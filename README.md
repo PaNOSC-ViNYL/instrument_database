@@ -50,7 +50,10 @@ ctest --test-dir /dev/shm/instrument_database/ --rerunfailed --output-on-failure
 	- [ ] Add the parameters
 	
 
-
+List of institutes and instruments:
+```
+tree -I "__pycache__|*~|#*#|__init__.py"  institutes/
+```
 
 ## Examples
 

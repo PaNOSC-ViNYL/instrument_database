@@ -96,7 +96,7 @@ endfunction()
 
 #------------------------------ List of instruments to be compiled
 run_mcstas(D22/HEAD/D22_quick.py)
-
+run_mcstas(ThALES/HEAD/ThALES.py)
 
 #------------------------------ Testing
 enable_testing()

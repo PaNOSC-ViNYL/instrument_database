@@ -6,8 +6,8 @@ the content to ensure it is as expected.
 from mcstasscript.interface import instr, plotter, functions
 
 # list here all the common parts to be imported
-import mcstas.institutes.ILL
-from mcstas.institutes.ILL.sources.HEAD import QuickSource_D22 as source
+
+from institutes.ILL.sources.HEAD.mcstas import QuickSource_D22 as source
 
 
 def def_instrument():
