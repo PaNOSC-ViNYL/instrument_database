@@ -8,10 +8,15 @@ from mcstasscript.interface import instr, plotter, functions
 # list here all the common parts to be imported
 
 from institutes.ILL.sources.HEAD.mcstas import QuickSource_D22 as source
+from libpyvinyl import Instrument
 
 
 def def_instrument():
+    myinstr = Instrument("D22_quick", instrument_base_dir=".")
+
     D22_quick = instr.McStas_instr("D22_quick")
+    myinstr.add_calculator(D22_quick)
+
     D22_quick.add_parameter("double", "lambda", value=4.5)
     D22_quick.add_parameter("double", "dlambda", value=0.45)
     D22_quick.add_parameter("double", "D22_collimation", value=2.0)
@@ -102,7 +107,11 @@ def def_instrument():
     Detector.append_EXTEND("ABSORB; ")
     Detector.set_AT(["0", "0", "D22_collimation"], RELATIVE="D22_Sample_Pos")
 
-    return D22_quick
+    # return D22_quick
+    myinstr.add_master_parameter("wavelength", {"D22_quick": "lambda"})
+    myinstr.add_master_parameter("collimation", {"D22_quick": "D22_collimation"})
+
+    return myinstr
 
 
 # D22_quick = D22_quick_fun()
