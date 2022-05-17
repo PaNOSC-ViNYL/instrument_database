@@ -118,7 +118,7 @@ A github account is **not** required.
 
 Clone this repository directly in a local directory:
 ```
-git clone -b shervin --recurse-submodules https://github.com/PaNOSC-ViNYL/instrument_database.git
+git clone  --recurse-submodules https://github.com/PaNOSC-ViNYL/instrument_database.git
 cd instrument_database/
 ```
   
