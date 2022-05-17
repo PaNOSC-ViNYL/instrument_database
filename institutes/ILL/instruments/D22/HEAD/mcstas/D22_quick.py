@@ -9,6 +9,9 @@ from mcstasscript.interface import instr, plotter, functions
 
 from institutes.ILL.sources.HEAD.mcstas import QuickSource_D22 as source
 from libpyvinyl import Instrument
+import pint
+
+ureg = pint.UnitRegistry()
 
 
 def def_instrument():
@@ -17,9 +20,9 @@ def def_instrument():
     D22_quick = instr.McStas_instr("D22_quick")
     myinstr.add_calculator(D22_quick)
 
-    D22_quick.add_parameter("double", "lambda", value=4.5)
-    D22_quick.add_parameter("double", "dlambda", value=0.45)
-    D22_quick.add_parameter("double", "D22_collimation", value=2.0)
+    D22_quick.add_parameter("double", "lambda", value=4.5, unit="angstrom")
+    D22_quick.add_parameter("double", "dlambda", value=0.45, unit="angstrom")
+    D22_quick.add_parameter("double", "D22_collimation", value=2.0, unit="meter")
     D22_quick.add_parameter("string", "D22_sample", value='"H2O_liq.qSq"')
     D22_quick.add_parameter("double", "sample_size_r", value=0.005)
     D22_quick.add_parameter("double", "sample_size_y", value=0.05)
@@ -108,8 +111,13 @@ def def_instrument():
     Detector.set_AT(["0", "0", "D22_collimation"], RELATIVE="D22_Sample_Pos")
 
     # return D22_quick
-    myinstr.add_master_parameter("wavelength", {"D22_quick": "lambda"})
-    myinstr.add_master_parameter("collimation", {"D22_quick": "D22_collimation"})
+    myinstr.add_master_parameter("wavelength", {"D22_quick": "lambda"}, unit="angstrom")
+    myinstr.add_master_parameter(
+        "collimation", {"D22_quick": "D22_collimation"}, unit="meter"
+    )
+    myinstr.master["collimation"] = 2
+    myinstr.master["wavelength"] = 4.5 * ureg.angstrom
+    myinstr.master["collimation"] = 2 * ureg.meter
 
     return myinstr
 
