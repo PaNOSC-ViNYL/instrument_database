@@ -3,18 +3,27 @@ This McStasScript file was generated from a
 McStas instrument file. It is advised to check
 the content to ensure it is as expected.
 """
-from mcstasscript.interface import instr, plotter, functions
+import os
+
+MCSTAS_PATH = os.environ["MCSTAS"]
+from mcstasscript.interface import functions
+
+my_configurator = functions.Configurator()
+
+my_configurator.set_mcstas_path(MCSTAS_PATH)
+my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
 
 # list here all the common parts to be imported
 
 from institutes.ILL.sources.HEAD.mcstas import QuickSource_D22 as source
-from libpyvinyl import Instrument
+from libpyvinyl.Instrument import Instrument
 import pint
 
 ureg = pint.UnitRegistry()
 
 
 def def_instrument():
+    """Return the constructed instrument description"""
     myinstr = Instrument("D22_quick", instrument_base_dir=".")
 
     D22_quick = instr.McStas_instr("D22_quick")
@@ -85,7 +94,7 @@ def def_instrument():
 
     H51_D22_Sample = D22_quick.add_component("H51_D22_Sample", "Isotropic_Sqw")
     H51_D22_Sample.Sqw_coh = "D22_sample"
-    H51_D22_Sample.Sqw_inc = "NULL"
+    H51_D22_Sample.Sqw_inc = 0
     H51_D22_Sample.radius = "sample_size_r"
     H51_D22_Sample.yheight = "sample_size_y"
     H51_D22_Sample.d_phi = "RAD2DEG*atan2(1, D22_collimation)"

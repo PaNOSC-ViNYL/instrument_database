@@ -109,7 +109,10 @@ of any software or instrument description update.
 ### Requirements
 Simulators should have git and python (at least version 3.6) installed
 on their machine.
+[McStas](http://www.mcstas.org/) should also be installed on the machine if willing to use an instrument implemented for mcstas.
+
 A github account is **not** required.
+
 
 ### Set up 
 
@@ -122,12 +125,28 @@ cd instrument_database/
 Now both the instrument repository as well as its associated API are
 available.
 
+Create an isolated virtual environment
+```
+python -m venv --system-site-packages --symlinks python_packages
+```
+
+Activate the environment (more info for different operating systems can be found in the table [here](https://docs.python.org/3/library/venv.html)
+```
+source python_packages/bin/activate
+pip install --upgrade pip
+```
 
 Install the API and its dependencies:
 ```
 pip install -r instrumentDataBaseAPI/requirements.txt
 pip install -e instrumentDataBaseAPI/
 ```
+
+#### Setting up McStas environment
+In case the simulation uses mcstas as simulation program, the `MCSTAS` environment variable should be set, exported and pointing to the McStas root directory.
+
+An example in fish shell:
+```set -x MCSTAS /usr/local/mcstas/2.7/```
 
 ### Quick Start: Accessing an Instrument Description
 
@@ -157,6 +176,8 @@ run the specific instrument using `pip`.
 ## Instructions for CONTRIBUTORS
 Contributors **need** a valid github account and are supposed to
 have some basic familiarity with git and python.
+
+[McStas](http://www.mcstas.org/) should also be installed on the machine if willing to use an instrument implemented for mcstas.
 
 ### Development process
   1. first clone a fresh version of the repository
@@ -190,6 +211,15 @@ Mandatory content:
 - import of Instrument class from libpyvinyl
   ```
   from libpyvinyl import Instrument
+  ```
+- for mcstas simulations
+  ```
+  import os
+  MCSTAS_PATH = os.environ["MCSTAS"]
+  from mcstasscript.interface import functions
+  my_configurator = functions.Configurator()
+  my_configurator.set_mcstas_path(MCSTAS_PATH)
+  my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
   ```
 - import of all other needed libraries
   We recommend to use the pint library for physical quantities:
