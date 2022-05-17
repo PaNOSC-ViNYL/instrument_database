@@ -17,6 +17,7 @@ my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
 
 from institutes.ILL.sources.HEAD.mcstas import QuickSource_D22 as source
 from libpyvinyl.Instrument import Instrument
+from mcstasscript.interface import instr
 import pint
 
 ureg = pint.UnitRegistry()
