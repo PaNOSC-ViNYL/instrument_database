@@ -4,6 +4,7 @@ The goal of this repository is to collect and store the description
 of instruments at various research infrastructures following the
 [libpyvinyl](https://github.com/PaNOSC-ViNYL/libpyvinyl) API.
 
+**Familiarity with the `libpyvinyl` API is required.**
 
 It is worth dividing the users of this repository in two categories:
 
@@ -110,68 +111,128 @@ Simulators should have git and python (at least version 3.6) installed
 on their machine.
 A github account is **not** required.
 
+### Set up 
+
+Clone this repository directly in a local directory:
 ```
-pip install -r requirements/simulators.txt
+git clone -b shervin --recurse-submodules https://github.com/PaNOSC-ViNYL/instrument_database.git
+cd instrument_database/
+```
+  
+Now both the instrument repository as well as its associated API are
+available.
+
+
+Install the API and its dependencies:
+```
+pip install -r instrumentDataBaseAPI/requirements.txt
+pip install -e instrumentDataBaseAPI/
 ```
 
-Simulators have two equivalent ways to access the simulation
-descriptions contained in this repository:
-  1. Clone this repository in a local directory:
-  ```
-  git clone git://github.com/PaNOSC-ViNYL/instrument_database.git
-  ```
-  
+### Quick Start: Accessing an Instrument Description
+
+```
+from instrumentdatabaseapi import instrumentdatabaseapi as API
+repo = API.Repository(local_repo=".")
+
+myinstrument = repo.load("ILL","D22","HEAD","mcstas","quick",False)
+
+# Getting the list of master parameters
+for par in myinstrument.master:
+    print(par)
+
+# running the simulation
+myinstrument.run()
+
+# retrieving the output
+output = myinstrument.output()
+```
+In this example code, `myinstrument` is the instrument description for
+the instrument D22 at ILL, at version `HEAD`, using the simulation
+software "mcstas" and the specific flavour `quick`. The last boolean
+is optional and allowes to install all the additional dependencies to
+run the specific instrument using `pip`.
+
+
 ## Instructions for CONTRIBUTORS
-Contributors should have a valid github account and are supposed to
+Contributors **need** a valid github account and are supposed to
 have some basic familiarity with git and python.
 
+### Development process
+  1. first clone a fresh version of the repository
+	 ```
+	 git clone --recurse-submodules git@github.com:PaNOSC-ViNYL/instrument_database.git
+	 ```
+  1. create a new branch
+	  ```
+	  git branch SomeMeaningfulName
+	  ```
+  1. modify or create a new instrument
+  1. run the test instrument script
+	 ```
+	 ./instrumentDataBaseAPI/scripts/test_instrument.py <institute> <instrument> <version> <simulation_program> <flavour>
+	 ```
+  1. copy the output files in a new subdirectory for the instrument
+	 called `validation`
+  1. Push the changes to a new branch on the repository
+	 ```
+	 git push origin HEAD:SomeMeaningfulName
+	 ```
+  1. Create a pull request on github 
+  1. After review it will be integrated and available for everyone
+
+### Guidelines for writing an instrument
+The instrument description should be placed as explained in the
+[Repository Structure](#repository-structure).
+
+Mandatory content:
+
+- import of Instrument class from libpyvinyl
+  ```
+  from libpyvinyl import Instrument
+  ```
+- import of all other needed libraries
+  We recommend to use the pint library for physical quantities:
+  ```
+  import pint
+  ureg = pint.UnitRegistry()
+  ```
+- one function `def_instrument() -> Instrument:` that returns the
+  instrument object. Example:
+  ```
+  def def_instrument():
+	   myinstr = Instrument("instrument_name", instrument_base_dir=".")
+	   ...
+	   ...
+	   return myinstr
+  ```
+- add master parameters to the instrument to let the **SIMULATORS**
+  know which are the parameters they are supposed to play with.
+  ** Don't forget to set the units! **
+  Example:
+  ```
+  myinstr.add_master_parameter("wavelength", {"D22_quick": "lambda"}, unit="angstrom")
+  myinstr.add_master_parameter(
+	  "collimation", {"D22_quick": "D22_collimation"}, unit="meter"
+  )
+  ```
+- set default values for the master parameters with units
+  ```
+  myinstr.master["collimation"] = 2
+  myinstr.master["wavelength"] = 4.5 * ureg.angstrom
+  myinstr.master["collimation"] = 2 * ureg.meter
+  ```
+   
 
 
 
-
-Repository of instrument descriptions, components, etc.
-
-To clone without a github account:
-
-## Dependencies
- - [McStasScripts](https://github.com/PaNOSC-ViNYL/McStasScript)
- - Python virtual env
-   - Ubuntu: python3-venv
-
-### Testing dependencies:
- - McStas
- 
-  
-## File content conventions
-The PYTHONPATH variable should point to the facility directory. In a python script for example
-sys.path.append("mcstas/ILL")
-
-
-## Developer
-### Examples & testing
+#### Useful commands
+How to see the tree structure from unix:
 ```
-cmake -S . -B /dev/shm/instrument_database/
-cmake --build /dev/shm/instrument_database/
-ctest --test-dir /dev/shm/instrument_database/ --rerunfailed --output-on-failure
+tree  -I "__pycache__|*~|#*#|__init__.py" institutes/
 ```
 
-## TODO
-	SimEx SPB_instrument.py:
-	- [ ] import from pyvinyl parameters 
-	- [ ] declare the instrument class as collection of the defined parameters
-	McStas:
-	- [ ] define D22 as instrument class object
-	- [ ] Add the parameters
-	
-
-List of institutes and instruments:
-```
-tree -I "__pycache__|*~|#*#|__init__.py"  institutes/
-```
-
-## Examples
-
-### Convert mcstas format into python script for McStasScripts
+##### Convert mcstas format into python script for McStasScripts
 
 ```
 import os
@@ -189,12 +250,16 @@ Reader = reader.McStas_file(mcstas_instrument_file)
 Reader.write_python_file("/tmp/myinstrument.py")
 ```
 
-### Convert McStasScripts python script into original McStas format
+##### Convert McStasScripts python script into original McStas format
 From the location of the python script (`D22_quick.py` in this example)
 ```
-# from <filename> import <instrument_name>
-from D22_quick import D22_quick
-# this writes into a file called <instrument_name>.instr
-D22_quick.write_full_instrument()
+from instrumentdatabaseapi import instrumentdatabaseapi as API
+repo = API.Repository(local_repo=".")
+
+myinstrument = repo.load("ILL","D22","HEAD","mcstas","quick",False)
+myinstrument.calculators["D22_quick"].write_full_instrument()
 
 ```
+
+  
+
