@@ -8,7 +8,7 @@ of instruments at various research infrastructures following the
 
 It is worth dividing the users of this repository in two categories:
 
- - **CONTRIBUTORS**: instrument experts writing and mantaining
+ - **CONTRIBUTORS**: instrument experts writing and maintaining
    up-to-date the instrument descriptions in this repository for final
    users 
  - **SIMULATORS**: end users running X-ray and neutron simulations
@@ -19,10 +19,10 @@ Instruments at various research facilities can be described either in
 some simplified way or up to a very high level of details and
 complexity. This repository allows to:
 
- - split sections of a simulation in multiple parts (e.g. source of the rays, beamline, detector),
- - mantain multiple version of the same instrument in order to follow
+ - split sections of a simulation into multiple parts (e.g. source of the rays, beamline, detector),
+ - maintain multiple versions of the same instrument in order to follow
    time evolution of the latter (e.g. before and after some upgrade),
- - represent different flavours of the same instrument (e.g. very simplified,
+ - represent different flavors of the same instrument (e.g. very simplified,
    intermediate, very detailed).
  - adopt different simulation programs (adopting the libpyvinyl API)
    to describe the same instrument
@@ -38,7 +38,7 @@ structured as follows:
 institutes/<institute>/instruments/<instrument>/<version>/<simulation program>/<instrument><flavour>.py
 ```
 
-Each instrument is identified by the following informations:
+Each instrument is identified by the following:
 
  1. name of the institute
  1. name of the instrument
@@ -51,7 +51,7 @@ Each instrument is identified by the following informations:
 	[McStasscript](https://github.com/PaNOSC-ViNYL/McStasScript) 
 	and [Simex-lite](https://github.com/PaNOSC-ViNYL/SimEx-Lite),
 	but any `libpyvinyl` compatible code can be used
- 1. a flavour to identify alternative description of the same
+ 1. a flavor to identify alternative description of the same
 	instrument.
    
 
@@ -103,7 +103,7 @@ For each instrument, there is also a `requirements.txt` file with the
 specific python dependencies and a `validation/` subdirectory
 containing the output of a test simulation obtained with the
 instrument description in the repository. This is used for validation
-of any software or instrument description update.
+of any update of the simulation software or of the instrument description.
 
 ## Instructions for SIMULATORS
 ### Requirements
@@ -146,7 +146,10 @@ pip install -e instrumentDataBaseAPI/
 In case the simulation uses mcstas as simulation program, the `MCSTAS` environment variable should be set, exported and pointing to the McStas root directory.
 
 An example in fish shell:
-```set -x MCSTAS /usr/local/mcstas/2.7/```
+```
+set -x MCSTAS /usr/local/mcstas/2.7/
+python mcstas/scripts/setup.py
+```
 
 ### Quick Start: Accessing an Instrument Description
 
@@ -154,11 +157,45 @@ An example in fish shell:
 from instrumentdatabaseapi import instrumentdatabaseapi as API
 repo = API.Repository(local_repo=".")
 
-myinstrument = repo.load("ILL","D22","HEAD","mcstas","quick",False)
+myinstrument = repo.load("ILL","ThALES","HEAD","mcstas","full",False)
+
+# import the units
+import pint
+ureg = pint.get_application_registry()
+
+# check the methods specifically defined for this instrument in the help
+help(myinstrument)
+
+# setting the base directory for the simulation output
+basedir = "/tmp/ThALES_scan/"
+myinstrument.set_instrument_base_dir(basedir)
+
 
 # Getting the list of master parameters
-for par in myinstrument.master:
-    print(par)
+print(myinstrument.master):
+
+# Modify a master parameter value:
+myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
+myinstrument.master["a4"] = 60 * ureg.degree
+myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+
+# check the list of implemented samples:
+print(myinstrument.samples)
+
+# choose a sample
+myinstrument.set_sample_by_name("vanadium")
+
+# set the sample shape
+# - sample_box_shape(width, height, depth, thickness)
+# - sample_cylinder_shape(radius, height, thickness)
+# - sample_sphere_shape(radius, thickness)
+myinstrument.sample_cylinder_shape(0.005, 0.01)
+
+# set the number of MC neutrons to simulate
+myinstrument.sim_neutrons(500000)
+
+# fix the simulation seed to ensure reproducibility
+myinstrument.set_seed(654321)
 
 # running the simulation
 myinstrument.run()
@@ -166,9 +203,10 @@ myinstrument.run()
 # retrieving the output
 output = myinstrument.output()
 ```
+
 In this example code, `myinstrument` is the instrument description for
-the instrument D22 at ILL, at version `HEAD`, using the simulation
-software "mcstas" and the specific flavour `quick`. The last boolean
+the instrument ThALES at ILL, at version `HEAD`, using the simulation
+software "mcstas" and the specific flavor `full`. The last boolean
 is optional and allowes to install all the additional dependencies to
 run the specific instrument using `pip`.
 
@@ -210,50 +248,86 @@ Mandatory content:
 
 - import of Instrument class from libpyvinyl
   ```
-  from libpyvinyl import Instrument
+# ------------------------------ Mandatory classes to use
+from libpyvinyl.Instrument import Instrument
+from libpyvinyl.Parameters import Parameter
   ```
 - for mcstas simulations
   ```
-  import os
-  MCSTAS_PATH = os.environ["MCSTAS"]
-  from mcstasscript.interface import functions
-  my_configurator = functions.Configurator()
-  my_configurator.set_mcstas_path(MCSTAS_PATH)
-  my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
+# ------------------------------ For McStasscript instruments
+import mcstasscript as ms
+from mcstasscript.interface import functions
+from mcstasscript.interface import instr
+
+from mcstas.McStasInstrumentBase import McStasInstrumentBase
+
+# this is needed to get the location of McStas executables and libraries
+my_configurator = functions.Configurator()
   ```
 - import of all other needed libraries
   We recommend to use the pint library for physical quantities:
   ```
-  import pint
-  ureg = pint.UnitRegistry()
+import pint
+from pint import set_application_registry
+ureg = pint.get_application_registry()
   ```
-- one function `def_instrument() -> Instrument:` that returns the
-  instrument object. Example:
-  ```
-  def def_instrument():
-	   myinstr = Instrument("instrument_name", instrument_base_dir=".")
-	   ...
-	   ...
-	   return myinstr
-  ```
-- add master parameters to the instrument to let the **SIMULATORS**
+- one function to return the list of implemented flavours for the instrument
+```
+############## Mandatory method
+def get_flavours():
+    return ["full", "nosection"]
+```
+- one function to return the instrument object given a flavour
+```
+############## Mandatory method
+def def_instrument(flavour: Optional[str] = None):
+    """Function returning the specialized instrument object based on the flavour requested"""
+    if flavour not in get_flavours() and flavour != "":
+        raise RuntimeError(f"Flavour {flavour} not in the flavour list")
+
+    if flavour in [None, "None", "", "full"]:
+        return ThALES()
+    if flavour == "nosection":
+        return ThALES(False)
+    else:
+        raise RuntimeError(f"Flavour {flavour} not implement")
+```
+- the instrument implemented as a class inheriting from libpyvinyl.Instrument
+```
+class ThALES(McStasInstrumentBase):
+    """:class: Instrument class defining the ThALES instrument at ILL"""
+
+    # ------------------------------ utility methods made available for the users
+
+    # ------------------------------ The instrument definition goes in the __init__
+    def __init__(self, do_section=True):
+        """Here the real definition of the instrument is performed"""
+
+        super().__init__("ThALES", do_section)
+     ...
+ ```
+- add master parameters at the end of the *init* of the instrument to let the **SIMULATORS**
   know which are the parameters they are supposed to play with.
   ** Don't forget to set the units! **
   Example:
   ```
-  myinstr.add_master_parameter("wavelength", {"D22_quick": "lambda"}, unit="angstrom")
-  myinstr.add_master_parameter(
-	  "collimation", {"D22_quick": "D22_collimation"}, unit="meter"
-  )
+        # ------------------------------ instrument parameters
+        myinstr.add_master_parameter("a2", {OriginCalc.name: "a2"}, unit="degree")
+        myinstr.add_master_parameter(
+            "a3", {SampleCalc.name: "sample_y_rotation"}, unit="degree"
+        )
+        myinstr.add_master_parameter("a4", {SampleCalc.name: "a4"}, unit="degree")
+        myinstr.add_master_parameter("a6", {AnalyzerCalc.name: "a6"}, unit="degree")
   ```
 - set default values for the master parameters with units
   ```
-  myinstr.master["collimation"] = 2
-  myinstr.master["wavelength"] = 4.5 * ureg.angstrom
-  myinstr.master["collimation"] = 2 * ureg.meter
+        myinstr.master["a2"] = 79.10 * ureg.degree
+        myinstr.master["a3"] = 0 * ureg.degree
+        myinstr.master["a4"] = 60 * ureg.degree
+        myinstr.master["a6"] = 79.10 * ureg.degree
   ```
    
-
+```
 
 
 #### Useful commands

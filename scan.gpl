@@ -1,0 +1,34 @@
+_file_ = ARG1
+_validation_file_ = '038564.asc'
+
+print(_file_)
+
+### Gauss
+gauss_A=0.1
+gauss_sigma=0.05
+gauss_mu=4.98
+gauss(x) = gauss_A*exp(-(x-gauss_mu)*(x-gauss_mu)/(gauss_sigma*gauss_sigma))
+
+
+
+### Fitting
+set fit errorvariables
+
+stats _file_ u 1 nooutput
+gauss_sigma = STATS_stddev
+stats _file_ u 2 nooutput
+gauss_A = STATS_max
+#fit gauss(x) _file_ u 1:($2 > 0 ? $2:NaN):3 via gauss_A,gauss_mu,gauss_sigma
+fit gauss(x) _file_ u 1:($2 > 0 ? $2:NaN):3 via gauss_A,gauss_sigma,gauss_mu
+
+
+### Plotting
+set offsets 0.1, 0.1,0.1,0.1
+
+set samples 500
+
+set label 1 sprintf("mu = %0.3f +/- %.3f\nsigma = %.3f +/- %.3f", gauss_mu,gauss_mu_err,gauss_sigma,gauss_sigma_err) at screen 0.65, screen 0.8
+set label 2 sprintf("relative resolution = %.1f \%", gauss_sigma/gauss_mu*100) at screen 0.65, screen 0.75
+
+#set log
+p _file_ u 1:2:3 w yerr pt 4 t 'Simulated data', gauss(x) t 'Sim data gaussian fit', _validation_file_ u 2:6 w p pt 5 t 'Validation data'

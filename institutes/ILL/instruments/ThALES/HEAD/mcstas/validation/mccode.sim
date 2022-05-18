@@ -1,0 +1,175 @@
+McStas simulation description file for ThALES_double_peak10.
+Date:    Wed May 18 14:52:17 2022
+Program: McStas 2.7 - Nov. 27, 2020
+
+begin instrument: ThALES_double_peak10
+  File: ThALES_resolution_v2_20220518_145144/mccode
+  Source: ThALES_resolution_v2.instr
+  Parameters:  ThALES_dE(double) A3(double) A4(double) Ei(double) Ef(double) q_x_elastic(double) q_z_elastic(double) SAMPLE(double)
+  Trace_enabled: yes
+  Default_main: yes
+  Embedded_runtime: yes
+end instrument
+
+begin simulation: ThALES_resolution_v2_20220518_145144
+  Format: McCode with text headers
+  URL: http://www.mccode.org
+  Creator: McStas 2.7 - Nov. 27, 2020
+  Instrument: ThALES_resolution_v2.instr
+  Ncount: 1000000
+  Trace: no
+  Gravitation: no
+  Seed: 654321
+  Directory: ThALES_resolution_v2_20220518_145144
+  Param: ThALES_dE=0.5
+  Param: A3=0
+  Param: A4=20
+  Param: Ei=5
+  Param: Ef=5
+  Param: q_x_elastic=1.3139
+  Param: q_z_elastic=0.146
+  Param: SAMPLE=0
+end simulation
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_1d(200)
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: l_monitor
+  position: 0.426111 0 17.3281
+  title: Wavelength monitor
+  Ncount: 1000000
+  filename: lambda_slit_mono.dat
+  statistics: X0=4.05726; dX=0.118184;
+  signal: Min=0; Max=2.66014e+10; Mean=1.05616e+09;
+  values: 2.11232e+11 9.6757e+08 89722
+  xvar: L
+  yvar: (I,I_err)
+  xlabel: Wavelength [AA]
+  ylabel: Intensity
+  xlimits: 0 10
+  variables: L I I_err N
+end data
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_1d(200)
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: E_sample_mon
+  position: 2.3673 0 19.8109
+  title: Energy monitor
+  Ncount: 1000000
+  filename: E_sample_mon.dat
+  statistics: X0=4.99355; dX=0.0538344;
+  signal: Min=0; Max=2.59341e+08; Mean=3.29516e+07;
+  values: 6.59032e+09 1.76704e+08 1649
+  xvar: E
+  yvar: (I,I_err)
+  xlabel: Energy [meV]
+  ylabel: Intensity
+  xlimits: 4.5 5.5
+  variables: E I I_err N
+end data
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_2d(200, 200)
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: PSD_sample_mon
+  position: 2.36827 0 19.8112
+  title: PSD monitor
+  Ncount: 1000000
+  filename: PSD_sample_mon.dat
+  statistics: X0=0.0364635; dX=0.994309; Y0=-0.0106159; dY=0.939035;
+  signal: Min=0; Max=1.10314e+07; Mean=164758;
+  values: 6.59032e+09 1.76704e+08 1649
+  xvar: X
+  yvar: Y
+  xlabel: X position [cm]
+  ylabel: Y position [cm]
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: -2.5 2.5 -2.5 2.5
+  variables: I I_err N
+end data
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_2d(200, 200)
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: PSD_analyzer
+  position: 3.45555 0 20.535
+  title: PSD monitor
+  Ncount: 1000000
+  filename: PSD_ana.dat
+  statistics: X0=-0.0649104; dX=0.843535; Y0=-0.035819; dY=1.14607;
+  signal: Min=0; Max=5.87507e+06; Mean=14905;
+  values: 5.96199e+08 3.04828e+07 531
+  xvar: X
+  yvar: Y
+  xlabel: X position [cm]
+  ylabel: Y position [cm]
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: -12.5 12.5 -12.5 12.5
+  variables: I I_err N
+end data
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_2d(200, 200)
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: PSD_det
+  position: 3.94768 0 20.126
+  title: PSD monitor
+  Ncount: 1000000
+  filename: PSD_det.dat
+  statistics: X0=-0.012492; dX=0.59023; Y0=0.0649137; dY=0.880524;
+  signal: Min=0; Max=2.69211e+06; Mean=2018.18;
+  values: 8.07273e+07 1.06296e+07 79
+  xvar: X
+  yvar: Y
+  xlabel: X position [cm]
+  ylabel: Y position [cm]
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: -10 10 -10 10
+  variables: I I_err N
+end data
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_2d(11, 79)
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: res_monitor
+  position: 0 0 0
+  title:  Intensity Position Velocity Spin Position Velocity Spin Position Velocity Spin Time_Of_Flight Monitor (Square)
+  Ncount: 1000000
+  filename: res_monitor_list.ki_x.ki_y.ki_z.kf_x.kf_y.kf_z.x.y.z.p_i.p_f
+  statistics: X0=0; dX=0; Y0=0; dY=0;
+  signal: Min=-0.0367854; Max=-0.0367854; Mean=0;
+  values: 0 0 0
+  xvar: List
+  yvar: ki_x
+  xlabel: List of neutron events
+  ylabel: ki_x ki_y ki_z kf_x kf_y kf_z x y z p_i p_f 
+  zvar: I
+  zlabel: Signal per bin
+  xylimits: 1 79 1 11
+  variables: ki_x ki_y ki_z kf_x kf_y kf_z x y z p_i p_f 
+end data
+
+begin data
+  Date: Wed May 18 14:52:18 2022 (1652878338)
+  type: array_0d
+  Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+  component: detector_all
+  position: 3.94853 0 20.1253
+  title: Single monitor detector_all
+  Ncount: 1000000
+  statistics: None
+  signal: None
+  values: 8.07273e+07 1.06296e+07 79
+  xylimits: 0 0 0 0 0 0
+  variables: I I_err N
+end data
