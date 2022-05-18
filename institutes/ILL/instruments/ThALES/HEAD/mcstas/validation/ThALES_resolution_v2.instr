@@ -1,0 +1,366 @@
+/*******************************************************************************
+*         McStas instrument definition URL=http://mcstas.risoe.dk
+*
+*
+* Instrument: ThALES
+*
+* %Identification
+* Written by: Henrik Jacobsen (henrik.jacobsen.fys@gmail.com) 2015, based on the ILL model by Emmanuel Farhi (farhi@ill.fr)
+* Updated by: Kristine Krighaar, Kim Lefmann
+* Date: September, 2021
+* Origin:NBI
+* Release: McStas 3.0
+* Version: $Revision: 1.0 $
+* %INSTRUMENT_SITE: ILL
+*
+* The H5 new cold guide at the ILL with ThALES and a ressample (resolution-calculating sample + monitor). The output needs preprocessing through mcresplot or similar 
+*
+* %Description
+*
+*
+* %Parameters
+* SAMPLE 0: chooses the resolution sample with corresponding monitor, and they calculate the resolution ellipsoide.
+* Sample 1: Acts as a vanadium sample and can also be used to determine energy resoltion. 
+*
+*
+* %Link
+* The NoteDPT11 at the ILL
+* %L
+* The DPT/SMAE 11/070 WASP design report
+* %L
+* The DPT/SMAE 10/271 H5 design report
+* %L
+* Daily notes from K. Andersen about the H5 project
+* %L
+* Mirotron drawing MR-0656-000 for the IN15 V-mirror geometry
+* %End
+*******************************************************************************/
+
+DEFINE INSTRUMENT ThALES_double_peak10(ThALES_dE=0.5, A3=0, A4=20, Ei=5, Ef=5, q_x_elastic=1.3139, q_z_elastic=0.1460, SAMPLE=0)
+
+DECLARE %{
+  
+  /* HCS (H5) source 'Measured' parameters */
+  double sT3,sI3;
+  double sT2,sI2;
+  double sT1,sI1;
+  
+  /* guide coating parameters */
+  double gR0;
+  double gQc;
+  double gAlpha;
+  double gW;        
+  
+  double Al_Thickness;
+  double gGap;
+  
+  double ThALES_DM; /* PG002 */
+  double ThALES_A1;
+  double ThALES_L;
+  double L;
+  double flag;
+  
+  double A5;
+  double A6;
+  double ThALES_lambda;
+  double delta_E;
+  double final_lambda;
+  double sample_select;
+  double ThALES_RMV;
+  double ThALES_RMH;
+  double A3_offset;
+
+  double dist_ana_det; //m
+  double dist_sample_ana; //m
+  double ana_RMV;
+  double ana_RMH;
+
+  int elastic_flag_instr_1;
+  int elastic_flag_instr_2;
+
+%}
+
+INITIALIZE %{
+
+  sT3=413.5, sI3=10.22e12;
+  sT2=145.8, sI2=3.44e13;
+  sT1=40.1, sI1=2.78e13;
+  
+  /* guide coating parameters */
+  gR0 = 1;
+  gQc = 0.0216;
+  gAlpha = 4.07;
+  gW = 1.0/300.0;
+  
+  Al_Thickness = 0.001;
+  gGap = 0.001;
+  
+  ThALES_DM      = 3.355; /* PG002 */
+  ThALES_A1      = 0;
+  ThALES_L       = 2.000;
+  
+  flag         = 0;
+  
+  A5=0;
+  A6=0;
+  delta_E=0;
+  ThALES_RMV = -1;
+  ThALES_RMH=-1;
+  A3_offset=0;
+
+  dist_ana_det=0.640; //m
+  dist_sample_ana=1.260; //m
+  ana_RMV=-1;
+  ana_RMH=-1;
+
+  /* the effective guide divergence is 1.2*0.1*lambda*pi/180 for m=1.2 */
+  /* the effective inguide length for focusing is thus 
+         (0.12/2)/(1.2*0.1*lambda*PI/180)
+
+  /* compute H53 parameters: ThALES */
+      
+  ThALES_lambda=1/(0.1106*sqrt(Ei)); 
+  final_lambda=1/(0.1106*sqrt(Ef));
+
+  A5  = -asin(final_lambda/2/ThALES_DM)*RAD2DEG;
+  A6  = 2*A5;
+
+  ThALES_A1  = asin(ThALES_lambda/2/ThALES_DM)*RAD2DEG;
+  
+/*  
+//From Farhi
+       L   = 1/(1/ThALES_L+1/( (0.12/2)/(3*0.1*ThALES_lambda*PI/180) ));
+  if (ThALES_RMV<0)
+  ThALES_RMV = 2*L*sin(DEG2RAD*fabs(ThALES_A1));
+  if (ThALES_RMH<0)
+  ThALES_RMH = 2*L/sin(DEG2RAD*fabs(ThALES_A1));
+  */
+  
+//Monochromator curvature
+    
+  if (ThALES_RMV<0)
+    ThALES_RMV = 1/(    (   1/ThALES_L + 1/7.0 )   / (2*sin(DEG2RAD*fabs(ThALES_A1)))    );
+//  ThALES_RMV = 1/(    (   1/ThALES_L + 1/( (0.12/2)/(3*0.1*ThALES_lambda*PI/180) )   )   / (2*sin(DEG2RAD*fabs(ThALES_A1)))    );
+  if (ThALES_RMH<0)
+    ThALES_RMH = 1/(    (   1/ThALES_L + 1/2.0 )  *sin(DEG2RAD*fabs(ThALES_A1)) / (2)    );
+  
+  printf("%s: ThALES: A1=%g [deg] RMV=%g [m] RMH=%g [m] lambda=%g [Angs]\n", 
+    NAME_CURRENT_COMP, ThALES_A1, ThALES_RMV, ThALES_RMH, ThALES_lambda); 
+    
+    //analyzer curvature
+  if (ana_RMV<0)
+    ana_RMV = 1/(    (   1/dist_ana_det + 1/dist_sample_ana )   / (2*sin(DEG2RAD*fabs(A5)))    );
+  if (ana_RMH<0)
+    ana_RMH = 1/(    (   1/dist_ana_det + 1/dist_sample_ana )  *sin(DEG2RAD*fabs(A5)) / (2)    );
+
+  printf("%s: ThALES: A5=%g [deg] ana_RMV=%g [m] ana_RMH=%g [m] lambda=%g [Angs]\n", 
+    NAME_CURRENT_COMP, A5, ana_RMV, ana_RMH, ThALES_lambda); 
+
+// Rotation of sample for alignment purpose
+  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG;
+
+%}
+
+
+TRACE
+
+/* ================================ H5 common =============================== */
+
+COMPONENT Origin = Progress_bar()
+AT(0,0,0) ABSOLUTE
+
+COMPONENT HCS = Source_gen(
+  radius   = 0.21/2,
+  zdepth   = 0.15,
+  dist     = 2.155,
+  focus_xw = 0.170,
+  focus_yh = 0.120,
+  E0  = Ei,
+  dE  = ThALES_dE,
+  T1       = sT1,
+  I1       = sI1,
+  T2       = sT2,
+  I2       = sI2,
+  T3       = sT3,
+  I3       = sI3,
+  verbose  = 0)
+ AT (0, 0, 0) RELATIVE Origin
+
+COMPONENT H5 = Arm()
+AT(0,0,2.155) RELATIVE HCS
+
+COMPONENT H5_rect = Guide_gravity(w1=0.170, h1=0.12, l=1.0,
+  R0=gR0, Qc=gQc, alpha=gAlpha, m = 2, W=gW)
+AT(0,0,2.155) RELATIVE HCS
+
+
+COMPONENT H53_origin = Arm()
+AT (0.17/2-0.06/2,0,1+gGap) RELATIVE H5 
+ROTATED (0,1.5,0) RELATIVE H5
+
+
+                       /* start of guide sections */
+
+COMPONENT H53_start = Arm()
+AT (0,0,0) RELATIVE H53_origin
+
+COMPONENT H53_inpile = COPY(H5_rect)(w1=0.06, m=3, l=4.930-3.155)
+AT (0,0,0) RELATIVE H53_start
+
+COMPONENT H53_Obt = COPY(H5_rect)(w1=0.06, m=3, l=3)
+AT (0,0,Al_Thickness+0.015+4.930-3.155) RELATIVE H53_inpile
+
+COMPONENT H53_Obt_Out=Arm()
+AT (0,0,3+0.04) RELATIVE H53_Obt
+
+
+COMPONENT H53_VSComC1 = COPY(H53_inpile)(l=7,nelements=7)
+AT (0,0,3+0.075) RELATIVE H53_Obt
+
+
+/* Parabolic taper 60x120 -> 30x120 m=3 */
+COMPONENT H53_Nose = Guide_tapering(
+     w1 = 0.06, h1=0.12,
+     linw = 0.0, loutw = 0.7, l=2.0, linh=0.0,
+     louth = 0.0, option="parabolical", R0 = gR0, 
+     Qcx = gQc, Qcy = gQc,alphax = gAlpha, 
+     alphay = gAlpha, W = gW,
+     mx = 3, my = 3, segno=20)
+AT (0,0,7+0.01) RELATIVE H53_VSComC1
+
+
+/* Monochromator at 18998-16698=2.3 m from nose exit window */
+
+
+COMPONENT before_monochromator_slit=Slit(xwidth=0.04, yheight=0.12)
+AT (0,0,2.3) RELATIVE H53_Nose
+
+COMPONENT l_monitor = L_monitor(
+    nL=200, 
+    filename="lambda_slit_mono", 
+    xwidth=0.5, 
+    yheight=0.5, 
+    Lmin=0, 
+    Lmax=10, 
+    restore_neutron=1)
+AT (0, 0, 0.001) RELATIVE PREVIOUS
+
+COMPONENT H53_ThALES_Monochromator_Cradle=Arm()
+AT (0,0,2+2.3) RELATIVE H53_Nose
+
+/* ThALES monochromator PG002 w25*h20 13x13 blades, double focusing. Sample at 2.12 m */
+COMPONENT H53_ThALES_Monochromator = Monochromator_curved(
+  width  = 0.25, height = 0.2, NH=13, NV=13, gap=0.0005,
+  RV=ThALES_RMV, RH=ThALES_RMH, DM=ThALES_DM, mosaich = 30, mosaicv = 30,
+  r0 = 1, reflect="HOPG.rfl", transmit="HOPG.trm")
+AT (0,0,0) RELATIVE H53_ThALES_Monochromator_Cradle
+ROTATED (0,ThALES_A1,0) RELATIVE H53_ThALES_Monochromator_Cradle
+EXTEND %{
+  flag=SCATTERED;
+%}
+
+COMPONENT H53_ThALES_Monochromator_Out = Arm()
+AT      (0,0,0)         RELATIVE H53_ThALES_Monochromator_Cradle
+ROTATED (0,2*ThALES_A1,0) RELATIVE H53_ThALES_Monochromator_Cradle
+
+COMPONENT before_sample_slit=Slit(xwidth=0.03, yheight=0.028)
+AT (0,0,ThALES_L-0.250) RELATIVE H53_ThALES_Monochromator_Out
+
+COMPONENT E_sample_mon = E_monitor(
+    nE = 200, filename = "E_sample_mon", xwidth = 0.05,
+    yheight = 0.05, Emin = Ei-ThALES_dE, Emax = Ei+ThALES_dE, restore_neutron = 1)
+  AT (0, 0, ThALES_L-0.050) RELATIVE H53_ThALES_Monochromator_Out
+
+COMPONENT PSD_sample_mon = PSD_monitor(
+    nx = 200, ny = 200, restore_neutron = 1,
+    filename = "PSD_sample_mon.dat", xwidth = 0.05, yheight = 0.05)
+AT (0, 0, 0.001) RELATIVE PREVIOUS
+
+COMPONENT sample_arm=Arm()
+AT (0,0,ThALES_L) RELATIVE H53_ThALES_Monochromator_Out
+
+COMPONENT res_sample = Res_sample(
+    radius=0.005, 
+    thickness=0.001, 
+    E0=5, 
+    dE=0.25, 
+    focus_xw=0.03, 
+    focus_yh=0.04, 
+    yheight=0.05,
+    target_index=4)
+WHEN (SAMPLE==0) AT (0, 0, 0) RELATIVE sample_arm
+
+
+/*COMPONENT VanSample = Incoherent(
+    radius = 0.005, 
+    thickness=0.001,
+    yheight= 0.05,
+    focus_xw=0.03, 
+    focus_yh=0.04, 
+    target_index = 3)
+WHEN (SAMPLE==1) AT (0, 0, 0) RELATIVE sample_arm*/
+
+COMPONENT v_sample = V_sample(
+    radius=0.005, 
+    thickness=0.001, 
+    focus_xw=0.03, 
+    focus_yh=0.04, 
+    yheight=0.05, 
+    target_index=3)
+WHEN (SAMPLE==1) AT (0, 0, 0) RELATIVE sample_arm
+
+  
+COMPONENT Sample_Out = Arm() /*        this is the sample-ana axis */
+  AT (0,0,0) RELATIVE sample_arm
+  ROTATED (0, -A4, 0) RELATIVE sample_arm
+
+COMPONENT after_sample_slit=Slit(xwidth=0.03, yheight=0.04)
+AT (0,0,0.250) RELATIVE Sample_Out
+
+COMPONENT Ana_Cradle = Arm()
+  AT (0, 0, dist_sample_ana) RELATIVE Sample_Out
+
+COMPONENT PSD_analyzer = PSD_monitor(
+    nx = 200, ny = 200, restore_neutron = 1,
+    filename = "PSD_ana.dat", xwidth = 0.25, yheight = 0.25)
+  AT (0, 0, 0) RELATIVE Ana_Cradle 
+  
+COMPONENT analyzer = Monochromator_curved(
+  width  = 0.17, height = 0.13,
+  NH=11, NV=9, gap=0.0005, RV=ana_RMV, RH=ana_RMH ,
+  DM=3.355, mosaich = 30, mosaicv = 30, r0 = 0.7)
+AT (0, 0, 0) RELATIVE Ana_Cradle
+ROTATED (0, -A5, 0) RELATIVE Ana_Cradle
+
+COMPONENT Ana_Out = Arm()      /* this is the sample-ana axis */
+  AT (0,0,0) RELATIVE Ana_Cradle
+  ROTATED (0, -A6, 0) RELATIVE Ana_Cradle
+
+COMPONENT slit = Slit(
+    xwidth=0.03, 
+    yheight=0.08)
+AT (0, 0, 0.340) RELATIVE Ana_Out
+
+//COMPONENT slit_det=Slit(xmin=-0.015, xmax=0.015, ymin=-0.04, ymax=0.04,cut=0)
+//AT (0,0,0.340) RELATIVE Ana_Out
+
+COMPONENT PSD_det = PSD_monitor(
+    nx = 200, ny = 200, restore_neutron = 1,
+    filename = "PSD_det.dat", xwidth = 0.2, yheight = 0.2)
+AT (0, 0, dist_ana_det-0.0001) RELATIVE Ana_Out
+
+COMPONENT res_monitor = Res_monitor(
+    res_sample_comp=res_sample, 
+    filename="res_monitor", 
+    xwidth=0.05, 
+    yheight=0.12)
+WHEN (SAMPLE==0) AT (0, 0, dist_ana_det) RELATIVE Ana_Out
+
+COMPONENT detector_all = Monitor(
+  xwidth = 0.05,
+  yheight = 0.12)
+AT (0, 0, dist_ana_det+0.001) RELATIVE Ana_Out
+                  
+END
+
+

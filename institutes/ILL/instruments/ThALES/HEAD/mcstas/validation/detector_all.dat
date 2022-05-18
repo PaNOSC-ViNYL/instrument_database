@@ -1,0 +1,30 @@
+# Format: McCode with text headers
+# URL: http://www.mccode.org
+# Creator: McStas 2.7 - Nov. 27, 2020
+# Instrument: ThALES_resolution_v2.instr
+# Ncount: 1000000
+# Trace: no
+# Gravitation: no
+# Seed: 654321
+# Directory: ThALES_resolution_v2_20220518_145144
+# Param: ThALES_dE=0.5
+# Param: A3=0
+# Param: A4=20
+# Param: Ei=5
+# Param: Ef=5
+# Param: q_x_elastic=1.3139
+# Param: q_z_elastic=0.146
+# Param: SAMPLE=0
+# Date: Wed May 18 14:52:18 2022 (1652878338)
+# type: array_0d
+# Source: ThALES_double_peak10 (ThALES_resolution_v2.instr)
+# component: detector_all
+# position: 3.94853 0 20.1253
+# title: Single monitor detector_all
+# Ncount: 1000000
+# statistics: None
+# signal: None
+# values: 8.07273e+07 1.06296e+07 79
+# xylimits: 0 0 0 0 0 0
+# variables: I I_err N
+8.07273e+07 1.06296e+07 79
