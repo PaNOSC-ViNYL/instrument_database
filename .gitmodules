@@ -1,3 +1,4 @@
 [submodule "instrumentDataBaseAPI"]
 	path = instrumentDataBaseAPI
 	url = https://github.com/PaNOSC-ViNYL/instrumentDataBaseAPI.git
+	branch = main
