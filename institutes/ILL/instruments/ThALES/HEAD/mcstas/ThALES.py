@@ -1,13 +1,9 @@
 """
-This McStasScript file was generated from a
-McStas instrument file. It is advised to check
-the content to ensure it is as expected.
 
+ - The monochromator do not allow transmitted neutrons
 
 TODO: 
- - [ ] libpyvinyl parameters and master parameters
- - [ ] test run with result validation
- - [ ] 
+ - [ ] Check RV RH for monochromator and analyzer
 """
 import os
 
@@ -61,6 +57,9 @@ def def_instrument():
     )
     a2.add_interval(33, 128, True)
 
+    a3 = ThALES.add_parameter(
+        "double", "a3", comment="sample table rotation angle", unit="degree", value=0
+    )
     a4 = ThALES.add_parameter(
         "double",
         "a4",
@@ -128,7 +127,7 @@ def def_instrument():
     ThALES.add_declare_var("double", "energy")
     ThALES.append_initialize("energy = 81.80421/(lambda*lambda);")
     ThALES.add_declare_var("double", "denergy")
-    ThALES.append_initialize("denergy = 0.1*81.80421/(dlambda*dlambda);")
+    ThALES.append_initialize("denergy = 2*energy*dlambda/lambda;")
     # lambda2energy = "81.80421/(" + wavelength.name + "*" + wavelength.name + ")"
 
     H5 = ThALES.add_component("H5", "Arm")
@@ -229,7 +228,7 @@ def def_instrument():
     H53_ThALES_Monochromator.mosaich = 30
     H53_ThALES_Monochromator.mosaicv = 30
     H53_ThALES_Monochromator.r0 = 1
-
+    H53_ThALES_Monochromator.t0 = 0  # remove transmitted neutrons
     H53_ThALES_Monochromator.RV = "2*" + str(ThALES_L) + "*sin(DEG2RAD*a2/2)"
     H53_ThALES_Monochromator.RH = "2*" + str(ThALES_L) + "/sin(DEG2RAD*a2/2)"
     H53_ThALES_Monochromator.DM = monochromator_d
@@ -263,15 +262,6 @@ def def_instrument():
     PSD_cyl.restore_neutron = 1
     PSD_cyl.set_AT([0, 0, 0], RELATIVE="PREVIOUS")
 
-    PSD_validation_mon = ThALES.add_component("PSD_validation_mon", "PSD_monitor")
-    PSD_validation_mon.nx = 200
-    PSD_validation_mon.ny = 200
-    PSD_validation_mon.filename = '"PSD_validation_mon.dat"'
-    PSD_validation_mon.xwidth = 0.05
-    PSD_validation_mon.yheight = 0.05
-    PSD_validation_mon.restore_neutron = 1
-    PSD_validation_mon.set_AT([0, 0, 0.001], RELATIVE="PREVIOUS")
-
     before_sample_slit = ThALES.add_component("before_sample_slit", "Slit")
     before_sample_slit.xwidth = 0.03
     before_sample_slit.yheight = 0.028
@@ -302,7 +292,7 @@ def def_instrument():
 
     sample_arm = ThALES.add_component("sample_arm", "Arm")
     sample_arm.set_AT([0, 0, ThALES_L], RELATIVE="H53_ThALES_Monochromator_Out")
-    sample_arm.set_ROTATED([0, "a4/2", 0], RELATIVE="H53_ThALES_Monochromator_Out")
+    sample_arm.set_ROTATED([0, "a3", 0], RELATIVE="H53_ThALES_Monochromator_Out")
 
     res_sample = ThALES.add_component("res_sample", "Res_sample")
     res_sample.thickness = 0.001
@@ -328,7 +318,7 @@ def def_instrument():
 
     Sample_Out = ThALES.add_component("Sample_Out", "Arm")
     Sample_Out.set_AT([0, 0, 0], RELATIVE="sample_arm")
-    Sample_Out.set_ROTATED(["0", " a4", " 0"], RELATIVE="sample_arm")
+    Sample_Out.set_ROTATED(["0", "a4", " 0"], RELATIVE="sample_arm")
 
     after_sample_slit = ThALES.add_component("after_sample_slit", "Slit")
     after_sample_slit.xwidth = 0.03
@@ -360,11 +350,11 @@ def def_instrument():
     analyzer.width = 0.17
     analyzer.height = 0.13
     analyzer.set_AT([0, 0, 0], RELATIVE="Ana_Cradle")
-    analyzer.set_ROTATED([0, "-a6*0.5", 0], RELATIVE="Ana_Cradle")
+    analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE="Ana_Cradle")
 
     Ana_Out = ThALES.add_component("Ana_Out", "Arm")
     Ana_Out.set_AT([0, 0, 0], RELATIVE="Ana_Cradle")
-    Ana_Out.set_ROTATED([0, "-a6", 0], RELATIVE="Ana_Cradle")
+    Ana_Out.set_ROTATED([0, "a6", 0], RELATIVE="Ana_Cradle")
 
     slit = ThALES.add_component("slit", "Slit")
     slit.xwidth = 0.03
@@ -394,9 +384,11 @@ def def_instrument():
     detector_all.set_AT([0, 0, dist_ana_det + 0.001], RELATIVE="Ana_Out")
 
     myinstr.add_master_parameter("a2", {"ThALES": "a2"}, unit="degree")
+    myinstr.add_master_parameter("a3", {"ThALES": "a3"}, unit="degree")
     myinstr.add_master_parameter("a4", {"ThALES": "a4"}, unit="degree")
     myinstr.add_master_parameter("a6", {"ThALES": "a6"}, unit="degree")
     myinstr.master["a2"] = 33 * ureg.degree
+    myinstr.master["a3"] = 0 * ureg.degree
     myinstr.master["a4"] = 0 * ureg.degree
     myinstr.master["a6"] = 10 * ureg.degree
 
