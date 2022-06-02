@@ -4,6 +4,13 @@
 
 TODO: 
  - [ ] Check RV RH for monochromator and analyzer
+ - [ ] Understand the A3_offset:
+        ThALES.add_parameter("double", "q_x_elastic", value=1.3139)
+        ThALES.add_parameter("double", "q_z_elastic", value=0.146)
+        ThALES.append_initialize("  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG; ")
+ - [ ] Aspetto che Martin controlli i numeri dal mio grafichetto
+ - [ ] Chiedere a Martin i sample environments
+
 """
 import os
 
@@ -82,10 +89,6 @@ def def_instrument():
         comment="Monochromator lattice parameter",
         value=3.355,
     )
-
-    # ThALES.add_parameter("double", "ThALES_dE", value=0.5)
-    #   ThALES.add_parameter("double", "A3", value=0.0)
-    #   ThALES.add_parameter("double", "A4", value=20.0)
 
     #   ThALES.add_parameter("double", "q_x_elastic", value=1.3139)
     #   ThALES.add_parameter("double", "q_z_elastic", value=0.146)
