@@ -38,6 +38,46 @@ ureg = pint.get_application_registry()
 import math
 
 # utilities
+import math
+
+from libpyvinyl.Parameters import Parameter
+
+
+class BraggAngle(Parameter):
+    """
+    A parameter describing an angle and associating it with wavelength or
+    energy satisfying the bragg law
+    """
+
+    def __init__(self, *args, **kwargs):
+        """ """
+        super().__init__(*args, **kwargs)
+        __d_lattice = pint.Quantity("0 angstroms")
+
+    @property
+    def d_lattice(self):
+        return self.__d_lattice
+
+    @d_lattice.setter
+    def d_lattice(self, value) -> None:
+        self.__d_lattice = value
+
+    @property
+    def wavelength(self):
+        return 2 * self.d_lattice * math.sin(self.pint_value.to("radians") / 2.0)
+
+    @wavelength.setter
+    def wavelength(self, value):
+        self.value = math.asin(value / 2.0 / self.d_lattice) * 2 * ureg.radians
+
+    @property
+    def energy(self):
+        l = self.wavelength
+        return (81.80421 * ureg.meV * ureg.angstrom * ureg.angstrom) / (l * l)
+
+    @energy.setter
+    def energy(self, value):
+        self.wavelength = math.sqrt(81.80421 * ureg.meV / value) * ureg.angstrom
 
 
 def def_instrument():
@@ -55,13 +95,21 @@ def def_instrument():
     ThALES = instr.McStas_instr("ThALES")
     myinstr.add_calculator(ThALES)
 
-    a2 = ThALES.add_parameter(
-        "double",
+    a2 = BraggAngle(
         "a2",
         comment="Angle between beam reflected by monochromator and incident beam",
         unit="degree",
-        value=33,
     )
+    a2.type = "double"
+    a2.value = 33
+    ThALES.parameters.add(a2)
+    #    a2 = ThALES.add_parameter(
+    #        "double",
+    #        "a2",
+    #        comment="Angle between beam reflected by monochromator and incident beam",
+    #        unit="degree",
+    #        value=33,
+    #    )
     a2.add_interval(33, 128, True)
 
     a3 = ThALES.add_parameter(
@@ -88,7 +136,9 @@ def def_instrument():
         "monochromator_d",
         comment="Monochromator lattice parameter",
         value=3.355,
+        unit="angstrom",
     )
+    a2.d_lattice = monochromator_d.pint_value
 
     #   ThALES.add_parameter("double", "q_x_elastic", value=1.3139)
     #   ThALES.add_parameter("double", "q_z_elastic", value=0.146)
@@ -136,63 +186,96 @@ def def_instrument():
     H5 = ThALES.add_component("H5", "Arm")
     H5.set_AT([0, 0, 2.155], RELATIVE=HCS)
 
-    H5_rect = ThALES.add_component("H5_rect", "Guide_gravity")
-    H5_rect.w1 = 0.170
-    H5_rect.h1 = 0.12
-    H5_rect.l = 1.0
-    H5_rect.R0 = gR0
-    H5_rect.Qc = gQc
-    H5_rect.alpha = gAlpha
-    H5_rect.m = 2
-    H5_rect.W = gW
-    H5_rect.set_AT([0, 0, 0], RELATIVE=H5)
+    H53_1a = ThALES.add_component("H5_1", "Guide_gravity")
+    # material: Al 5083
+    H53_1a.w1 = 0.060
+    H53_1a.h1 = 0.120
+    H53_1a.l = 1.0
+    H53_1a.R0 = gR0
+    H53_1a.Qc = gQc
+    H53_1a.alpha = gAlpha
+    H53_1a.m = 3
+    H53_1a.W = gW
+    H53_1a.set_AT([0, 0, 0], RELATIVE=H5)
 
-    H53_origin = ThALES.add_component("H53_origin", "Arm")
+    #    H53_origin = ThALES.add_component("H53_origin", "Arm")
     # I don't understand the x
-    H53_origin.set_AT([H5_rect.w1 / 2 - 0.06 / 2, 0, H5_rect.l + gGap], RELATIVE=H5)
-    H53_origin.set_ROTATED([0, 1.5, 0], RELATIVE=H5)
+    #    H53_origin.set_AT([H5_rect.w1 / 2 - 0.06 / 2, 0, H5_rect.l + gGap], RELATIVE=H5)
 
-    H53_start = ThALES.add_component("H53_start", "Arm")
-    H53_start.set_AT([0, 0, 0], RELATIVE=H53_origin)
+    #    H53_origin.set_ROTATED([0, 1.5, 0], RELATIVE=H5)
 
-    H53_inpile = ThALES.copy_component("H53_inpile", H5_rect)
-    H53_inpile.w1 = 0.06
-    H53_inpile.h1 = 0.12
-    H53_inpile.l = 4.930 - 3.155
-    H53_inpile.m = 3
-    H53_inpile.set_AT([0, 0, 0], RELATIVE=H53_start)
+    #   H53_start = ThALES.add_component("H53_start", "Arm")
+    #   H53_start.set_AT([0, 0, 0], RELATIVE=H53_origin)
 
-    H53_Obt = ThALES.copy_component("H53_Obt", H53_inpile)
-    H53_Obt.l = 3
-    H53_Obt.set_AT([0, 0, Al_Thickness + 0.015 + H53_inpile.l], RELATIVE=H53_inpile)
+    H53_1b = ThALES.copy_component("H5_1b", H53_1a)
+    H53_1b.l = 1.775
+    H53_1b.set_AT([0, 0, H53_1a.l], RELATIVE=H53_1a)
 
+    # membrane
+    # gap 25 mm
+    H53_A = ThALES.add_component("H53_A", "Arm")
+    H53_A.set_AT([0, 0, H53_1b.l + 0.025 + 0.006], RELATIVE=H53_1b)
+
+    H53_2a = ThALES.copy_component("H53_2a", H53_1a)
+    H53_2a.l = 2.317
+    H53_2a.set_AT([0, 0, 0], RELATIVE=H53_A)
+
+    H53_2b = ThALES.copy_component("H53_2b", H53_1a)
+    H53_2b.l = 0.757
+    H53_2b.set_AT([0, 0, H53_2a.l], RELATIVE=H53_2a)
+
+    H53_B = ThALES.add_component("H53_B", "Arm")
+    H53_B.set_AT([0, 0, H53_2b.l + 0.060 + 0.027], RELATIVE=H53_2b)
     #    H53_Obt_Out = ThALES.add_component("H53_Obt_Out", "Arm")
     #    H53_Obt_Out.set_AT([0, 0, H53_Obt.l + 0.04], RELATIVE=H53_Obt)
 
-    H53_VSComC1 = ThALES.copy_component("H53_VSComC1", H53_inpile)
-    H53_VSComC1.l = 7
-    H53_VSComC1.nelements = 7
-    H53_VSComC1.set_AT([0, 0, H53_Obt.l + 0.075], RELATIVE=H53_Obt)
+    H53_3 = ThALES.copy_component("H53_3", H53_1a)
+    H53_3.l = 0.501
+    H53_3.set_AT([0, 0, 0], RELATIVE=H53_B)
 
-    H53_Nose = ThALES.add_component("H53_Nose", "Guide_tapering")
-    H53_Nose.option = '"parabolical"'
-    H53_Nose.w1 = 0.06
-    H53_Nose.h1 = 0.12
-    H53_Nose.l = 2.0
-    H53_Nose.linw = 0.0
-    H53_Nose.loutw = 0.7
-    H53_Nose.linh = 0.0
-    H53_Nose.louth = 0.0
-    H53_Nose.R0 = gR0
-    H53_Nose.Qcx = gQc
-    H53_Nose.Qcy = gQc
-    H53_Nose.alphax = gAlpha
-    H53_Nose.alphay = gAlpha
-    H53_Nose.W = gW
-    H53_Nose.mx = 3
-    H53_Nose.my = 3
-    H53_Nose.segno = 20
-    H53_Nose.set_AT([0, 0, H53_VSComC1.l + 0.01], RELATIVE=H53_VSComC1)
+    H53_4 = ThALES.copy_component("H53_4", H53_1a)
+    H53_4.l = 0.501
+    H53_4.set_AT([0, 0, H53_3.l], RELATIVE=H53_3)
+
+    H53_5 = ThALES.copy_component("H53_5", H53_1a)
+    H53_5.l = 5.809
+    H53_5.set_AT([0, 0, H53_4.l], RELATIVE=H53_4)
+
+    H53_C = ThALES.add_component("H53_C", "Arm")
+    H53_C.set_AT([0, 0, H53_5.l + 0.0078 + 0.024 + 0.110], RELATIVE=H53_5)
+
+    H53_6 = ThALES.copy_component("H53_6", H53_1a)
+    H53_6.l = 2.420
+    H53_6.set_AT([0, 0, 0], RELATIVE=H53_C)
+
+    H53_D = ThALES.add_component("H53_D", "Arm")
+    H53_D.set_AT([0, 0, H53_6.l + 0.0195 + 0.002], RELATIVE=H53_6)
+
+    H53_7 = ThALES.add_component("H53_7", "Guide_tapering")
+    H53_7.option = '"elliptical"'
+    H53_7.w1 = 0.06
+    H53_7.h1 = 0.12
+    H53_7.l = 2.4915
+
+    H53_7_ah = 2.737445  # major semi-axis
+    H53_7_bh = H53_7.w1 / 2.0  # minor semi-axis
+
+    H53_7.linw = math.sqrt(H53_7_ah * H53_7_ah - H53_7_bh * H53_7_bh)
+    H53_7.loutw = (
+        H53_7.linw - H53_7.l
+    )  # the length of the guide must be smaller than the coordinate of the focus
+    H53_7.linh = 0  # plane mirrors (vertical)
+    H53_7.louth = 0  #  plane mirrors (vertical)
+    H53_7.R0 = gR0
+    H53_7.Qcx = gQc
+    H53_7.Qcy = gQc
+    H53_7.alphax = gAlpha
+    H53_7.alphay = gAlpha
+    H53_7.W = gW
+    H53_7.mx = 3
+    H53_7.my = 3
+    H53_7.segno = 5  # is this the number of segments?
+    H53_7.set_AT([0, 0, 0], RELATIVE=H53_D)
 
     # no length of this?
     before_monochromator_slit = ThALES.add_component(
@@ -200,7 +283,7 @@ def def_instrument():
     )
     before_monochromator_slit.xwidth = 0.04
     before_monochromator_slit.yheight = 0.12
-    before_monochromator_slit.set_AT([0, 0, H53_Nose.l + 0.3], RELATIVE=H53_Nose)
+    before_monochromator_slit.set_AT([0, 0, H53_7.l + 0.3], RELATIVE=H53_7)
 
     l_monitor = ThALES.add_component("l_monitor", "L_monitor")
     l_monitor.nL = 200
@@ -215,9 +298,7 @@ def def_instrument():
     H53_ThALES_Monochromator_Cradle = ThALES.add_component(
         "H53_ThALES_Monochromator_Cradle", "Arm"
     )
-    H53_ThALES_Monochromator_Cradle.set_AT(
-        [0, 0, H53_Nose.l + 0.3 + 2], RELATIVE=H53_Nose
-    )
+    H53_ThALES_Monochromator_Cradle.set_AT([0, 0, H53_7.l + 0.3 + 2], RELATIVE=H53_7)
 
     # double check the probability of reflection
     H53_ThALES_Monochromator = ThALES.add_component(
@@ -390,9 +471,9 @@ def def_instrument():
     myinstr.add_master_parameter("a3", {"ThALES": "a3"}, unit="degree")
     myinstr.add_master_parameter("a4", {"ThALES": "a4"}, unit="degree")
     myinstr.add_master_parameter("a6", {"ThALES": "a6"}, unit="degree")
-    myinstr.master["a2"] = 33 * ureg.degree
+    myinstr.master["a2"] = 79.10 * ureg.degree
     myinstr.master["a3"] = 0 * ureg.degree
-    myinstr.master["a4"] = 0 * ureg.degree
-    myinstr.master["a6"] = 10 * ureg.degree
+    myinstr.master["a4"] = 60 * ureg.degree
+    myinstr.master["a6"] = 74.34 * ureg.degree
 
     return myinstr
