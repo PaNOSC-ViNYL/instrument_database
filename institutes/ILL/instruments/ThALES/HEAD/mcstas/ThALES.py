@@ -14,14 +14,14 @@ TODO:
 """
 import os
 
-MCSTAS_PATH = os.environ["MCSTAS"]
+#MCSTAS_PATH = os.environ["MCSTAS"]
 from mcstasscript.interface import functions
 import mcstasscript as ms
 
 my_configurator = functions.Configurator()
 
-my_configurator.set_mcstas_path(MCSTAS_PATH)
-my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
+#my_configurator.set_mcstas_path(MCSTAS_PATH)
+#my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
 
 # list here all the common parts to be imported
 
@@ -129,7 +129,7 @@ def cryo10T(
         component.number_of_activations = number_of_activations
 
     mycryo.add_spatial_loggers()
-    mycryo.build(include_master=True)
+    mycryo.build(include_master=False)
     return mycryo
 
     ################### ignored for the moment
@@ -153,7 +153,7 @@ def cryo10T(
     for component in mycryo.last_layer.union_components:
         component.number_of_activations = number_of_activations
 
-    mycryo.build(include_master=True)
+    mycryo.build(include_master=False)
 
     return mycryo
 
@@ -474,6 +474,12 @@ def def_instrument():
     addMonitor(ThALES, "sample", [0, 0, 0])
 
     mycryo = cryo10T(ThALES, "10T", [0, 0, 0], sample_arm, 2)
+    
+    exit = ThALES.add_component("exit_volume", "Union_cylinder")
+    exit.set_AT([0, 0, 0], RELATIVE=mycryo.name)
+    
+    master_before_sample = ThALES.add_component("master_before_sample", "Union_master", RELATIVE="10T")
+    
 
     # res_sample = ThALES.add_component("res_sample", "Res_sample")
     # res_sample.thickness = 0.001
@@ -498,12 +504,15 @@ def def_instrument():
     #    #    v_sample.target_y = 0.00
     #    # v_sample.target_index = 5
     #   v_sample.set_WHEN("SAMPLE==1")
-    v_sample.set_AT([0, 0, 0], RELATIVE=mycryo.name)
+    v_sample.set_AT([0, 0, 0], RELATIVE=exit)
     v_sample.set_ROTATED([0, "a4", 0], RELATIVE=mycryo.name)
     #    v_sample.append_EXTEND("if(flag==SCATTERED) ABSORB;")
     # Absorption fraction           =0.0425179
     # Single   scattering intensity =1.65546e+07 (coh=1.65473e+07 inc=7331.45)
     # Multiple scattering intensity =276313
+    
+    exit.set_parameters(radius=v_sample.radius + 1E-6, yheight=v_sample.yheight + 1E-6,
+                        priority=100000, material_string='"Exit"')
 
     # quartz_sample = ThALES.add_component("quartz_sample", "Isotropic_Sqw")
     # quartz_sample.radius = 0.005
