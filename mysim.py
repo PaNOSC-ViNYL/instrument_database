@@ -31,7 +31,7 @@ energy = 4.98
 
 myThALES.settings(ncount=10000000)
 a6.energy = a2.energy
-a4.value = 0 * ureg.degree
+a4.value = 60 * ureg.degree
 myThALES.calculator_base_dir = "/tmp/test/"
 # myThALES.show_diagram()
 # myThALES.show_components()

@@ -9,7 +9,7 @@ TODO:
         ThALES.add_parameter("double", "q_z_elastic", value=0.146)
         ThALES.append_initialize("  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG; ")
  - [X] Aspetto che Martin controlli i numeri dal mio grafichetto
- - [ ] Chiedere a Martin i sample environments
+ - [X] Chiedere a Martin i sample environments
 
 """
 import os
@@ -42,6 +42,8 @@ import math
 
 from libpyvinyl.Parameters import Parameter
 
+
+## Global variables for DEBUG to be removed!
 addMonitors = True
 addCryostat = True
 
@@ -49,7 +51,7 @@ addCryostat = True
 def addMonitor(
     instr,
     name: str,
-    z=0,
+    position=[0, 0, 0],
     width=0.10,
     height=0.15,
     bins=100,
@@ -70,7 +72,7 @@ def addMonitor(
     )
 
     # monitor.options = '"energy limits=[Ei-dE, Ei+dE] x y, borders, parallel"'
-    monitor.set_AT([0, 0, z], RELATIVE="PREVIOUS")
+    monitor.set_AT(position, RELATIVE="PREVIOUS")
 
     psd = instr.add_component(name + "_psd_DEBUG", "Monitor_nD")
     psd.filename = '"' + name + '_DEBUG"'
@@ -84,18 +86,8 @@ def addMonitor(
     psd.filename = '"' + name + '_DEBUG"'
     psd.xwidth = 2 * radius
     psd.yheight = height
-    #    psd.bins = bins
     psd.options = '"theta bins=360, y bins=20, cylinder, parallel"'
     psd.set_AT([0, 0, 0], RELATIVE="PREVIOUS")
-
-    # psd = instr.add_component(name + "_psd_DEBUG", "PSD_monitor")
-    # psd.nx = bins
-    # psd.ny = bins
-    # psd.filename = '"' + name + '_DEBUG.x_y"'
-    # psd.xwidth = monitor.xwidth
-    # psd.yheight = monitor.yheight
-    # psd.restore_neutron = 1
-    # psd.set_AT([0, 0, 0], RELATIVE="PREVIOUS")
 
     return psd
 
@@ -118,17 +110,17 @@ def cryo10T(
 
     mycryo.add_layer(
         inner_radius=50.8 / 2.0 / 1000,  # diameter: 50.8mm
-        thickness=0.1 / 1000,  # 1 mm
+        thickness=2.0 / 1000,  # 1 mm
         origin_to_top=150.0 / 1000,  # guessed
         top_thickness=0.001,
         origin_to_bottom=150.0 / 1000,  # guessed
         bottom_thickness=0.001,
-        p_interact=0.5,
+        p_interact=0.2,
     )
 
     mycryo.last_layer.add_window(
         inner_radius=mycryo.last_layer.inner_radius,
-        thickness=0.05 / 1000,
+        thickness=1.0 / 1000,
         origin_to_top=11.0 / 1000,  # guessed
         origin_to_bottom=11.0 / 1000,  # guessed
     )
@@ -139,6 +131,8 @@ def cryo10T(
     mycryo.add_spatial_loggers()
     mycryo.build(include_master=True)
     return mycryo
+
+    ################### ignored for the moment
     mycryo.add_layer(
         inner_radius=592.0 / 2.0 / 1000,  # diameter: 592 mm
         thickness=3.0 / 1000,  # 3 mm
@@ -216,6 +210,10 @@ def def_instrument():
     Al_Thickness = 0.001
     gGap = 0.001
 
+    ThALES_L = 2.000  # distance between monochromator and sample
+    dist_sample_ana = 1.260  # distance between sample and analyzer
+    dist_ana_det = 0.640  # distance between analyzer and detector
+
     ThALES = instr.McStas_instr("ThALES")
     myinstr.add_calculator(ThALES)
 
@@ -282,10 +280,6 @@ def def_instrument():
     #   ThALES.add_declare_var("int", "elastic_flag_instr_1")
     #   ThALES.add_declare_var("int", "elastic_flag_instr_2")
 
-    ThALES_L = 2.000  # distance between monochromator and sample
-    dist_sample_ana = 1.260  # distance between sample and analyzer
-    dist_ana_det = 0.640  # distance between analyzer and detector
-
     ThALES.append_initialize("  flag         = 0; ")
     #    ThALES.append_initialize("  A3_offset=0; ")
     #    ThALES.append_initialize("  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG; ")
@@ -315,6 +309,7 @@ def def_instrument():
     ThALES.append_initialize('printf("energy: %.2f +/- %.2f\\n", Ei, dE);')
     # lambda2energy = "81.80421/(" + wavelength.name + "*" + wavelength.name + ")"
 
+    # start of the guide
     H5 = ThALES.add_component("H5", "Arm")
     H5.set_AT([0, 0, 2.155], RELATIVE=HCS)
 
@@ -348,7 +343,7 @@ def def_instrument():
     H53_1b.l = 1.775
     H53_1b.set_AT([0, 0, H53_1a.l], RELATIVE=H53_1a)
 
-    addMonitor(ThALES, "H5_1b", H53_1b.l)
+    addMonitor(ThALES, "H5_1b", [0, 0, H53_1b.l])
 
     # membrane
     # gap 25 mm
@@ -365,8 +360,6 @@ def def_instrument():
 
     H53_B = ThALES.add_component("H53_B", "Arm")
     H53_B.set_AT([0, 0, H53_2b.l + 0.060 + 0.027], RELATIVE=H53_2b)
-    #    H53_Obt_Out = ThALES.add_component("H53_Obt_Out", "Arm")
-    #    H53_Obt_Out.set_AT([0, 0, H53_Obt.l + 0.04], RELATIVE=H53_Obt)
 
     H53_3 = ThALES.copy_component("H53_3", H53_1a)
     H53_3.l = 0.501
@@ -465,7 +458,7 @@ def def_instrument():
     Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
     Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
 
-    addMonitor(ThALES, "mono_out_rot", 0.1)
+    addMonitor(ThALES, "mono_out_rot", [0, 0, 0.1])
 
     before_sample_slit = ThALES.add_component("before_sample_slit", "Slit")
     before_sample_slit.xwidth = 0.03
@@ -478,7 +471,7 @@ def def_instrument():
     sample_arm.set_AT([0, 0, ThALES_L], RELATIVE=Monochromator_Out)
     sample_arm.set_ROTATED([0, "a3", 0], RELATIVE=Monochromator_Out)
 
-    addMonitor(ThALES, "sample", 0)
+    addMonitor(ThALES, "sample", [0, 0, 0])
 
     mycryo = cryo10T(ThALES, "10T", [0, 0, 0], sample_arm, 2)
 
@@ -495,7 +488,7 @@ def def_instrument():
     # res_sample.set_AT([0, 0, 0], RELATIVE="sample_arm")
 
     v_sample = ThALES.add_component("v_sample", "V_sample")
-    v_sample.radius = 0.005
+    v_sample.radius = 0.01
     v_sample.yheight = 0.05
     v_sample.thickness = 0.001
     v_sample.focus_xw = 0.04
