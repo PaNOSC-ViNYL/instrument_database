@@ -30,10 +30,10 @@ def HCS_source(mcstas_instrument: McCode_instr) -> Component:
     HCS.focus_xw = 0.170
     HCS.focus_yh = 0.120
     # HCS.target_index = +1
-    #    HCS.E0 = 0
-    #    HCS.dE = 0
-    HCS.lambda0 = "lambda"
-    HCS.dlambda = "dlambda"
+    HCS.E0 = "Ei"
+    HCS.dE = "dE"
+    #    HCS.lambda0 = "lambda"
+    #    HCS.dlambda = "dlambda"
     #    HCS.Lmin = 0
     #    HCS.Lmax = 0
     HCS.verbose = 1
