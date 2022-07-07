@@ -34,7 +34,11 @@ a6.energy = a2.energy
 a4.value = 60 * ureg.degree
 myThALES.calculator_base_dir = "/tmp/test/"
 # myThALES.show_diagram()
-# myThALES.show_components()
+myThALES.show_components()
+import sys
+
+sys.exit(0)
+
 # myThALES.show_instrument()
 print(myinstrument)
 myinstrument.run()
