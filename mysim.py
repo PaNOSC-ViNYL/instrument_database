@@ -1,5 +1,7 @@
 from instrumentdatabaseapi import instrumentdatabaseapi as API
 
+# import os
+# print(os.getenv("MCSTAS"))
 repo = API.Repository(local_repo=".")
 myinstrument = repo.load("ILL", "ThALES", "HEAD", "mcstas", dep=False)
 
@@ -35,14 +37,14 @@ a4.value = 60 * ureg.degree
 myThALES.calculator_base_dir = "/tmp/test/"
 # myThALES.show_diagram()
 myThALES.show_components()
-import sys
+# import sys
 
-sys.exit(0)
+# sys.exit(0)
 
 # myThALES.show_instrument()
 print(myinstrument)
 myinstrument.run()
-import sys
+
 
 sys.exit(0)
 energy = 4.48
