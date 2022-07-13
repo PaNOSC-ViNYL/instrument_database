@@ -6,12 +6,9 @@ repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", dep=False)
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
-import sys
-
-sys.exit(0)
 # print(myinstrument)
 myThALES = myinstrument.calculators[instrument_name]
-# myThALES.show_components()
+myThALES.show_components()
 
 import pint
 
@@ -36,12 +33,13 @@ energy = 4.98
 # myThALES.settings(force_compile=False)
 
 myThALES.settings(ncount=10000000)
+myThALES.settings(ncount=1000)
 a6.energy = a2.energy
 a4.value = 60 * ureg.degree
 myThALES.calculator_base_dir = "/tmp/test/"
 # myThALES.show_diagram()
-myThALES.show_components()
-# import sys
+# myThALES.show_components()
+import sys
 
 # sys.exit(0)
 

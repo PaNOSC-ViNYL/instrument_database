@@ -203,7 +203,7 @@ class ThALES(Instrument):
 
         mycalculator.add_parameter("int", "stage", comment="simulation stage", value=-1)
         mycalculator.add_parameter(
-            "string", "Vin_filename", comment="name of MCPL input file", value="none"
+            "string", "Vin_filenames", comment="name of MCPL input file", value='"none"'
         )
 
         monochromator_d = mycalculator.add_parameter(
@@ -549,7 +549,7 @@ class ThALES(Instrument):
         Vout = mycalculator.add_component(
             "vout", "MCPL_output", AT=[0, 0, 0], RELATIVE=detector_arm
         )
-        Vout.filename = "sDETECTOR"
+        Vout.filename = "'sDETECTOR'"
         detector_all = mycalculator.add_component(
             "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE=detector_arm
         )
