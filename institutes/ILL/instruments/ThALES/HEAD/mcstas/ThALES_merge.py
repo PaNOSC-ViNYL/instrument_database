@@ -25,6 +25,7 @@ def def_instrument():
         #        calc.add_component(
         #            "Origin", "Progress_bar", AT=[0, 0, 0], before="detector_arm"
         #        )
+
         vin = calc.add_component(
             "Vin",
             "MCPL_input",

@@ -66,7 +66,7 @@ class ThALES(Instrument):
         mycalculator = self.calculators[self.__calculator_name]
         if self.__sample is not None:
             mycalculator.remove_component(self.__sample)
-        if name is "v_sample":
+        if name == "v_sample":
             self.__sample = mycalculator.add_component(
                 "v_sample",
                 "V_sample",
@@ -427,14 +427,14 @@ class ThALES(Instrument):
             "Arm",
             AT=[0, 0, ThALES_L],
             ROTATED=[0, "a3", 0],
-            RELATIVE=Monochromator_Out,
+            RELATIVE="Monochromator_Out",
         )
         self.__sample_arm = mycalculator.add_component(
             "sample_arm",
             "Arm",
             AT=[0, 0, ThALES_L],
             ROTATED=[0, "a3", 0],
-            RELATIVE=Monochromator_Out,
+            RELATIVE="Monochromator_Out",
         )
 
         addMonitor(mycalculator, "sample", [0, 0, 0])
@@ -524,14 +524,12 @@ class ThALES(Instrument):
         analyzer.set_AT([0, 0, 0], RELATIVE="Ana_Cradle")
         analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE="Ana_Cradle")
 
-        Ana_Out = mycalculator.add_component("Ana_Out", "Arm")
-        Ana_Out.set_AT([0, 0, 0], RELATIVE="Ana_Cradle")
-        Ana_Out.set_ROTATED([0, "a6", 0], RELATIVE="Ana_Cradle")
+        Ana_Out = mycalculator.add_component("Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE="Ana_Cradle")
 
         slit = mycalculator.add_component("slit", "Slit")
         slit.xwidth = 0.03
         slit.yheight = 0.08
-        slit.set_AT([0, 0, 0.340], RELATIVE="Ana_Out")
+        slit.set_AT([0, 0, 0.340], RELATIVE=Ana_Out)
 
         #    res_monitor = mycalculator.add_component("res_monitor", "Res_monitor")
         #    res_monitor.res_sample_comp = "res_sample"
@@ -542,16 +540,16 @@ class ThALES(Instrument):
         #    res_monitor.set_AT([0, 0, dist_ana_det], RELATIVE="Ana_Out")
 
         detector_arm = mycalculator.add_component(
-            "detector_arm", "Arm", AT=[0, 0, dist_ana_det], RELATIVE=Ana_Out
+            "detector_arm", "Arm", AT=[0, 0, dist_ana_det], RELATIVE="Ana_Out"
         )
-        addMonitor(mycalculator, "detector", [0, 0, 0], detector_arm)
+        addMonitor(mycalculator, "detector", [0, 0, 0])
 
         Vout = mycalculator.add_component(
-            "vout", "MCPL_output", AT=[0, 0, 0], RELATIVE=detector_arm
+            "vout", "MCPL_output", AT=[0, 0, 0], RELATIVE="detector_arm"
         )
-        Vout.filename = "'sDETECTOR'"
+        Vout.filename = '"sDETECTOR"'
         detector_all = mycalculator.add_component(
-            "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE=detector_arm
+            "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE="detector_arm"
         )
         detector_all.xwidth = 0.05
         detector_all.yheight = 0.12
