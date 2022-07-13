@@ -3,10 +3,14 @@ from instrumentdatabaseapi import instrumentdatabaseapi as API
 # import os
 # print(os.getenv("MCSTAS"))
 repo = API.Repository(local_repo=".")
-myinstrument = repo.load("ILL", "ThALES", "HEAD", "mcstas", dep=False)
+instrument_name = "ThALES"
+myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", dep=False)
+myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
+import sys
 
+sys.exit(0)
 # print(myinstrument)
-myThALES = myinstrument.calculators["ThALES"]
+myThALES = myinstrument.calculators[instrument_name]
 # myThALES.show_components()
 
 import pint
