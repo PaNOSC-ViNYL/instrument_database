@@ -33,7 +33,7 @@ def def_instrument():
             #            RELATIVE="detector_arm",
             after="Origin",
         )
-        vin.filename = "Vin_filenames"
+        vin.filelist = "filelist"
 
     #        print(calc.show_components())
 

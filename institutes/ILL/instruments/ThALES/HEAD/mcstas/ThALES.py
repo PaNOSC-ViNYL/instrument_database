@@ -26,6 +26,7 @@ my_configurator = functions.Configurator()
 # list here all the common parts to be imported
 
 # from institutes.ILL.sources.HEAD.mcstas import Full as source
+
 from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 from libpyvinyl.Instrument import Instrument
 from mcstasscript.interface import instr
@@ -157,6 +158,11 @@ class ThALES(Instrument):
         dist_ana_det = 0.640  # distance between analyzer and detector
 
         mycalculator = instr.McStas_instr(self.__calculator_name)
+        # this is to load custom components
+        mycalculator.component_reader.add_custom_component_dir(
+            os.path.dirname(__file__) + "/../../../../../../mcstas/components"
+        )
+
         myinstr.add_calculator(mycalculator)
 
         a2 = BraggAngle(
@@ -203,7 +209,7 @@ class ThALES(Instrument):
 
         mycalculator.add_parameter("int", "stage", comment="simulation stage", value=-1)
         mycalculator.add_parameter(
-            "string", "Vin_filenames", comment="name of MCPL input file", value='"none"'
+            "string", "filelist", comment="name of MCPL input file", value='"none"'
         )
 
         monochromator_d = mycalculator.add_parameter(
@@ -524,7 +530,9 @@ class ThALES(Instrument):
         analyzer.set_AT([0, 0, 0], RELATIVE="Ana_Cradle")
         analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE="Ana_Cradle")
 
-        Ana_Out = mycalculator.add_component("Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE="Ana_Cradle")
+        Ana_Out = mycalculator.add_component(
+            "Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE="Ana_Cradle"
+        )
 
         slit = mycalculator.add_component("slit", "Slit")
         slit.xwidth = 0.03
