@@ -5,7 +5,7 @@ from instrumentdatabaseapi import instrumentdatabaseapi as API
 repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", dep=False)
-myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
+# myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
 # print(myinstrument)
 myThALES = myinstrument.calculators[instrument_name]
 myThALES.show_components()
@@ -45,6 +45,12 @@ import sys
 
 # myThALES.show_instrument()
 print(myinstrument)
+print(myinstrument.ls_samples())
+print(myinstrument.sample)
+myinstrument.sample = "empty"
+print(myinstrument.sample)
+print(myinstrument.ls_sample_environments())
+sys.exit(0)
 myinstrument.run()
 
 

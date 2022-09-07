@@ -8,7 +8,7 @@ of instruments at various research infrastructures following the
 
 It is worth dividing the users of this repository in two categories:
 
- - **CONTRIBUTORS**: instrument experts writing and mantaining
+ - **CONTRIBUTORS**: instrument experts writing and maintaining
    up-to-date the instrument descriptions in this repository for final
    users 
  - **SIMULATORS**: end users running X-ray and neutron simulations
@@ -19,10 +19,10 @@ Instruments at various research facilities can be described either in
 some simplified way or up to a very high level of details and
 complexity. This repository allows to:
 
- - split sections of a simulation in multiple parts (e.g. source of the rays, beamline, detector),
- - mantain multiple version of the same instrument in order to follow
+ - split sections of a simulation into multiple parts (e.g. source of the rays, beamline, detector),
+ - maintain multiple versions of the same instrument in order to follow
    time evolution of the latter (e.g. before and after some upgrade),
- - represent different flavours of the same instrument (e.g. very simplified,
+ - represent different flavors of the same instrument (e.g. very simplified,
    intermediate, very detailed).
  - adopt different simulation programs (adopting the libpyvinyl API)
    to describe the same instrument
@@ -38,7 +38,7 @@ structured as follows:
 institutes/<institute>/instruments/<instrument>/<version>/<simulation program>/<instrument><flavour>.py
 ```
 
-Each instrument is identified by the following informations:
+Each instrument is identified by the following:
 
  1. name of the institute
  1. name of the instrument
@@ -51,7 +51,7 @@ Each instrument is identified by the following informations:
 	[McStasscript](https://github.com/PaNOSC-ViNYL/McStasScript) 
 	and [Simex-lite](https://github.com/PaNOSC-ViNYL/SimEx-Lite),
 	but any `libpyvinyl` compatible code can be used
- 1. a flavour to identify alternative description of the same
+ 1. a flavor to identify alternative description of the same
 	instrument.
    
 
@@ -103,7 +103,7 @@ For each instrument, there is also a `requirements.txt` file with the
 specific python dependencies and a `validation/` subdirectory
 containing the output of a test simulation obtained with the
 instrument description in the repository. This is used for validation
-of any software or instrument description update.
+of any update of the simulation software or of the instrument description.
 
 ## Instructions for SIMULATORS
 ### Requirements
@@ -146,7 +146,10 @@ pip install -e instrumentDataBaseAPI/
 In case the simulation uses mcstas as simulation program, the `MCSTAS` environment variable should be set, exported and pointing to the McStas root directory.
 
 An example in fish shell:
-```set -x MCSTAS /usr/local/mcstas/2.7/```
+```
+set -x MCSTAS /usr/local/mcstas/2.7/
+python mcstas/scripts/setup.py
+```
 
 ### Quick Start: Accessing an Instrument Description
 
@@ -168,7 +171,7 @@ output = myinstrument.output()
 ```
 In this example code, `myinstrument` is the instrument description for
 the instrument D22 at ILL, at version `HEAD`, using the simulation
-software "mcstas" and the specific flavour `quick`. The last boolean
+software "mcstas" and the specific flavor `quick`. The last boolean
 is optional and allowes to install all the additional dependencies to
 run the specific instrument using `pip`.
 
@@ -253,7 +256,26 @@ Mandatory content:
   myinstr.master["collimation"] = 2 * ureg.meter
   ```
    
+- define a class inheriting from libpyvinyl.Instrument
+  this is the object that will be returned by the def_instrument() function
+  
+  This class should have the following private members:
+```
+    __sample_environment = None
+    __sample = None
+    __sample_environment_arm = None
+    __sample_arm = None
+    __calculator_name = "ThALES"
+```
 
+  This class should define the following methods:
+  
+  - ```def set_sample(self, name) -> None:
+       """Always put a sample relative to the __sample_arm and after the __sample_arm component"""
+   ```
+  - ```   def set_sample_environment(self, name: str) -> None:
+        """Adding a sample environment to the simulation"""
+```
 
 
 #### Useful commands

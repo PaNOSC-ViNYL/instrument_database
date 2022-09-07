@@ -14,34 +14,30 @@ TODO:
 """
 import os
 
-# MCSTAS_PATH = os.environ["MCSTAS"]
 from mcstasscript.interface import functions
 import mcstasscript as ms
 
 my_configurator = functions.Configurator()
 
-# my_configurator.set_mcstas_path(MCSTAS_PATH)
-# my_configurator.set_mcrun_path(MCSTAS_PATH + "/bin/")
-
 # list here all the common parts to be imported
+from typing import List
 
 # from institutes.ILL.sources.HEAD.mcstas import Full as source
 
 from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 from libpyvinyl.Instrument import Instrument
+from libpyvinyl.Parameters import Parameter
 from mcstasscript.interface import instr
-import pint
+
 
 # from libpyvinyl import ureg
+import pint
 from pint import set_application_registry
 
 ureg = pint.get_application_registry()
 
 # for conversion from degree to radians and viceversa
 import math
-
-
-from libpyvinyl.Parameters import Parameter
 
 
 ## Global variables for DEBUG to be removed!
@@ -62,14 +58,31 @@ class ThALES(Instrument):
     __sample_arm = None
     __calculator_name = "ThALES"
 
-    def set_sample(self, name) -> None:
+    def ls_samples(self) -> List[str]:
+        samples = []
+        samples.append("empty")
+        samples.append("vanadium")
+        return samples
+
+    @property
+    def sample(self):
+        return self.__sample
+
+    @sample.setter
+    def sample(self, name: str) -> None:
+        """Set the sample component"""
+        self.set_sample(name)
+
+    def set_sample(self, name: str) -> None:
         """Always put a sample relative to the __sample_arm and after the __sample_arm component"""
         mycalculator = self.calculators[self.__calculator_name]
         if self.__sample is not None:
             mycalculator.remove_component(self.__sample)
-        if name == "v_sample":
+        if name == "empty" or "Empty":
+            self.__sample = None
+        elif name == "v_sample" or name == "vanadium":
             self.__sample = mycalculator.add_component(
-                "v_sample",
+                "vanadium",
                 "V_sample",
                 AT=[0, 0, 0],
                 ROTATED=[0, "a4", 0],
@@ -95,6 +108,12 @@ class ThALES(Instrument):
             raise NameError(f"Sample with name {name} not implemented")
 
         return self.__sample
+
+    def ls_sample_environments(self) -> List[str]:
+        """Return the list of names for implemented sample environments"""
+        s = []
+        s.append("10T")
+        return s
 
     def set_sample_environment(self, name: str) -> None:
         """Adding a sample environment to the simulation"""
@@ -445,8 +464,6 @@ class ThALES(Instrument):
 
         addMonitor(mycalculator, "sample", [0, 0, 0])
 
-        # mycryo, exit = cryo10T(mycalculator, "10T", [0, 0, 0], sample_arm, 2)
-
         # res_sample = mycalculator.add_component("res_sample", "Res_sample")
         # res_sample.thickness = 0.001
         # res_sample.radius = 0.005
@@ -482,20 +499,6 @@ class ThALES(Instrument):
         #    quartz_sample.set_WHEN("SAMPLE==2")
         #    quartz_sample.set_AT([0, "a4", 0], RELATIVE=sample_arm)
         #    quartz_sample.set_SPLIT(20)
-
-        # if addCryostat:
-        #     exit.set_parameters(
-        #         radius=v_sample.radius + 1e-6,
-        #         yheight=v_sample.yheight + 1e-6,
-        #         priority=100000,
-        #         material_string='"Exit"',
-        #     )
-
-        #     union_master_after_sample = mycalculator.add_component(
-        #         "master_after_sample", "Union_master"
-        #     )
-        #     union_master_after_sample.allow_inside_start = 1
-        #     union_master_after_sample.set_AT([0, 0, 0], RELATIVE=mycryo.name)
 
         Sample_Out = mycalculator.add_component("Sample_Out", "Arm")
         Sample_Out.set_AT([0, 0, 0], RELATIVE=self.__sample_arm)
