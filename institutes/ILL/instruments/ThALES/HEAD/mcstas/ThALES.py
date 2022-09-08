@@ -75,12 +75,14 @@ class ThALES(Instrument):
 
     def set_sample(self, name: str) -> None:
         """Always put a sample relative to the __sample_arm and after the __sample_arm component"""
+        print(f"Setting sample to: {name}")
         mycalculator = self.calculators[self.__calculator_name]
         if self.__sample is not None:
             mycalculator.remove_component(self.__sample)
-        if name == "empty" or "Empty":
+        if name in ["empty", "Empty"]:
             self.__sample = None
-        elif name == "v_sample" or name == "vanadium":
+        elif name in ["v_sample", "vanadium"]:
+            print("vanadium")
             self.__sample = mycalculator.add_component(
                 "vanadium",
                 "V_sample",

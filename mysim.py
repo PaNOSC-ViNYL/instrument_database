@@ -50,6 +50,10 @@ print(myinstrument.sample)
 myinstrument.sample = "empty"
 print(myinstrument.sample)
 print(myinstrument.ls_sample_environments())
+
+myinstrument.sample = "vanadium"
+print(myinstrument.sample)
+
 sys.exit(0)
 myinstrument.run()
 
