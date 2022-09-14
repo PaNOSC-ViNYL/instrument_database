@@ -1,4 +1,5 @@
 _file_ = '/tmp/scan.dat'
+_validation_file_ = '038564.asc'
 
 ### Gauss
 gauss_A=0.1
@@ -28,4 +29,4 @@ set label 1 sprintf("mu = %0.3f +/- %.3f\nsigma = %.3f +/- %.3f", gauss_mu,gauss
 set label 2 sprintf("relative resolution = %.1f \%", gauss_sigma/gauss_mu*100) at screen 0.65, screen 0.75
 
 #set log
-p _file_ u 1:2:3 w yerr t 'Simulated data', gauss(x) t 'Gaussian fit'
+p _file_ u 1:2:3 w yerr pt 4 t 'Simulated data', gauss(x) t 'Sim data gaussian fit', _validation_file_ u 2:6 w p pt 5 t 'Validation data'
