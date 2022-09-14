@@ -8,9 +8,6 @@ TODO:
         ThALES.add_parameter("double", "q_x_elastic", value=1.3139)
         ThALES.add_parameter("double", "q_z_elastic", value=0.146)
         ThALES.append_initialize("  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG; ")
- - [X] Aspetto che Martin controlli i numeri dal mio grafichetto
- - [X] Chiedere a Martin i sample environments
-
 """
 import os
 
@@ -52,56 +49,43 @@ def def_instrument():
 class ThALES(Instrument):
     """:class: Instrument class defining the ThALES instrument at ILL"""
 
-    __sample_environment = None
-    __sample = None
-    __sample_environment_arm = None
-    __sample_arm = None
-    __calculator_name = "ThALES"
-
-    def ls_samples(self) -> List[str]:
-        samples = []
-        samples.append("empty")
-        samples.append("vanadium")
-        return samples
-
     @property
     def sample(self):
-        return self.__sample
+        return super().sample
 
+    @property
+    def sample_environment(self):
+        return super().sample_environment
+
+    # this implements what is foreseen in the libpyvinyl.Instrument class
     @sample.setter
     def sample(self, name: str) -> None:
-        """Set the sample component"""
-        self.set_sample(name)
-
-    def set_sample(self, name: str) -> None:
-        """Always put a sample relative to the __sample_arm and after the __sample_arm component"""
+        """Set the sample component
+        Always put a sample relative to the __sample_arm and after the __sample_arm component"""
         print(f"Setting sample to: {name}")
         mycalculator = self.calculators[self.__calculator_name]
-        if self.__sample is not None:
-            mycalculator.remove_component(self.__sample)
+        if self.__sample_obj is not None:
+            mycalculator.remove_component(self.__sample_obj)
         if name in ["empty", "Empty"]:
-            self.__sample = None
+            self.__sample_obj = None
         elif name in ["v_sample", "vanadium"]:
-            print("vanadium")
-            self.__sample = mycalculator.add_component(
-                "vanadium",
+            self.__sample_name = "vanadium"
+            print(self.__sample_name)
+            self.__sample_obj = mycalculator.add_component(
+                self.__sample_name,
                 "V_sample",
                 AT=[0, 0, 0],
                 ROTATED=[0, "a4", 0],
                 RELATIVE=self.__sample_arm,
                 after=self.__sample_arm,
             )
-            v_sample = self.__sample
-            v_sample.radius = 0.01
-            v_sample.yheight = 0.05
-            v_sample.thickness = 0.001
+            v_sample = self.__sample_obj
+            v_sample.radius = "sample_size_r"
+            v_sample.yheight = "sample_size_y"
+            v_sample.thickness = "sample_thinkness"
             v_sample.focus_xw = 0.04
             v_sample.focus_yh = 0.12
             v_sample.target_z = 0.25
-            #    #    v_sample.target_x = 0.10
-            #    #    v_sample.target_y = 0.00
-            #    # v_sample.target_index = 5
-            #   v_sample.set_WHEN("SAMPLE==1")
             #    v_sample.append_EXTEND("if(flag==SCATTERED) ABSORB;")
             # Absorption fraction           =0.0425179
             # Single   scattering intensity =1.65546e+07 (coh=1.65473e+07 inc=7331.45)
@@ -109,15 +93,10 @@ class ThALES(Instrument):
         else:
             raise NameError(f"Sample with name {name} not implemented")
 
-        return self.__sample
+        return self.__sample_obj
 
-    def ls_sample_environments(self) -> List[str]:
-        """Return the list of names for implemented sample environments"""
-        s = []
-        s.append("10T")
-        return s
-
-    def set_sample_environment(self, name: str) -> None:
+    @sample_environment.setter
+    def sample_environment(self, name: str) -> None:
         """Adding a sample environment to the simulation"""
         if self.__sample_environment_arm is None:
             raise Exception("no sample environment arm defined in the instrument")
@@ -137,6 +116,8 @@ class ThALES(Instrument):
             )
         else:
             raise NameError("Sample environment name not recognized or not implemented")
+
+        self.__sample_environment_name = name
 
         exit.set_parameters(
             radius=__sample.radius + 1e-6,
@@ -164,9 +145,18 @@ class ThALES(Instrument):
         """Here the real definition of the instrument is performed"""
 
         super().__init__("ThALESinstrument", instrument_base_dir=".")
+        self.__calculator_name = "ThALES"
+        self.samples = ["empty", "vanadium"]
+        self.sample_environments = ["10T", "Orange"]
+
+        # this is specific for McStasscript instruments: the components of the position for the sample and sample environment
+        self.__sample_environment_arm = None
+        self.__sample_arm = None
+        self.__sample_obj = None
+        self.__sample_environment_obj = None
+
         myinstr = self
 
-        # what are these?
         gR0 = 1
         gQc = 0.0216
         gAlpha = 4.07
@@ -194,13 +184,6 @@ class ThALES(Instrument):
         a2.type = "double"
         a2.value = 33
         mycalculator.parameters.add(a2)
-        #    a2 = mycalculator.add_parameter(
-        #        "double",
-        #        "a2",
-        #        comment="Angle between beam reflected by monochromator and incident beam",
-        #        unit="degree",
-        #        value=33,
-        #    )
         a2.add_interval(33, 128, True)
 
         a3 = mycalculator.add_parameter(
@@ -232,6 +215,19 @@ class ThALES(Instrument):
         mycalculator.add_parameter(
             "string", "filelist", comment="name of MCPL input file", value='"none"'
         )
+        mycalculator.add_parameter(
+            "double", "sample_size_r", comment="sample radius", value=0.01, unit="m"
+        )
+        mycalculator.add_parameter(
+            "double", "sample_size_y", comment="sample height", value=0.01, unit="m"
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_thinkness",
+            comment="sample thinkness for hollow cylinder",
+            value=0.001,
+            unit="m",
+        )
 
         monochromator_d = mycalculator.add_parameter(
             "double",
@@ -245,13 +241,8 @@ class ThALES(Instrument):
 
         #   mycalculator.add_parameter("double", "q_x_elastic", value=1.3139)
         #   mycalculator.add_parameter("double", "q_z_elastic", value=0.146)
-        mycalculator.add_parameter("double", "SAMPLE", value=1)
 
-        #    mycalculator.add_declare_var("double", "L")
         mycalculator.add_declare_var("double", "flag")
-        #    mycalculator.add_declare_var("double", "A5")
-        #    mycalculator.add_declare_var("double", "A6")
-        #    mycalculator.add_declare_var("double", "final_lambda")
         mycalculator.add_declare_var("double", "sample_select")
 
         #   mycalculator.add_declare_var("double", "A3_offset")
@@ -310,14 +301,6 @@ class ThALES(Instrument):
         H53_1a.set_AT([0, 0, 0], RELATIVE=H5)
 
         addMonitor(mycalculator, "H5_1a", H53_1a.l)
-        #    H53_origin = mycalculator.add_component("H53_origin", "Arm")
-        # I don't understand the x
-        #    H53_origin.set_AT([H5_rect.w1 / 2 - 0.06 / 2, 0, H5_rect.l + gGap], RELATIVE=H5)
-
-        #    H53_origin.set_ROTATED([0, 1.5, 0], RELATIVE=H5)
-
-        #   H53_start = mycalculator.add_component("H53_start", "Arm")
-        #   H53_start.set_AT([0, 0, 0], RELATIVE=H53_origin)
 
         H53_1b = mycalculator.copy_component("H5_1b", H53_1a)
         H53_1b.l = 1.775
@@ -448,23 +431,34 @@ class ThALES(Instrument):
         before_sample_slit.yheight = 0.028
         before_sample_slit.set_AT([0, 0, ThALES_L - 0.250], RELATIVE=Monochromator_Out)
 
-        #    addMonitor(mycalculator, "sample", 0.200)
+        # addMonitor(mycalculator, "sample_slit_IN", 0.200)
+
+        sample_mcpl_arm = mycalculator.add_component(
+            "sample_mcpl_arm",
+            "Arm",
+            AT=[0, 0, ThALES_L],
+            RELATIVE="Monochromator_Out",
+        )
+
+        sample_mcpl = mycalculator.add_component(
+            "sample_mcpl", "MCPL_output", AT=[0, 0, 0], RELATIVE=sample_mcpl_arm
+        )
+        sample_mcpl.filename = '"sSAMPLE"'
+
         self.__sample_environment_arm = mycalculator.add_component(
             "sample_environment_arm",
             "Arm",
-            AT=[0, 0, ThALES_L],
+            AT=[0, 0, 0],
             ROTATED=[0, "a3", 0],
-            RELATIVE="Monochromator_Out",
+            RELATIVE=sample_mcpl_arm,
         )
         self.__sample_arm = mycalculator.add_component(
             "sample_arm",
             "Arm",
-            AT=[0, 0, ThALES_L],
+            AT=[0, 0, 0],
             ROTATED=[0, "a3", 0],
-            RELATIVE="Monochromator_Out",
+            RELATIVE=sample_mcpl_arm,
         )
-
-        addMonitor(mycalculator, "sample", [0, 0, 0])
 
         # res_sample = mycalculator.add_component("res_sample", "Res_sample")
         # res_sample.thickness = 0.001
@@ -477,7 +471,7 @@ class ThALES(Instrument):
         # res_sample.target_index = 4
         # res_sample.set_WHEN("SAMPLE==0")
         # res_sample.set_AT([0, 0, 0], RELATIVE="sample_arm")
-        sample = self.set_sample("v_sample")
+        sample = self.sample = "vanadium"
 
         # quartz_sample = mycalculator.add_component("quartz_sample", "Isotropic_Sqw")
         # quartz_sample.radius = 0.005
@@ -518,6 +512,14 @@ class ThALES(Instrument):
         Ana_Cradle = mycalculator.add_component("Ana_Cradle", "Arm")
         Ana_Cradle.set_AT([0, 0, dist_sample_ana], RELATIVE=Sample_Out)
 
+        Ana_Cradle_mcpl = mycalculator.add_component(
+            "Ana_Cradle_mcpl",
+            "MCPL_output",
+            AT=[0, 0, 0],
+            RELATIVE=Ana_Cradle,
+        )
+        Ana_Cradle_mcpl.filename = '"sANALYZER"'
+
         addMonitor(mycalculator, "analyzer_IN")
 
         analyzer = mycalculator.add_component("analyzer", "Monochromator_curved")
@@ -538,6 +540,8 @@ class ThALES(Instrument):
         Ana_Out = mycalculator.add_component(
             "Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE="Ana_Cradle"
         )
+
+        addMonitor(mycalculator, "analyzer_slit_IN")
 
         slit = mycalculator.add_component("slit", "Slit")
         slit.xwidth = 0.03
@@ -579,6 +583,12 @@ class ThALES(Instrument):
         myinstr.add_master_parameter("a3", {mycalculator.name: "a3"}, unit="degree")
         myinstr.add_master_parameter("a4", {mycalculator.name: "a4"}, unit="degree")
         myinstr.add_master_parameter("a6", {mycalculator.name: "a6"}, unit="degree")
+        myinstr.add_master_parameter(
+            "sample_size_r", {mycalculator.name: "sample_size_r"}, unit="m"
+        )
+        myinstr.add_master_parameter(
+            "sample_size_y", {mycalculator.name: "sample_size_y"}, unit="m"
+        )
         myinstr.master["a2"] = 79.10 * ureg.degree
         myinstr.master["a3"] = 0 * ureg.degree
         myinstr.master["a4"] = 60 * ureg.degree
