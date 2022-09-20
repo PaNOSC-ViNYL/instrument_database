@@ -1,75 +1,63 @@
 from instrumentdatabaseapi import instrumentdatabaseapi as API
 
-# import os
+import sys
+import os
+
 # print(os.getenv("MCSTAS"))
 repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
+
+repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", dep=False)
 # myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
-# print(myinstrument)
-myThALES = myinstrument.calculators[instrument_name]
-myThALES.show_components()
 
+
+# import the units
 import pint
 
 ureg = pint.get_application_registry()
 
+# setting the base directory for the simulation output
 basedir = "/tmp/ThALES_scan/"
 myinstrument.set_instrument_base_dir(basedir)
 
-# a2 = myinstrument.parameters["ThALES"]["a2"]
-a2 = myinstrument.master["a2"]
-a4 = myinstrument.master["a4"]
-# a3 = myinstrument.master["a3"]
-a6 = myinstrument.master["a6"]
-
-# the master system does not work with custom made classes if not using the .value method
-a2 = myinstrument.parameters["ThALES"]["a2"]
-a6 = myinstrument.parameters["ThALES"]["a2"]
-
 # generation energy (monochromator)
-a2.energy = 4.98 * ureg.meV
-# a3.value = 0 * ureg.degree
-a4.value = 60 * ureg.degree
-a6.energy = a2.energy
+myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
+myinstrument.master["a4"] = 60 * ureg.degree
+myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 
-myThALES.settings(ncount=100000000)
+myinstrument.sim_neutrons(100000000)
+myinstrument.set_instrument_base_dir(basedir + "generation/")
 
-
-myThALES.calculator_base_dir = "generation/"
+# the calculator has the same name as the instrument just for ThALES because it has been created like this. It is not true in general
+# myThALES = myinstrument.calculators[instrument_name]
 # myThALES.show_diagram()
 # myThALES.show_components()
-import sys
+
+# print(myinstrument)
+print("------------------------------")
+print("Implemented samples: ", myinstrument.samples)
+print("Current sample name: ", myinstrument.sample_name)
+print("Current sample object: \n", myinstrument.sample)
+
+print("------------------------------")
+print("Implemented sample environments: ", myinstrument.sample_environments)
+print("Current sample environment name: ", myinstrument.sample_environment_name)
+print("Current sample environment object: \n", myinstrument.sample_environment)
 
 # sys.exit(0)
-
-# myThALES.show_instrument()
-print(myinstrument)
-
-print("Implemented samples: ")
-print(myinstrument.samples)
-print(myinstrument.sample)
-# myinstrument.sample = "empty"
-print(myinstrument.sample)
-print(myinstrument.sample_environments)
-
-# myinstrument.sample = "vanadium"
-print(myinstrument.sample)
-
 # myinstrument.run()
 # sys.exit(0)
 
-myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "sample", dep=False)
+myinstrument = repo.load(
+    "ILL", instrument_name, "HEAD", "mcstas", "from_sample", dep=False
+)
 myinstrument.set_instrument_base_dir(basedir)
-myThALES = myinstrument.calculators[instrument_name]
-myThALES.parameters["filelist"] = '"/tmp/ThALES_scan/generation/sSAMPLE.mcpl.gz"'
+# myThALES = myinstrument.calculators[instrument_name]
+# myThALES.parameters["filelist"] = '"/tmp/ThALES_scan/generation/sSAMPLE.mcpl.gz"'
+print(myinstrument)
 
-a6 = myThALES.parameters["a6"]
-# a6 = myinstrument.master["a6"] #this does not work with Bragangle class
-a6.energy = a2.energy
-myThALES.settings(ncount=200000000)
-
-
+sys.exit(0)
 import os
 
 for r in [0.002, 0.005, 0.01, 0.02]:
