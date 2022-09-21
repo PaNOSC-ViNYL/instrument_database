@@ -49,16 +49,21 @@ addCryostat = True
 
 ############## Mandatory method
 def get_flavours():
-    return ["from_sample"]
+    return ["from_sample", "merge"]
 
 
 ############## Mandatory method
 def def_instrument(flavour: Optional[str] = None):
     """Function returning the specialized instrument object based on the flavour requested"""
+    if flavour not in get_flavours():
+        raise RuntimeError(f"Flavour {flavour} not in the flavour list")
+
     if flavour in [None, ""]:
         return ThALES()
     elif flavour == "from_sample":
         return ThALES_from_sample()
+    elif flavour == "merge":
+        return ThALES_merge()
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
 
@@ -113,9 +118,9 @@ class ThALES(Instrument):
                 after=self.__sample_arm,
             )
             v_sample = self.sample
-            v_sample.radius = "sample_size_r"
-            v_sample.yheight = "sample_size_y"
-            v_sample.thickness = "sample_thickness"
+            v_sample.radius = 0.01
+            v_sample.yheight = 0.01
+            v_sample.thickness = 0.001
             v_sample.focus_xw = 0.04
             v_sample.focus_yh = 0.12
             v_sample.target_z = 0.25
@@ -144,7 +149,26 @@ class ThALES(Instrument):
         else:
             raise NameError(f"Sample with name {name} not implemented")
 
+        #        self.__sample_hash = hash(frozenset(vars(self.sample)))
         return self.sample
+
+    #    def run(self):
+    #        force_compile = self.calculators[self._calculator_name]._run_settings[
+    #            "force_compile"
+    #        ]
+    #        print("Presettings: ")
+    #        self.calculators[self._calculator_name].show_settings()
+    #        print(self.__sample_hash)
+
+    #        if hash(frozenset(vars(self.sample))) != self.__sample_hash:
+    #            self.calculators[self._calculator_name].settings(force_compile=True)
+    # super().run()
+    #        print("Updated settings: ")
+    #        self.calculators[self._calculator_name].show_settings()
+    #        self.calculators[self._calculator_name].settings(force_compile=force_compile)
+
+    #        print("Restored settings:")
+    #        self.calculators[self._calculator_name].show_settings()
 
     def set_sample_environment_by_name(self, name: str) -> None:
         """Adding a sample environment to the simulation"""
@@ -205,6 +229,7 @@ class ThALES(Instrument):
         self.__sample_arm = None
         #
         self._calculator_name = "ThALES"
+        self.__sample_hash = None
         # ------------------------------ some local variables
         myinstr = self
         gR0 = 1
@@ -270,23 +295,9 @@ class ThALES(Instrument):
         # a6.value = 33
         # mycalculator.parameters.add(a6)
 
-        mycalculator.add_parameter("int", "stage", comment="simulation stage", value=-1)
-        mycalculator.add_parameter(
-            "string", "filelist", comment="name of MCPL input file", value='"none"'
-        )
-        mycalculator.add_parameter(
-            "double", "sample_size_r", comment="sample radius", value=0.01, unit="m"
-        )
-        mycalculator.add_parameter(
-            "double", "sample_size_y", comment="sample height", value=0.01, unit="m"
-        )
-        mycalculator.add_parameter(
-            "double",
-            "sample_thickness",
-            comment="sample thickness for hollow cylinder",
-            value=0.001,
-            unit="m",
-        )
+        #        mycalculator.add_parameter(
+        #            "string", "filelist", comment="name of MCPL input file", value='"none"'
+        #        )
         monochromator_d = mycalculator.add_parameter(
             "double",
             "monochromator_d",
@@ -300,27 +311,6 @@ class ThALES(Instrument):
         # ------------------------------ Adding parameters related to the sample
         #        mycalculator.add_parameter("double", "width", unit="m", comment="width of a box shaped sample",
         #                                   value=-1)
-        mycalculator.add_parameter(
-            "double",
-            "radius",
-            unit="m",
-            comment="radius of cylinder shaped sample",
-            value=-1,
-        )
-        mycalculator.add_parameter(
-            "double",
-            "height",
-            unit="m",
-            comment="height of a box or cylinder shaped sample",
-            value=-1,
-        )
-        mycalculator.add_parameter(
-            "double",
-            "thickness",
-            unit="m",
-            comment="thickness cylinder shaped sample",
-            value=-1,
-        )
 
         #   mycalculator.add_parameter("double", "q_x_elastic", value=1.3139)
         #   mycalculator.add_parameter("double", "q_z_elastic", value=0.146)
@@ -671,18 +661,48 @@ class ThALES(Instrument):
         myinstr.master["a4"] = 60 * ureg.degree
         myinstr.master["a6"] = 74.34 * ureg.degree
         # ------------------------------ sample parameters
-        myinstr.add_master_parameter(
-            "sample_size_r", {mycalculator.name: "sample_size_r"}, unit="m"
+        # Do not add sample parameters. They should be modified externally retrieving
+        # sample with .sample
+        # this obviously will require the instrument to be recompiled
+
+
+def ThALES_merge():
+    merge_instr = ThALES()
+    merge_instr.name = "ThALES_merge"
+    instr.set_sample_by_name("None")
+    instr.set_sample_environment_by_name("None")
+    for calcname in merge_instr.calculators:
+
+        calc = merge_instr.calculators[calcname]
+        calc.name = calcname + "_merge"
+        calc.settings(checks=False)
+        remove_comp = []
+        for comp in calc.component_list[::-1]:
+            if comp.component_name == "Progress_bar":
+                break
+            if comp.name == "detector_arm":
+                comp.set_AT([0, 0, 0], RELATIVE="ABSOLUTE")
+                continue
+            if comp.name == "detector_all":
+                continue
+            calc.remove_component(comp)
+
+        #        calc.add_component(
+        #            "Origin", "Progress_bar", AT=[0, 0, 0], before="detector_arm"
+        #        )
+
+        vin = calc.add_component(
+            "Vin",
+            "MCPL_input",
+            AT=[0, 0, 0],
+            #            RELATIVE="detector_arm",
+            after="Origin",
         )
-        myinstr.add_master_parameter(
-            "sample_size_y", {mycalculator.name: "sample_size_y"}, unit="m"
-        )
-        myinstr.add_master_parameter(
-            "sample_thickness", {mycalculator.name: "sample_thickness"}, unit="m"
-        )
-        myinstr.master["sample_size_r"] = 0.01
-        myinstr.master["sample_size_y"] = 0.01
-        myinstr.master["sample_thickness"] = 0.001
+        vin.filelist = "filelist"
+
+    #        print(calc.show_components())
+
+    return merge_instr
 
 
 def ThALES_from_sample():
@@ -690,7 +710,7 @@ def ThALES_from_sample():
 
     instr.name = "ThALESfromsample"
     # Removing any sample
-    instr.sample = None
+    instr.set_sample_by_name("None")
 
     # removing all components before the sample arm and adding an MCPL input at the place of the sample_arm before the sample environment
     for calcname in instr.calculators:
@@ -728,6 +748,10 @@ def ThALES_from_sample():
         vin.filename = "filelist"
 
     #
+    instr.calculators[instr._calculator_name].add_parameter(
+        "string", "filelist", comment="name of MCPL input file", value='"none"'
+    )
+
     instr.add_master_parameter(
         "input_file",
         {instr._calculator_name: "filelist"},

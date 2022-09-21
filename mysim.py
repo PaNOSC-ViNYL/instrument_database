@@ -26,7 +26,8 @@ myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 
-myinstrument.sim_neutrons(100000000)
+myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)
+myinstrument.sim_neutrons(10000000)
 myinstrument.set_instrument_base_dir(basedir + "generation/")
 
 # the calculator has the same name as the instrument just for ThALES because it has been created like this. It is not true in general
@@ -34,7 +35,7 @@ myinstrument.set_instrument_base_dir(basedir + "generation/")
 # myThALES.show_diagram()
 # myThALES.show_components()
 
-# print(myinstrument)
+print(myinstrument)
 print("------------------------------")
 print("Implemented samples: ", myinstrument.samples)
 print("Current sample name: ", myinstrument.sample_name)
@@ -46,8 +47,19 @@ print("Current sample environment name: ", myinstrument.sample_environment_name)
 print("Current sample environment object: \n", myinstrument.sample_environment)
 
 # sys.exit(0)
+s = myinstrument.sample
+
 # myinstrument.run()
-# sys.exit(0)
+
+# myinstrument.sim_neutrons(5000)
+# myinstrument.run()
+print((vars(s).values()))
+print("hash: ", (hash(vars(s).values())))
+myinstrument.sample.thickness = 0.002
+print("hash after:", (frozenset(vars(s))))
+# myinstrument.run()
+
+sys.exit(0)
 
 myinstrument = repo.load(
     "ILL", instrument_name, "HEAD", "mcstas", "from_sample", dep=False
