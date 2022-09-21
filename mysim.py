@@ -35,6 +35,7 @@ myinstrument.set_instrument_base_dir(basedir + "generation/")
 # myThALES.show_diagram()
 # myThALES.show_components()
 
+myinstrument.set_sample_by_name("sqw")
 print(myinstrument)
 print("------------------------------")
 print("Implemented samples: ", myinstrument.samples)

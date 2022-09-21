@@ -144,9 +144,9 @@ class ThALES(Instrument):
             s.Sqw_inc = 0
             s.sigma_coh = -1
             s.sigma_inc = -1
-            s.xwidth = 0
-            s.yheight = 0
-            s.thickness = 0
+            s.xwidth = 0.01
+            s.yheight = 0.01
+            s.thickness = 0.001
             if name == "H2O":
                 s.Sqw_coh = '"H2O_liq.qSq"'
             elif name == "D2O":
