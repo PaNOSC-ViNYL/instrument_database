@@ -99,7 +99,8 @@ class ThALES(Instrument):
     # this implements what is foreseen in the libpyvinyl.Instrument class
     def set_sample_by_name(self, name: str) -> None:
         """Set the sample component
-        Always put a sample relative to the __sample_arm and after the __sample_arm component"""
+        Always put a sample relative to the __sample_arm and after the __sample_arm component
+        In case of an Sqw sample, a parameter Sqw_file is added"""
         print(f"Setting sample to: {name}")
         mycalculator = self.calculators[self._calculator_name]
         if self.sample is not None:
@@ -148,6 +149,19 @@ class ThALES(Instrument):
             s.thickness = 0
             if name == "H2O":
                 s.Sqw_coh = '"H2O_liq.qSq"'
+            elif name == "D2O":
+                s.Sqw_coh = '"D2O_liq.qSq"'
+            else:
+                self.calculators[self._calculator_name].add_parameter(
+                    "string", "Sqw_file", comment="File of the Sqw in McStas convention"
+                )
+                s.Sqw_coh = "Sqw_file"
+                self.add_master_parameter(
+                    "Sqw_file",
+                    # here I would need to get the name of the calculator in which the sample is defined
+                    {self.calculators[self._calculator_name].name: "Sqw_file"},
+                )
+
         else:
             raise NameError(f"Sample with name {name} not implemented")
 
@@ -228,7 +242,7 @@ class ThALES(Instrument):
         """Here the real definition of the instrument is performed"""
 
         super().__init__("ThALESinstrument", instrument_base_dir=".")
-        self.samples = ["None", "vanadium", "H2O"]
+        self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
         self.sample_environments = ["None", "10T", "Orange"]
 
         # this is specific for McStasscript instruments: the components of the position for the sample and sample environment
