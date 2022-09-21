@@ -178,7 +178,12 @@ class ThALES(Instrument):
             self.__remove_sample_environment()
 
         mycalculator = self.calculators[self._calculator_name]
-        mycryo = None
+        if name in ["empty", "Empty", "None", "none"]:
+            self.sample_environment = None
+            return
+
+       #### to implement the rest
+       mycryo = None
         exit = None
         if name == "10T":
             mycryo, exit = cryo10T(
