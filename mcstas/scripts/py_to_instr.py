@@ -15,7 +15,10 @@ else:
 
 sample_name = sys.argv[5]
 sample_environment_name = sys.argv[6]
-outfilenamesuffix = flavour
+
+outfilenamesuffix = ""
+if flavour != "None":
+    outfilenamesuffix = flavour
 if len(sys.argv) >= 8:
     outfilenamesuffix = sys.argv[7]
 
