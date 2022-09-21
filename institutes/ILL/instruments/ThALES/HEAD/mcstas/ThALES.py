@@ -669,8 +669,8 @@ class ThALES(Instrument):
 def ThALES_merge():
     merge_instr = ThALES()
     merge_instr.name = "ThALES_merge"
-    instr.set_sample_by_name("None")
-    instr.set_sample_environment_by_name("None")
+    merge_instr.set_sample_by_name("None")
+    merge_instr.set_sample_environment_by_name("None")
     for calcname in merge_instr.calculators:
 
         calc = merge_instr.calculators[calcname]
