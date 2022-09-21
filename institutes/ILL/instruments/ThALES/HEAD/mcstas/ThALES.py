@@ -153,13 +153,13 @@ class ThALES(Instrument):
                 s.Sqw_coh = '"D2O_liq.qSq"'
             else:
                 self.calculators[self._calculator_name].add_parameter(
-                    "string", "Sqw_file", comment="File of the Sqw in McStas convention"
+                    "string", "sqw_file", comment="File of the Sqw in McStas convention"
                 )
-                s.Sqw_coh = "Sqw_file"
+                s.Sqw_coh = "sqw_file"
                 self.add_master_parameter(
                     "Sqw_file",
                     # here I would need to get the name of the calculator in which the sample is defined
-                    {self.calculators[self._calculator_name].name: "Sqw_file"},
+                    {self.calculators[self._calculator_name].name: "sqw_file"},
                 )
 
         else:
