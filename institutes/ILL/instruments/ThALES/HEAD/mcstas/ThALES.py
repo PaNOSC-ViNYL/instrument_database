@@ -681,14 +681,14 @@ class ThALES_merge(ThALES):
     def __init__(self):
         super().__init__()
 
-        merge_instr = self
-        merge_instr.name = "ThALES_merge"
-        merge_instr.set_sample_by_name("None")
-        merge_instr.set_sample_environment_by_name("None")
+        instr = self
+        instr.name = "ThALES_merge"
+        instr.set_sample_by_name("None")
+        instr.set_sample_environment_by_name("None")
 
-        for calcname in merge_instr.calculators:
+        for calcname in instr.calculators:
 
-            calc = merge_instr.calculators[calcname]
+            calc = instr.calculators[calcname]
             calc.name = calcname + "_merge"
             calc.settings(checks=False)
             remove_comp = []
@@ -715,7 +715,22 @@ class ThALES_merge(ThALES):
             )
             vin.filelist = "filelist"
 
-        #        print(calc.show_components())
+            #
+        instr.calculators[instr._calculator_name].add_parameter(
+            "string", "filelist", comment="name of MCPL input file", value='"none"'
+        )
+
+        instr.add_master_parameter(
+            "input_file",
+            {instr._calculator_name: "filelist"},
+            comment="MCPL file generated before the sample",
+        )
+        instr.master["input_file"] = ""
+
+        del instr.master["a2"]
+        del instr.master["a3"]
+        del instr.master["a4"]
+        del instr.master["a6"]
 
 
 def ThALES_from_sample():
