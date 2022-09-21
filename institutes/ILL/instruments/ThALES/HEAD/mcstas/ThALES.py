@@ -725,7 +725,7 @@ class ThALES_merge(ThALES):
             {instr._calculator_name: "filelist"},
             comment="MCPL file generated before the sample",
         )
-        instr.master["input_file"] = ""
+        instr.master["input_file"] = '""'
 
         del instr.master["a2"]
         del instr.master["a3"]
@@ -785,7 +785,7 @@ def ThALES_from_sample():
         {instr._calculator_name: "filelist"},
         comment="MCPL file generated before the sample",
     )
-    instr.master["input_file"] = ""
+    instr.master["input_file"] = '""'
 
     del instr.master["a2"]
     return instr
