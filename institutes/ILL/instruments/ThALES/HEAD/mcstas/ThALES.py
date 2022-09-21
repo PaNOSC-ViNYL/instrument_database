@@ -147,7 +147,7 @@ class ThALES(Instrument):
             s.yheight = 0
             s.thickness = 0
             if name == "H2O":
-                s.Sqw_coh = "H2O_liq.qSq"
+                s.Sqw_coh = '"H2O_liq.qSq"'
         else:
             raise NameError(f"Sample with name {name} not implemented")
 
