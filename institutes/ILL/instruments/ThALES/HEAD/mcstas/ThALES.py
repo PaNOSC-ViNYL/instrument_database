@@ -49,7 +49,7 @@ addCryostat = True
 
 ############## Mandatory method
 def get_flavours():
-    return [None, "from_sample", "merge"]
+    return ["None", "from_sample", "merge"]
 
 
 ############## Mandatory method
@@ -58,7 +58,7 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour not in get_flavours() and flavour != "":
         raise RuntimeError(f"Flavour {flavour} not in the flavour list")
 
-    if flavour in [None, ""]:
+    if flavour in [None, "None", ""]:
         return ThALES()
     elif flavour == "from_sample":
         return ThALES_from_sample()

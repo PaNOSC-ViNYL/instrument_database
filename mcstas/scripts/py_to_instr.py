@@ -30,6 +30,7 @@ myinstrument.set_sample_environment_by_name(sample_environment_name)
 for calcname in myinstrument.calculators:
     calc = myinstrument.calculators[calcname]
     # calc.show_components()
-    calc.name = calcname + "_" + outfilenamesuffix
+    if len(outfilenamesuffix) > 0:
+        calc.name = calcname + "_" + outfilenamesuffix
     if isinstance(calc, instr.McStas_instr):
         calc.write_full_instrument()
