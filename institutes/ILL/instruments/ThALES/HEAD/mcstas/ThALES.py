@@ -49,13 +49,13 @@ addCryostat = True
 
 ############## Mandatory method
 def get_flavours():
-    return ["from_sample", "merge"]
+    return [None, "from_sample", "merge"]
 
 
 ############## Mandatory method
 def def_instrument(flavour: Optional[str] = None):
     """Function returning the specialized instrument object based on the flavour requested"""
-    if flavour not in get_flavours():
+    if flavour not in get_flavours() and flavour != "":
         raise RuntimeError(f"Flavour {flavour} not in the flavour list")
 
     if flavour in [None, ""]:
@@ -174,7 +174,7 @@ class ThALES(Instrument):
         """Adding a sample environment to the simulation"""
         if self.__sample_environment_arm is None:
             raise Exception("no sample environment arm defined in the instrument")
-        if self.__sample_environment is not None:
+        if self.sample_environment is not None:
             self.__remove_sample_environment()
 
         mycalculator = self.calculators[self._calculator_name]
@@ -191,7 +191,7 @@ class ThALES(Instrument):
         else:
             raise NameError("Sample environment name not recognized or not implemented")
 
-        self.__sample_environment_name = name
+        self.sample_environment_name = name
 
         exit.set_parameters(
             radius=__sample.radius + 1e-6,
