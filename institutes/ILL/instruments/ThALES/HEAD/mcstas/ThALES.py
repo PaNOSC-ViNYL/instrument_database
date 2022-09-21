@@ -144,7 +144,8 @@ class ThALES(Instrument):
             s.Sqw_inc = 0
             s.sigma_coh = -1
             s.sigma_inc = -1
-            s.xwidth = 0.01
+            # s.xwidth = 0.01
+            s.radius = 0.01
             s.yheight = 0.01
             s.thickness = 0.001
             if name == "H2O":
@@ -157,7 +158,7 @@ class ThALES(Instrument):
                 )
                 s.Sqw_coh = "sqw_file"
                 self.add_master_parameter(
-                    "Sqw_file",
+                    "sqw_file",
                     # here I would need to get the name of the calculator in which the sample is defined
                     {self.calculators[self._calculator_name].name: "sqw_file"},
                 )

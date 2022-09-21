@@ -49,8 +49,7 @@ print("Current sample environment object: \n", myinstrument.sample_environment)
 
 # sys.exit(0)
 s = myinstrument.sample
-
-# myinstrument.run()
+myinstrument.run()
 
 # myinstrument.sim_neutrons(5000)
 # myinstrument.run()
