@@ -15,6 +15,9 @@ else:
 
 sample_name = sys.argv[5]
 sample_environment_name = sys.argv[6]
+outfilenamesuffix = flavour
+if len(sys.argv) >= 8:
+    outfilenamesuffix = sys.argv[7]
 
 repo = API.Repository(local_repo=os.path.dirname(__file__) + "/../../")
 
@@ -22,9 +25,11 @@ myinstrument = repo.load(institute, instrument, version, software, flavour, dep=
 
 myinstrument.set_sample_by_name(sample_name)
 myinstrument.set_sample_environment_by_name(sample_environment_name)
+# myinstrument.name = outfilename
 
 for calcname in myinstrument.calculators:
     calc = myinstrument.calculators[calcname]
     # calc.show_components()
+    calc.name = calcname + "_" + outfilenamesuffix
     if isinstance(calc, instr.McStas_instr):
         calc.write_full_instrument()
