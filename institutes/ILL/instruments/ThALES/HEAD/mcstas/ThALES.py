@@ -671,43 +671,51 @@ class ThALES(Instrument):
         # this obviously will require the instrument to be recompiled
 
 
-def ThALES_merge():
-    merge_instr = ThALES()
-    merge_instr.name = "ThALES_merge"
-    merge_instr.set_sample_by_name("None")
-    merge_instr.set_sample_environment_by_name("None")
-    for calcname in merge_instr.calculators:
+class ThALES_merge(ThALES):
+    def set_sample_by_name(self, name):
+        pass
 
-        calc = merge_instr.calculators[calcname]
-        calc.name = calcname + "_merge"
-        calc.settings(checks=False)
-        remove_comp = []
-        for comp in calc.component_list[::-1]:
-            if comp.component_name == "Progress_bar":
-                break
-            if comp.name == "detector_arm":
-                comp.set_AT([0, 0, 0], RELATIVE="ABSOLUTE")
-                continue
-            if comp.name == "detector_all":
-                continue
-            calc.remove_component(comp)
+    def set_sample_environment_by_name(self, name):
+        pass
 
-        #        calc.add_component(
-        #            "Origin", "Progress_bar", AT=[0, 0, 0], before="detector_arm"
-        #        )
+    def __init__(self):
+        super().__init__()
 
-        vin = calc.add_component(
-            "Vin",
-            "MCPL_input",
-            AT=[0, 0, 0],
-            #            RELATIVE="detector_arm",
-            after="Origin",
-        )
-        vin.filelist = "filelist"
+        merge_instr = self
+        merge_instr.name = "ThALES_merge"
+        merge_instr.set_sample_by_name("None")
+        merge_instr.set_sample_environment_by_name("None")
 
-    #        print(calc.show_components())
+        for calcname in merge_instr.calculators:
 
-    return merge_instr
+            calc = merge_instr.calculators[calcname]
+            calc.name = calcname + "_merge"
+            calc.settings(checks=False)
+            remove_comp = []
+            for comp in calc.component_list[::-1]:
+                if comp.component_name == "Progress_bar":
+                    break
+                if comp.name == "detector_arm":
+                    comp.set_AT([0, 0, 0], RELATIVE="ABSOLUTE")
+                    continue
+                if comp.name == "detector_all":
+                    continue
+                calc.remove_component(comp)
+
+            #        calc.add_component(
+            #            "Origin", "Progress_bar", AT=[0, 0, 0], before="detector_arm"
+            #        )
+
+            vin = calc.add_component(
+                "Vin",
+                "MCPL_input",
+                AT=[0, 0, 0],
+                #            RELATIVE="detector_arm",
+                after="Origin",
+            )
+            vin.filelist = "filelist"
+
+        #        print(calc.show_components())
 
 
 def ThALES_from_sample():
