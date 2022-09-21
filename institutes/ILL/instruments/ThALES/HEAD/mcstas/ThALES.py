@@ -128,7 +128,7 @@ class ThALES(Instrument):
             # Absorption fraction           =0.0425179
             # Single   scattering intensity =1.65546e+07 (coh=1.65473e+07 inc=7331.45)
             # Multiple scattering intensity =276313
-        elif name in ["sqw"]:
+        elif name in ["sqw", "H2O", "D2O"]:
             self.sample_name = "sqw"
             self.sample = mycalculator.add_component(
                 self.sample_name,
@@ -146,6 +146,8 @@ class ThALES(Instrument):
             s.xwidth = 0
             s.yheight = 0
             s.thickness = 0
+            if name == "H2O":
+                s.Sqw_coh = "H2O_liq.qSq"
         else:
             raise NameError(f"Sample with name {name} not implemented")
 
@@ -226,7 +228,7 @@ class ThALES(Instrument):
         """Here the real definition of the instrument is performed"""
 
         super().__init__("ThALESinstrument", instrument_base_dir=".")
-        self.samples = ["None", "vanadium"]
+        self.samples = ["None", "vanadium", "H2O"]
         self.sample_environments = ["None", "10T", "Orange"]
 
         # this is specific for McStasscript instruments: the components of the position for the sample and sample environment
