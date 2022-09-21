@@ -182,8 +182,8 @@ class ThALES(Instrument):
             self.sample_environment = None
             return
 
-       #### to implement the rest
-       mycryo = None
+        #### to implement the rest
+        mycryo = None
         exit = None
         if name == "10T":
             mycryo, exit = cryo10T(
