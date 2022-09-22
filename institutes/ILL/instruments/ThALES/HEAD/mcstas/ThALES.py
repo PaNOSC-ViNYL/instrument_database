@@ -358,7 +358,7 @@ class ThALES(Instrument):
         HCS = source.HCS_source(mycalculator)
         HCS.E0 = "Ei"
         HCS.target_index = 1
-
+        HCS.flux =1e8
         # override the value of lambda by the value of the angle
         mycalculator.append_initialize("lambda =2*sin(0.5*a2*DEG2RAD)*monochromator_d;")
         mycalculator.append_initialize('printf("lambda: %.2f\\n", lambda);')
