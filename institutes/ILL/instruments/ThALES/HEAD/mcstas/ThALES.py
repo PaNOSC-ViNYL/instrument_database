@@ -8,6 +8,7 @@ TODO:
         ThALES.add_parameter("double", "q_x_elastic", value=1.3139)
         ThALES.add_parameter("double", "q_z_elastic", value=0.146)
         ThALES.append_initialize("  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG; ")
+ - [ ] Hashing of the sample object to check differences and trigger a recompilation
 """
 
 # ------------------------------ For McStasscript instruments
@@ -101,7 +102,7 @@ class ThALES(Instrument):
         """Set the sample component
         Always put a sample relative to the __sample_arm and after the __sample_arm component
         In case of an Sqw sample, a parameter Sqw_file is added"""
-        print(f"Setting sample to: {name}")
+        # print(f"Setting sample to: {name}")
         mycalculator = self.calculators[self._calculator_name]
         if self.sample is not None:
             mycalculator.remove_component(self.sample)
@@ -109,7 +110,6 @@ class ThALES(Instrument):
             self.sample = None
         elif name in ["v_sample", "vanadium"]:
             self.sample_name = "vanadium"
-            # print(self.sample_name)
             self.sample = mycalculator.add_component(
                 self.sample_name,
                 "V_sample",
@@ -190,7 +190,7 @@ class ThALES(Instrument):
     def set_sample_environment_by_name(self, name: str) -> None:
         """Adding a sample environment to the simulation"""
         if self.__sample_environment_arm is None:
-            raise Exception("no sample environment arm defined in the instrument")
+            raise Exception("No sample environment arm defined in the instrument")
         if self.sample_environment is not None:
             self.__remove_sample_environment()
 
@@ -242,11 +242,12 @@ class ThALES(Instrument):
     def __init__(self):
         """Here the real definition of the instrument is performed"""
 
-        super().__init__("ThALESinstrument", instrument_base_dir=".")
+        super().__init__("ThALES", instrument_base_dir=".")
         self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
         self.sample_environments = ["None", "10T", "Orange"]
 
-        # this is specific for McStasscript instruments: the components of the position for the sample and sample environment
+        # this is specific for McStasscript instruments:
+        # the components of the position for the sample and sample environment
         self.__sample_environment_arm = None
         self.__sample_arm = None
         #
@@ -358,7 +359,8 @@ class ThALES(Instrument):
         HCS = source.HCS_source(mycalculator)
         HCS.E0 = "Ei"
         HCS.target_index = 1
-        HCS.flux =1e8
+        HCS.flux = 1e8
+
         # override the value of lambda by the value of the angle
         mycalculator.append_initialize("lambda =2*sin(0.5*a2*DEG2RAD)*monochromator_d;")
         mycalculator.append_initialize('printf("lambda: %.2f\\n", lambda);')
@@ -502,8 +504,14 @@ class ThALES(Instrument):
         Monochromator.mosaicv = 30
         Monochromator.r0 = 1
         Monochromator.t0 = 0  # remove transmitted neutrons
-        Monochromator.RV = "2*" + str(ThALES_L) + "*sin(DEG2RAD*a2/2)"
-        Monochromator.RH = "2*" + str(ThALES_L) + "/sin(DEG2RAD*a2/2)"
+        # Monochromator.RV = "2*" + str(ThALES_L) + "*sin(DEG2RAD*a2/2)"
+        Monochromator.RV = (
+            "1/( ( 1/" + str(ThALES_L) + " + 1/7.0 ) / (2*sin(DEG2RAD*a2/2))"
+        )
+        # Monochromator.RH = "2*" + str(ThALES_L) + "/sin(DEG2RAD*a2/2)"
+        Monochromator.RH = (
+            "1/( ( 1/" + str(ThALES_L) + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 )"
+        )
         Monochromator.DM = monochromator_d
         Monochromator.width = 0.25
         Monochromator.height = 0.2

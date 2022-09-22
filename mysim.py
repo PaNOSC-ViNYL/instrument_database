@@ -35,7 +35,7 @@ myinstrument.set_instrument_base_dir(basedir + "generation/")
 # myThALES.show_diagram()
 # myThALES.show_components()
 
-myinstrument.set_sample_by_name("sqw")
+# myinstrument.set_sample_by_name("sqw")
 print(myinstrument)
 print("------------------------------")
 print("Implemented samples: ", myinstrument.samples)
@@ -53,10 +53,10 @@ myinstrument.run()
 
 # myinstrument.sim_neutrons(5000)
 # myinstrument.run()
-print((vars(s).values()))
-print("hash: ", (hash(vars(s).values())))
-myinstrument.sample.thickness = 0.002
-print("hash after:", (frozenset(vars(s))))
+# print((vars(s).values()))
+# print("hash: ", (hash(vars(s).values())))
+# myinstrument.sample.thickness = 0.002
+# print("hash after:", (frozenset(vars(s))))
 # myinstrument.run()
 
 sys.exit(0)
