@@ -26,7 +26,7 @@ myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 
-myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)
+# myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)
 myinstrument.sim_neutrons(10000000)
 myinstrument.set_instrument_base_dir(basedir + "generation/")
 
@@ -49,7 +49,7 @@ print("Current sample environment object: \n", myinstrument.sample_environment)
 
 # sys.exit(0)
 s = myinstrument.sample
-myinstrument.run()
+# myinstrument.run()
 
 # myinstrument.sim_neutrons(5000)
 # myinstrument.run()
@@ -59,6 +59,17 @@ myinstrument.run()
 # print("hash after:", (frozenset(vars(s))))
 # myinstrument.run()
 
+for rv in [1.0, 1.5, 2.0, 2.5, 3.0]:
+    bdir = basedir + "/rv_{0:.2}".format(rv)
+    os.mkdir(bdir)
+    myinstrument.set_instrument_base_dir(bdir)
+    mono = myinstrument.calculators[myinstrument._calculator_name].get_component(
+        "Monochromator"
+    )
+    mono.RV = rv
+    myinstrument.run()
+
+
 sys.exit(0)
 
 myinstrument = repo.load(
@@ -67,7 +78,8 @@ myinstrument = repo.load(
 myinstrument.set_instrument_base_dir(basedir)
 # myThALES = myinstrument.calculators[instrument_name]
 # myThALES.parameters["filelist"] = '"/tmp/ThALES_scan/generation/sSAMPLE.mcpl.gz"'
-print(myinstrument)
+# print(myinstrument)
+
 
 sys.exit(0)
 import os

@@ -251,7 +251,7 @@ class ThALES(Instrument):
         self.__sample_environment_arm = None
         self.__sample_arm = None
         #
-        self._calculator_name = "ThALES"
+        self._calculator_name = "ThALEScalc"
         self.__sample_hash = None
         # ------------------------------ some local variables
         myinstr = self
@@ -504,13 +504,13 @@ class ThALES(Instrument):
         Monochromator.mosaicv = 30
         Monochromator.r0 = 1
         Monochromator.t0 = 0  # remove transmitted neutrons
-        # Monochromator.RV = "2*" + str(ThALES_L) + "*sin(DEG2RAD*a2/2)"
+        Monochromator.RV = "2*" + str(ThALES_L) + "*sin(DEG2RAD*a2/2)"
         Monochromator.RV = (
-            "1/( ( 1/" + str(ThALES_L) + " + 1/7.0 ) / (2*sin(DEG2RAD*a2/2))"
+            "(1/( ( 1/" + str(ThALES_L) + " + 1/7.0 ) / (2*sin(DEG2RAD*a2/2))))"
         )
-        # Monochromator.RH = "2*" + str(ThALES_L) + "/sin(DEG2RAD*a2/2)"
+        Monochromator.RH = "2*" + str(ThALES_L) + "/sin(DEG2RAD*a2/2)"
         Monochromator.RH = (
-            "1/( ( 1/" + str(ThALES_L) + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 )"
+            "(1/( ( 1/" + str(ThALES_L) + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 ))"
         )
         Monochromator.DM = monochromator_d
         Monochromator.width = 0.25
@@ -541,6 +541,8 @@ class ThALES(Instrument):
             AT=[0, 0, ThALES_L],
             RELATIVE="Monochromator_Out",
         )
+
+        addMonitor(mycalculator, "sample_IN")
 
         sample_mcpl = mycalculator.add_component(
             "sample_mcpl", "MCPL_output", AT=[0, 0, 0], RELATIVE=sample_mcpl_arm
@@ -826,7 +828,7 @@ def addMonitor(
     bins=100,
     radius=0.30,
     energy=5,
-    denergy=0.6,
+    denergy=4.9,
 ):
     if addMonitors is False:
         return
@@ -837,7 +839,9 @@ def addMonitor(
     monitor.yheight = height
     monitor.bins = bins
     monitor.options = '"energy limits=[{0:.2f} {1:.2f}] x y, parallel"'.format(
-        energy - denergy, energy + denergy
+        #        energy - denergy, energy + denergy
+        0,
+        25,
     )
 
     # monitor.options = '"energy limits=[Ei-dE, Ei+dE] x y, borders, parallel"'
