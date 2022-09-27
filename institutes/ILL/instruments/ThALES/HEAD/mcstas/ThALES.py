@@ -129,7 +129,7 @@ class ThALES(Instrument):
             # Absorption fraction           =0.0425179
             # Single   scattering intensity =1.65546e+07 (coh=1.65473e+07 inc=7331.45)
             # Multiple scattering intensity =276313
-        elif name in ["sqw", "H2O", "D2O"]:
+        elif name in ["sqw", "H2O", "D2O", "quartz"]:
             self.sample_name = "sqw"
             self.sample = mycalculator.add_component(
                 self.sample_name,
@@ -148,10 +148,16 @@ class ThALES(Instrument):
             s.radius = 0.01
             s.yheight = 0.01
             s.thickness = 0.001
+            s.set_SPLIT(20)
+
             if name == "H2O":
                 s.Sqw_coh = '"H2O_liq.qSq"'
             elif name == "D2O":
                 s.Sqw_coh = '"D2O_liq.qSq"'
+            elif name == "quartz":
+                s.Sqw_coh = '"SiO2_liq.qSq"'
+                s.Sqw_inc = '"SiO2_liq.qSq"'
+
             else:
                 self.calculators[self._calculator_name].add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
@@ -162,6 +168,24 @@ class ThALES(Instrument):
                     # here I would need to get the name of the calculator in which the sample is defined
                     {self.calculators[self._calculator_name].name: "sqw_file"},
                 )
+
+        # quartz_sample.radius = 0.005
+        # quartz_sample.yheight = 0.05
+        # # quartz_sample.classical = 0
+        # quartz_sample.p_interact = 0.5
+        # quartz_sample.Sqw_coh = '"SiO2_liq.qSq"'
+        # quartz_sample.Sqw_inc = '"SiO2_liq.qSq"'
+        # quartz_sample.sigma_coh = 10.6
+        # quartz_sample.sigma_inc = 0.0056
+        # quartz_sample.sigma_abs = 0.17
+        # quartz_sample.density = 2.2
+        # quartz_sample.weight = 60.08
+        # # quartz_sample.powder_format = '"qSq"'
+        # quartz_sample.verbose = 1
+        # quartz_sample.T = 273.21
+        # #    quartz_sample.target_index = 3
+        # # quartz_sample.append_EXTEND("if(!SCATTERED) ABSORB;")
+        # #    Monochromator.
 
         else:
             raise NameError(f"Sample with name {name} not implemented")
@@ -577,29 +601,6 @@ class ThALES(Instrument):
         # res_sample.set_AT([0, 0, 0], RELATIVE="sample_arm")
         sample = self.set_sample_by_name("vanadium")
 
-        # quartz_sample = mycalculator.add_component("quartz_sample", "Isotropic_Sqw")
-        # quartz_sample.radius = 0.005
-        # quartz_sample.yheight = 0.05
-        # # quartz_sample.classical = 0
-        # quartz_sample.p_interact = 0.5
-        # quartz_sample.Sqw_coh = '"SiO2_liq.qSq"'
-        # quartz_sample.Sqw_inc = '"SiO2_liq.qSq"'
-        # quartz_sample.sigma_coh = 10.6
-        # quartz_sample.sigma_inc = 0.0056
-        # quartz_sample.sigma_abs = 0.17
-        # quartz_sample.density = 2.2
-        # quartz_sample.weight = 60.08
-        # # quartz_sample.powder_format = '"qSq"'
-        # quartz_sample.verbose = 1
-        # quartz_sample.T = 273.21
-        # #    quartz_sample.target_index = 3
-        # # quartz_sample.append_EXTEND("if(!SCATTERED) ABSORB;")
-        # #    Monochromator.
-
-        #    quartz_sample.set_WHEN("SAMPLE==2")
-        #    quartz_sample.set_AT([0, "a4", 0], RELATIVE=sample_arm)
-        #    quartz_sample.set_SPLIT(20)
-
         Sample_Out = mycalculator.add_component("Sample_Out", "Arm")
         Sample_Out.set_AT([0, 0, 0], RELATIVE=self.__sample_arm)
         Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self.__sample_arm)
@@ -669,7 +670,47 @@ class ThALES(Instrument):
             "vout", "MCPL_output", AT=[0, 0, 0], RELATIVE="detector_arm"
         )
         Vout.filename = '"sDETECTOR"'
-        detector_all = mycalculator.add_component(
+
+        # ------------------------------
+        detector_calculator = instr.McStas_instr("DetectorCalc")
+        # this is to load custom components
+        detector_calculator.component_reader.add_custom_component_dir(
+            os.path.dirname(__file__) + "/../../../../../../mcstas/components"
+        )
+
+        myinstr.add_calculator(detector_calculator)
+
+        Origin = detector_calculator.add_component("Origin", "Progress_bar")
+        Origin.set_AT(["0", "0", "0"], RELATIVE="ABSOLUTE")
+
+        detector_arm = detector_calculator.add_component(
+            "detector_arm", "Arm", AT=[0, 0, 0], RELATIVE="ABSOLUTE"
+        )
+
+        vin = detector_calculator.add_component(
+            "Vin",
+            "MCPL_input",
+            AT=[0, 0, 0],
+            after="Origin",
+        )
+        #        vin.filelist = "filelist"
+        previous_calculator_name = list(myinstr.calculators.keys())[-2]
+        previous_calculator = myinstr.calculators[previous_calculator_name]
+        pr = previous_calculator
+        vin.filename = '"/tmp/ThALES/ThALEScalc/sDETECTOR.mcpl.gz"'  # str("../" + pr.calculator_base_dir + "/sDETECTOR.mcpl.gz")
+        #
+        detector_calculator.add_parameter(
+            "string", "filelist", comment="name of MCPL input file", value='"none"'
+        )
+
+        myinstr.add_master_parameter(
+            "input_file",
+            {detector_calculator.name: "filelist"},
+            comment="MCPL file generated before the sample",
+        )
+        myinstr.master["input_file"] = '"sDETECTOR.mcpl.gz"'
+
+        detector_all = detector_calculator.add_component(
             "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE="detector_arm"
         )
         detector_all.xwidth = 0.05
@@ -691,7 +732,7 @@ class ThALES(Instrument):
         myinstr.master["a2"] = 79.10 * ureg.degree
         myinstr.master["a3"] = 0 * ureg.degree
         myinstr.master["a4"] = 60 * ureg.degree
-        myinstr.master["a6"] = 74.34 * ureg.degree
+        myinstr.master["a6"] = 79.10 * ureg.degree
         # ------------------------------ sample parameters
         # Do not add sample parameters. They should be modified externally retrieving
         # sample with .sample
