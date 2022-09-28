@@ -31,11 +31,11 @@ class SPB_SFX(Instrument):
     """:class: SPB/SFX Instrument"""
 
     def __init__(self):
-        super().__init__("SPB_SFX", instrument_base_dir="SPB_SFX_instrument")
+        super().__init__("SPB_SFX")
         self.samples = ["2NIP"]
         myinstr = self
         source = GaussianSourceCalculator(
-            "gaussian_source", instrument_base_dir=myinstr.instrument_base_dir
+            "gaussian_source"
         )
         source.parameters["photon_energy"] = 9000
         source.parameters["photon_energy_relative_bandwidth"] = 1e-3
@@ -53,10 +53,9 @@ class SPB_SFX(Instrument):
 
         propogation = WPGPropagationCalculator(
             name="WPGCalculator",
-            input=source_data,
-            instrument_base_dir=myinstr.instrument_base_dir,
+            input=source_data
         )
-        propogation.parameters["beamline_config_file"] = "./simple_beamline.py"
+        # propogation.parameters["beamline_config_file"] = "./simple_beamline.py"
         prop_data_collection = propogation.output
         prop_data = prop_data_collection.to_list()[0]
 
@@ -66,17 +65,13 @@ class SPB_SFX(Instrument):
         pmi_input = DataCollection(sample_data, prop_data)
         pmi = SimpleScatteringPMICalculator(
             name="PMI_calculator",
-            input=pmi_input,
-            instrument_base_dir=myinstr.instrument_base_dir,
-        )
+            input=pmi_input        )
         pmi_data_collection = pmi.output
         pmi_data = pmi_data_collection.to_list()[0]
 
         diffraction = SingFELDiffractionCalculator(
             name="Diffr_calculator",
-            input=pmi_data,
-            instrument_base_dir=myinstr.instrument_base_dir,
-        )
+            input=pmi_data)
         diffraction.parameters["calculate_Compton"] = False
         diffraction.parameters["slice_interval"] = 100
         diffraction.parameters["slice_index_upper"] = 1
