@@ -10,6 +10,10 @@ from SimExLite.PropagationCalculators import WPGPropagationCalculator
 from SimExLite.PMICalculators import SimpleScatteringPMICalculator
 from SimExLite.DiffractionCalculators import SingFELDiffractionCalculator
 
+import pint
+
+ureg = pint.get_application_registry()
+
 
 ############## Mandatory method
 def get_flavours():
@@ -30,14 +34,26 @@ def def_instrument(flavour: Optional[str] = None):
 class SPB_SFX(Instrument):
     """:class: SPB/SFX Instrument"""
 
+    def set_sample_by_file(self, sample_file: str) -> None:
+        propogation = self.calculators["WPGCalculator"]
+        prop_data_collection = propogation.output
+        prop_data = prop_data_collection.to_list()[0]
+
+        # sample_file = "./2nip.pdb"
+        sample_data = SampleData.from_file(sample_file, ASEFormat, "sample_data")
+
+        self.calculators["PMI_calculator"].input = DataCollection(
+            sample_data, prop_data
+        )
+
     def __init__(self):
         super().__init__("SPB_SFX")
         self.samples = ["2NIP"]
         myinstr = self
-        source = GaussianSourceCalculator(
-            "gaussian_source"
-        )
+        source = GaussianSourceCalculator("gaussian_source")
         source.parameters["photon_energy"] = 9000
+        source.parameters["photon_energy"].add_interval(4000, 12000, True)
+
         source.parameters["photon_energy_relative_bandwidth"] = 1e-3
         source.parameters["beam_diameter_fwhm"] = 1e-4
         source.parameters["pulse_energy"] = 2e-3
@@ -51,27 +67,21 @@ class SPB_SFX(Instrument):
         source.parameters["z"] = 100
         source_data = source.output
 
-        propogation = WPGPropagationCalculator(
-            name="WPGCalculator",
-            input=source_data
-        )
+        propogation = WPGPropagationCalculator(name="WPGCalculator", input=source_data)
         # propogation.parameters["beamline_config_file"] = "./simple_beamline.py"
         prop_data_collection = propogation.output
         prop_data = prop_data_collection.to_list()[0]
 
-        sample_file = "./2nip.pdb"
-        sample_data = SampleData.from_file(sample_file, ASEFormat, "sample_data")
-
-        pmi_input = DataCollection(sample_data, prop_data)
+        # pmi_input = DataCollection(sample_data, prop_data)
         pmi = SimpleScatteringPMICalculator(
-            name="PMI_calculator",
-            input=pmi_input        )
+            name="PMI_calculator", input=DataCollection()
+        )  # pmi_input)
         pmi_data_collection = pmi.output
         pmi_data = pmi_data_collection.to_list()[0]
 
         diffraction = SingFELDiffractionCalculator(
-            name="Diffr_calculator",
-            input=pmi_data)
+            name="Diffr_calculator", input=pmi_data
+        )
         diffraction.parameters["calculate_Compton"] = False
         diffraction.parameters["slice_interval"] = 100
         diffraction.parameters["slice_index_upper"] = 1
@@ -88,3 +98,12 @@ class SPB_SFX(Instrument):
         myinstr.add_calculator(propogation)
         myinstr.add_calculator(pmi)
         myinstr.add_calculator(diffraction)
+
+        myinstr.add_master_parameter(
+            "energy",
+            {source.name: "photon_energy"},
+            comment=source.parameters["photon_energy"].comment,
+            unit="eV",
+        )
+        myinstr.master["energy"] = 8000
+        myinstr.master["energy"].add_interval(6000, 8000, True)
