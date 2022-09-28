@@ -8,7 +8,7 @@ instrument_name = "SPB-SFX"
 
 repo.ls_flavours("EuXFEL", instrument_name, "HEAD", "simex-lite")
 
-# I don't think it's a good idea to always force the system to install the requirements. This will get the user's environment messed up easily.
+# I dout it's a good idea to always force the system to install the requirements. This will get the user's environment messed up easily.
 SPB_SFX = repo.load("EuXFEL", instrument_name, "HEAD", "simex-lite")
 
 SPB_SFX.set_instrument_base_dir("./SPB_SFX_instrument")
