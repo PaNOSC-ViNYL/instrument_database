@@ -52,7 +52,7 @@ class SPB_SFX(Instrument):
         myinstr = self
         source = GaussianSourceCalculator("gaussian_source")
         source.parameters["photon_energy"] = 9000
-        source.parameters["photon_energy"].add_interval(4000, 12000, True)
+        source.parameters["photon_energy"].add_interval(4000, 28000, True)
 
         source.parameters["photon_energy_relative_bandwidth"] = 1e-3
         source.parameters["beam_diameter_fwhm"] = 1e-4
@@ -69,8 +69,6 @@ class SPB_SFX(Instrument):
 
         propogation = WPGPropagationCalculator(name="WPGCalculator", input=source_data)
         # propogation.parameters["beamline_config_file"] = "./simple_beamline.py"
-        prop_data_collection = propogation.output
-        prop_data = prop_data_collection.to_list()[0]
 
         # pmi_input = DataCollection(sample_data, prop_data)
         pmi = SimpleScatteringPMICalculator(
@@ -105,5 +103,54 @@ class SPB_SFX(Instrument):
             comment=source.parameters["photon_energy"].comment,
             unit="eV",
         )
-        myinstr.master["energy"] = 8000
-        myinstr.master["energy"].add_interval(6000, 8000, True)
+
+        myinstr.add_master_parameter(
+            "photon_energy_relative_bandwidth",
+            {source.name: "photon_energy_relative_bandwidth"},
+            comment=source.parameters["photon_energy_relative_bandwidth"].comment,
+        )
+
+        myinstr.add_master_parameter(
+            "pulse_energy",
+            {source.name: "pulse_energy"},
+            comment=source.parameters["pulse_energy"].comment,
+            unit="joule",
+        )
+
+        myinstr.add_master_parameter(
+            "number_of_diffraction_patterns",
+            {diffraction.name: "number_of_diffraction_patterns"},
+            comment=diffraction.parameters["number_of_diffraction_patterns"].comment,
+        )
+
+        myinstr.add_master_parameter(
+            "pixel_size",
+            {diffraction.name: "pixel_size"},
+            comment=diffraction.parameters["pixel_size"].comment,
+            unit="meter",
+        )
+
+        myinstr.add_master_parameter(
+            "pixels_x",
+            {diffraction.name: "pixels_x"},
+            comment=diffraction.parameters["pixels_x"].comment,
+        )
+
+        myinstr.add_master_parameter(
+            "pixels_y",
+            {diffraction.name: "pixels_y"},
+            comment=diffraction.parameters["pixels_y"].comment,
+        )
+
+        myinstr.add_master_parameter(
+            "distance",
+            {diffraction.name: "distance"},
+            comment=diffraction.parameters["distance"].comment,
+            unit="meter",
+        )
+
+        myinstr.add_master_parameter(
+            "diffraction_mpi_command",
+            {diffraction.name: "mpi_command"},
+            comment=diffraction.parameters["mpi_command"].comment,
+        )
