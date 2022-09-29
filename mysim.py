@@ -26,6 +26,11 @@ myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 
+
+myinstrument.sim_neutrons(10)
+myinstrument.run()
+sys.exit(0)
+
 # myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)
 myinstrument.sim_neutrons(10000000)
 myinstrument.set_instrument_base_dir(basedir + "generation/")

@@ -26,6 +26,9 @@ from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 # ------------------------------ Mandatory classes to use
 from libpyvinyl.Instrument import Instrument
 from libpyvinyl.Parameters import Parameter
+from institutes.ILL.instruments.ThALES.HEAD.mcstas.McStasInstrumentBase import (
+    McStasInstrumentBase,
+)
 
 # ------------------------------ Extras
 import os  # to add the path of custom mcstas components
@@ -69,41 +72,36 @@ def def_instrument(flavour: Optional[str] = None):
         raise RuntimeError(f"Flavour {flavour} not implement")
 
 
-class ThALES(Instrument):
+class ThALES(McStasInstrumentBase):
     """:class: Instrument class defining the ThALES instrument at ILL"""
 
     # ------------------------------ utility methods made available for the users
-    def sim_neutrons(self, number) -> None:
-        self.calculators[self._calculator_name].settings(ncount=number)
 
     def wavelength_to_angle(self, value: [float, pint.Quantity]) -> pint.Quantity:
         """Conversion from wavelength to angle
         for Bragg law with lattice parameter
         equal to the monochromator lattice"""
-        d_lattice = self.parameters[self._calculator_name]["monochromator_d"].pint_value
+        d_lattice = self.parameters["OriginCalc"]["monochromator_d"].pint_value
         return (math.asin(value / 2.0 / d_lattice) * 2 * ureg.radians).to("degrees")
 
     def energy_to_angle(self, value: [float, pint.Quantity]) -> pint.Quantity:
         """Conversion from energy to angle
         for Bragg law with lattice parameter
         equal to the monochromator lattice"""
-        d_lattice = self.parameters[self._calculator_name]["monochromator_d"].pint_value
+        d_lattice = self.parameters["OriginCalc"]["monochromator_d"].pint_value
         wl = math.sqrt(81.80421 * ureg.meV / value) * ureg.angstrom
         return self.wavelength_to_angle(wl).to("degrees")
 
     # ------------------------------ Specialized methods required by the Instrument class [mandatory]
-    #    @property
-    #    def sample_environment(self) -> Optional[Any]:
-    #        """Return the current sample environment object"""
-    #        return super().sample_environment
 
     # this implements what is foreseen in the libpyvinyl.Instrument class
     def set_sample_by_name(self, name: str) -> None:
         """Set the sample component
-        Always put a sample relative to the __sample_arm and after the __sample_arm component
+        Always put a sample relative to the _sample_arm and after the _sample_arm component
         In case of an Sqw sample, a parameter Sqw_file is added"""
         # print(f"Setting sample to: {name}")
-        mycalculator = self.calculators[self._calculator_name]
+        mycalculator = self._calculator_with_sample
+
         if self.sample is not None:
             mycalculator.remove_component(self.sample)
         if name in ["empty", "Empty", "None", "none"]:
@@ -115,8 +113,8 @@ class ThALES(Instrument):
                 "V_sample",
                 AT=[0, 0, 0],
                 ROTATED=[0, "a4", 0],
-                RELATIVE=self.__sample_arm,
-                after=self.__sample_arm,
+                RELATIVE=self._sample_arm,
+                after=self._sample_arm,
             )
             v_sample = self.sample
             v_sample.radius = 0.01
@@ -134,10 +132,10 @@ class ThALES(Instrument):
             self.sample = mycalculator.add_component(
                 self.sample_name,
                 "Isotropic_Sqw",
-                after=self.__sample_arm,
+                after=self._sample_arm,
                 AT=[0, 0, 0],
                 ROTATED=[0, "a4", 0],
-                RELATIVE=self.__sample_arm,
+                RELATIVE=self._sample_arm,
             )
             s = self.sample
             s.Sqw_coh = 0
@@ -213,12 +211,12 @@ class ThALES(Instrument):
 
     def set_sample_environment_by_name(self, name: str) -> None:
         """Adding a sample environment to the simulation"""
-        if self.__sample_environment_arm is None:
+        if self._sample_environment_arm is None:
             raise Exception("No sample environment arm defined in the instrument")
-        if self.sample_environment is not None:
-            self.__remove_sample_environment()
+        # if self.sample_environment is not None:
+        # self.__remove_sample_environment()
 
-        mycalculator = self.calculators[self._calculator_name]
+        mycalculator = self._calculator_with_sample
         if name in ["empty", "Empty", "None", "none"]:
             self.sample_environment = None
             return
@@ -231,7 +229,7 @@ class ThALES(Instrument):
                 mycalculator,
                 "10T",
                 [0, 0, 0],
-                self.__sample_environment_arm,
+                self._sample_environment_arm,
                 2,
             )
         else:
@@ -256,29 +254,33 @@ class ThALES(Instrument):
         union_master_after_sample.allow_inside_start = 1
 
     # ------------------------------ Internal methods (not available to users)
-    def __remove_sample_environment(self) -> None:
-        """Remove any previously defined sample environment"""
-        if self.__sample_environment is not None:
-            mycalculator = self.calculators[-1]  # there is only 1
-            mycalculator.remove_component(self.__sample_environment)
+    # def __remove_sample_environment(self) -> None:
+    #    """Remove any previously defined sample environment"""
+    #    if self.__sample_environment is not None:
+    #        mycalculator = self.calculators[-1]  # there is only 1
+    #        mycalculator.remove_component(self.__sample_environment)
+
+    #    def set_instrument_base_dir(self, dirname) -> None:
+    #        """ """
+    #        for calc in self.calculators:
+    #            c = self.calculators[calc]
+    #            c.input_path = dirname
+    #        super().set_instrument_base_dir(dirname)
 
     # ------------------------------ The instrument definition goes in the __init__
     def __init__(self):
         """Here the real definition of the instrument is performed"""
 
-        super().__init__("ThALES", instrument_base_dir=".")
+        super().__init__("ThALES")
+
         self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
         self.sample_environments = ["None", "10T", "Orange"]
 
-        # this is specific for McStasscript instruments:
-        # the components of the position for the sample and sample environment
-        self.__sample_environment_arm = None
-        self.__sample_arm = None
         #
-        self._calculator_name = "ThALEScalc"
-        self.__sample_hash = None
+        # self._calculator_name = "Origin"
         # ------------------------------ some local variables
         myinstr = self
+
         gR0 = 1
         gQc = 0.0216
         gAlpha = 4.07
@@ -290,14 +292,9 @@ class ThALES(Instrument):
         dist_sample_ana = 1.260  # distance between sample and analyzer
         dist_ana_det = 0.640  # distance between analyzer and detector
 
-        # ------------------------------
-        mycalculator = instr.McStas_instr(self._calculator_name)
-        # this is to load custom components
-        mycalculator.component_reader.add_custom_component_dir(
-            os.path.dirname(__file__) + "/../../../../../../mcstas/components"
-        )
-
-        myinstr.add_calculator(mycalculator)
+        # ------------------------------------------------------------
+        # Start with a first section and declaring its parameters
+        mycalculator, Origin = self.add_new_section("OriginCalc")
 
         a2 = mycalculator.add_parameter(
             "double",
@@ -308,43 +305,6 @@ class ThALES(Instrument):
         )
         a2.add_interval(33, 128, True)
 
-        a3 = mycalculator.add_parameter(
-            "double",
-            "a3",
-            comment="sample table rotation angle",
-            unit="degree",
-            value=0,
-        )
-        a4 = mycalculator.add_parameter(
-            "double",
-            "a4",
-            comment="Angle between reflected by sample and incident beams",
-            unit="degree",
-            value=0,
-        )
-        a4.add_interval(-128, 128, True)
-
-        a6 = mycalculator.add_parameter(
-            "double",
-            "a6",
-            comment="Angle between reflected by analyzer and incident beams",
-            unit="degree",
-            value=33,
-        )
-
-        # example of how to add a custom parameter class derived from libpyvinyl.Parameter
-        # a6 = BraggAngle(
-        #     "a6",
-        #     comment="Angle between reflected by analyzer and incident beams",
-        #     unit="degree",
-        # )
-        # a6.type = "double"
-        # a6.value = 33
-        # mycalculator.parameters.add(a6)
-
-        #        mycalculator.add_parameter(
-        #            "string", "filelist", comment="name of MCPL input file", value='"none"'
-        #        )
         monochromator_d = mycalculator.add_parameter(
             "double",
             "monochromator_d",
@@ -352,28 +312,6 @@ class ThALES(Instrument):
             value=3.355,
             unit="angstrom",
         )
-
-        a6.d_lattice = monochromator_d.pint_value
-
-        # ------------------------------ Adding parameters related to the sample
-        #        mycalculator.add_parameter("double", "width", unit="m", comment="width of a box shaped sample",
-        #                                   value=-1)
-
-        #   mycalculator.add_parameter("double", "q_x_elastic", value=1.3139)
-        #   mycalculator.add_parameter("double", "q_z_elastic", value=0.146)
-
-        mycalculator.add_declare_var("double", "flag")
-
-        #   mycalculator.add_declare_var("double", "A3_offset")
-        #   mycalculator.add_declare_var("int", "elastic_flag_instr_1")
-        #   mycalculator.add_declare_var("int", "elastic_flag_instr_2")
-
-        mycalculator.append_initialize("  flag         = 0; ")
-        #    mycalculator.append_initialize("  A3_offset=0; ")
-        #    mycalculator.append_initialize("  A3_offset=atan(q_z_elastic/q_x_elastic)*RAD2DEG; ")
-
-        Origin = mycalculator.add_component("Origin", "Progress_bar")
-        Origin.set_AT(["0", "0", "0"], RELATIVE="ABSOLUTE")
 
         # imported source and associated parameters: check the source file!
         # - lambda
@@ -398,8 +336,8 @@ class ThALES(Instrument):
             'printf("lambda: %.2f +/- %.2f\\n", lambda, dlambda);'
         )
         mycalculator.append_initialize('printf("energy: %.2f +/- %.2f\\n", Ei, dE);')
-        # lambda2energy = "81.80421/(" + wavelength.name + "*" + wavelength.name + ")"
 
+        # ------------------------------------------------------------
         # start of the guide
         H5 = mycalculator.add_component("H5", "Arm")
         H5.set_AT([0, 0, 2.155], RELATIVE=HCS)
@@ -562,48 +500,36 @@ class ThALES(Instrument):
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
             "Arm",
-            AT=[0, 0, ThALES_L],
-            RELATIVE="Monochromator_Out",
+            AT=[0, 0, 0],
+            RELATIVE=before_sample_slit,
         )
 
         addMonitor(mycalculator, "sample_IN")
 
-        sample_mcpl = mycalculator.add_component(
-            "sample_mcpl", "MCPL_output", AT=[0, 0, 0], RELATIVE=sample_mcpl_arm
+        # ------------------------------------------------------------
+        # this new section contains the sample and the sample environment
+        mycalculator, sample_mcpl_arm = self.add_new_section(
+            "SampleCalc", sample_mcpl_arm, "sSAMPLE", True
         )
-        sample_mcpl.filename = '"sSAMPLE"'
+        # ------------------------------------------------------------
 
-        self.__sample_environment_arm = mycalculator.add_component(
-            "sample_environment_arm",
-            "Arm",
-            AT=[0, 0, 0],
-            ROTATED=[0, "a3", 0],
-            RELATIVE=sample_mcpl_arm,
+        a4 = mycalculator.add_parameter(
+            "double",
+            "a4",
+            comment="Angle between reflected by sample and incident beams",
+            unit="degree",
+            value=0,
         )
-        self.__sample_arm = mycalculator.add_component(
-            "sample_arm",
-            "Arm",
-            AT=[0, 0, 0],
-            ROTATED=[0, "a3", 0],
-            RELATIVE=sample_mcpl_arm,
-        )
+        a4.add_interval(-128, 128, True)
 
-        # res_sample = mycalculator.add_component("res_sample", "Res_sample")
-        # res_sample.thickness = 0.001
-        # res_sample.radius = 0.005
-        # res_sample.E0 = 5
-        # res_sample.dE = 0.25
-        # res_sample.focus_xw = 0.03
-        # res_sample.focus_yh = 0.04
-        # res_sample.yheight = 0.05
-        # res_sample.target_index = 4
-        # res_sample.set_WHEN("SAMPLE==0")
-        # res_sample.set_AT([0, 0, 0], RELATIVE="sample_arm")
+        self._sample_environment_arm.set_AT([0, 0, 0.250], RELATIVE=sample_mcpl_arm)
+
+        # default sample
         sample = self.set_sample_by_name("vanadium")
 
         Sample_Out = mycalculator.add_component("Sample_Out", "Arm")
-        Sample_Out.set_AT([0, 0, 0], RELATIVE=self.__sample_arm)
-        Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self.__sample_arm)
+        Sample_Out.set_AT([0, 0, 0], RELATIVE=self._sample_arm)
+        Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
         addMonitor(mycalculator, "sample_out", 0)
 
@@ -617,13 +543,19 @@ class ThALES(Instrument):
         Ana_Cradle = mycalculator.add_component("Ana_Cradle", "Arm")
         Ana_Cradle.set_AT([0, 0, dist_sample_ana], RELATIVE=Sample_Out)
 
-        Ana_Cradle_mcpl = mycalculator.add_component(
-            "Ana_Cradle_mcpl",
-            "MCPL_output",
-            AT=[0, 0, 0],
-            RELATIVE=Ana_Cradle,
+        # ------------------------------------------------------------
+        mycalculator, Ana_Cradle = self.add_new_section(
+            "AnalyzerCalc", Ana_Cradle, "sANALYZER"
         )
-        Ana_Cradle_mcpl.filename = '"sANALYZER"'
+        # ------------------------------------------------------------
+
+        a6 = mycalculator.add_parameter(
+            "double",
+            "a6",
+            comment="Angle between reflected by analyzer and incident beams",
+            unit="degree",
+            value=33,
+        )
 
         addMonitor(mycalculator, "analyzer_IN")
 
@@ -639,11 +571,11 @@ class ThALES(Instrument):
         analyzer.DM = 3.355  # PG 002
         analyzer.width = 0.17
         analyzer.height = 0.13
-        analyzer.set_AT([0, 0, 0], RELATIVE="Ana_Cradle")
-        analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE="Ana_Cradle")
+        analyzer.set_AT([0, 0, 0], RELATIVE=Ana_Cradle)
+        analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE=Ana_Cradle)
 
         Ana_Out = mycalculator.add_component(
-            "Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE="Ana_Cradle"
+            "Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE=Ana_Cradle
         )
 
         addMonitor(mycalculator, "analyzer_slit_IN")
@@ -666,52 +598,21 @@ class ThALES(Instrument):
         )
         addMonitor(mycalculator, "detector", [0, 0, 0])
 
-        Vout = mycalculator.add_component(
-            "vout", "MCPL_output", AT=[0, 0, 0], RELATIVE="detector_arm"
+        # ------------------------------------------------------------
+        mycalculator, detector_arm = self.add_new_section(
+            "DetectorCalc", detector_arm, "sDETECTOR"
         )
-        Vout.filename = '"sDETECTOR"'
+        # ------------------------------------------------------------
 
-        # ------------------------------
-        detector_calculator = instr.McStas_instr("DetectorCalc")
-        # this is to load custom components
-        detector_calculator.component_reader.add_custom_component_dir(
-            os.path.dirname(__file__) + "/../../../../../../mcstas/components"
-        )
+        #        myinstr.add_master_parameter(
+        #            "input_file",
+        #            {detector_calculator.name: "filelist"},
+        #            comment="MCPL file generated before the sample",
+        #        )
+        #        myinstr.master["input_file"] = '"sDETECTOR.mcpl.gz"'
 
-        myinstr.add_calculator(detector_calculator)
-
-        Origin = detector_calculator.add_component("Origin", "Progress_bar")
-        Origin.set_AT(["0", "0", "0"], RELATIVE="ABSOLUTE")
-
-        detector_arm = detector_calculator.add_component(
-            "detector_arm", "Arm", AT=[0, 0, 0], RELATIVE="ABSOLUTE"
-        )
-
-        vin = detector_calculator.add_component(
-            "Vin",
-            "MCPL_input",
-            AT=[0, 0, 0],
-            after="Origin",
-        )
-        #        vin.filelist = "filelist"
-        previous_calculator_name = list(myinstr.calculators.keys())[-2]
-        previous_calculator = myinstr.calculators[previous_calculator_name]
-        pr = previous_calculator
-        vin.filename = '"/tmp/ThALES/ThALEScalc/sDETECTOR.mcpl.gz"'  # str("../" + pr.calculator_base_dir + "/sDETECTOR.mcpl.gz")
-        #
-        detector_calculator.add_parameter(
-            "string", "filelist", comment="name of MCPL input file", value='"none"'
-        )
-
-        myinstr.add_master_parameter(
-            "input_file",
-            {detector_calculator.name: "filelist"},
-            comment="MCPL file generated before the sample",
-        )
-        myinstr.master["input_file"] = '"sDETECTOR.mcpl.gz"'
-
-        detector_all = detector_calculator.add_component(
-            "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE="detector_arm"
+        detector_all = mycalculator.add_component(
+            "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE=detector_arm
         )
         detector_all.xwidth = 0.05
         detector_all.yheight = 0.12
@@ -725,10 +626,10 @@ class ThALES(Instrument):
         # detector.set_AT([0, 0, dist_ana_det + 0.002], RELATIVE="Ana_Out")
 
         # ------------------------------ instrument parameters
-        myinstr.add_master_parameter("a2", {mycalculator.name: "a2"}, unit="degree")
-        myinstr.add_master_parameter("a3", {mycalculator.name: "a3"}, unit="degree")
-        myinstr.add_master_parameter("a4", {mycalculator.name: "a4"}, unit="degree")
-        myinstr.add_master_parameter("a6", {mycalculator.name: "a6"}, unit="degree")
+        myinstr.add_master_parameter("a2", {"OriginCalc": "a2"}, unit="degree")
+        myinstr.add_master_parameter("a3", {"SampleCalc": "a3"}, unit="degree")
+        myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
+        myinstr.add_master_parameter("a6", {"AnalyzerCalc": "a6"}, unit="degree")
         myinstr.master["a2"] = 79.10 * ureg.degree
         myinstr.master["a3"] = 0 * ureg.degree
         myinstr.master["a4"] = 60 * ureg.degree

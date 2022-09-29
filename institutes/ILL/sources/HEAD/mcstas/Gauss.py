@@ -25,6 +25,7 @@ def HCS_source(mcstas_instrument: McCode_instr) -> Component:
         "double", "dlambda", value=0, unit="angstrom"
     )
 
+    last_component = mcstas_instrument.get_last_component()
     HCS = mcstas_instrument.add_component("HCS", "Source_simple")
     HCS.radius = 0.21 / 2
     #    HCS.dist = 2.155
@@ -42,7 +43,7 @@ def HCS_source(mcstas_instrument: McCode_instr) -> Component:
     #    HCS.Lmax = 0
 
     HCS.gauss = 1
-    HCS.set_AT(["0", " 0", " 0"], RELATIVE="Origin")
+    HCS.set_AT(["0", " 0", " 0"], RELATIVE=last_component)
 
     # mcstas_instrument.add_parameter("lambda", comment="wavelength in angstroms")
     return HCS
