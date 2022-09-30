@@ -53,7 +53,7 @@ addCryostat = True
 
 ############## Mandatory method
 def get_flavours():
-    return ["full", "from_sample", "merge"]
+    return ["full", "from_sample", "merge", "nosection"]
 
 
 ############## Mandatory method
@@ -68,6 +68,8 @@ def def_instrument(flavour: Optional[str] = None):
         return ThALES_from_sample()
     elif flavour == "merge":
         return ThALES_merge()
+    elif flavour == "nosection":
+        return ThALES(False)
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
 
@@ -268,7 +270,7 @@ class ThALES(McStasInstrumentBase):
     #        super().set_instrument_base_dir(dirname)
 
     # ------------------------------ The instrument definition goes in the __init__
-    def __init__(self):
+    def __init__(self, do_section=True):
         """Here the real definition of the instrument is performed"""
 
         super().__init__("ThALES")

@@ -24,6 +24,7 @@ class McStasInstrumentBase(Instrument):
         self.__do_section = do_section
         self._temp_directory = "/dev/shm/mcstasscript/"
 
+        self._single_calculator = False
         # this is specific for McStasscript instruments:
         # the components of the position for the sample and sample environment
         self._sample_environment_arm = None
@@ -32,6 +33,36 @@ class McStasInstrumentBase(Instrument):
         self._calculator_with_sample = None
 
         self._sample_hash = None
+
+    def add_sample_arms(self, mycalculator, previous_component):
+        """The set_AT and set_ROTATE should be called afterwards.
+        Setting at the same position as the previous component by default"""
+
+        self._calculator_with_sample = mycalculator
+
+        self._sample_environment_arm = mycalculator.add_component(
+            "sample_environment_arm",
+            "Arm",
+            AT=[0, 0, 0],
+            RELATIVE=previous_component,
+        )
+
+        # do we want a sample rotation parameter by default?
+        self._sample_arm = mycalculator.add_component(
+            "sample_arm",
+            "Arm",
+            AT=[0, 0, 0],
+            ROTATED=[0, "sample_rotation", 0],
+            RELATIVE=previous_component,
+        )
+
+        a3 = mycalculator.add_parameter(
+            "double",
+            "sample_rotation",
+            comment="sample table rotation angle",
+            unit="degree",
+            value=0,
+        )
 
     def add_new_section(
         self, new_calcname, output_arm=None, section_name=None, hasSample=False
@@ -46,9 +77,15 @@ class McStasInstrumentBase(Instrument):
         Always returns the origin of the neutrons and sample and sample environments at that same position. They need to be displaced afterwards with a
         self._sample_environment_arm.set_AT([x,y,z], RELATIVE=vin)
         """
+
+        # This is to obtain the same instrument as a single McStas instrument
+
+        calculatorname = list(self.calculators.keys())[-1]
+        mycalculator = self.calculators[calculatorname]
+        vin = output_arm
+
         if output_arm is not None and self.__do_section:
-            calculatorname = list(self.calculators.keys())[-1]
-            oldcalculator = self.calculators[calculatorname]
+            oldcalculator = mycalculator
             output = oldcalculator.add_component(
                 section_name, "MCPL_output", AT=[0, 0, 0], RELATIVE=output_arm
             )
@@ -82,30 +119,7 @@ class McStasInstrumentBase(Instrument):
                 vin.filename = "vin_filename"
 
         if hasSample:
-            self._calculator_with_sample = mycalculator
-
-            self._sample_environment_arm = mycalculator.add_component(
-                "sample_environment_arm",
-                "Arm",
-                AT=[0, 0, 0],
-                # ROTATED=[0, "a3", 0],
-                RELATIVE=vin,
-            )
-            self._sample_arm = mycalculator.add_component(
-                "sample_arm",
-                "Arm",
-                AT=[0, 0, 0],
-                ROTATED=[0, "a3", 0],
-                RELATIVE=vin,
-            )
-
-            a3 = mycalculator.add_parameter(
-                "double",
-                "a3",
-                comment="sample table rotation angle",
-                unit="degree",
-                value=0,
-            )
+            add_sample_arms(mycalculator, vin)
 
         return (mycalculator, vin)
 
