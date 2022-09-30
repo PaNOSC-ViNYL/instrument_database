@@ -80,12 +80,9 @@ class McStasInstrumentBase(Instrument):
 
         # This is to obtain the same instrument as a single McStas instrument
 
-        calculatorname = list(self.calculators.keys())[-1]
-        mycalculator = self.calculators[calculatorname]
-        vin = output_arm
-
         if output_arm is not None and self.__do_section:
-            oldcalculator = mycalculator
+            calculatorname = list(self.calculators.keys())[-1]
+            oldcalculator = self.calculators[calculatorname]
             output = oldcalculator.add_component(
                 section_name, "MCPL_output", AT=[0, 0, 0], RELATIVE=output_arm
             )
@@ -103,6 +100,7 @@ class McStasInstrumentBase(Instrument):
 
             vin = Origin
             if output_arm is not None:
+                # this parameter is just to have some flexibility on the compiled instrument
                 mycalculator.add_parameter(
                     "string",
                     "vin_filename",
@@ -118,8 +116,14 @@ class McStasInstrumentBase(Instrument):
                 )
                 vin.filename = "vin_filename"
 
+                mycalculator.input = oldcalculator.output
+            else:
+                vin = output_arm
+                calculatorname = list(self.calculators.keys())[-1]
+                mycalculator = self.calculators[calculatorname]
+
         if hasSample:
-            add_sample_arms(mycalculator, vin)
+            self.add_sample_arms(mycalculator, vin)
 
         return (mycalculator, vin)
 

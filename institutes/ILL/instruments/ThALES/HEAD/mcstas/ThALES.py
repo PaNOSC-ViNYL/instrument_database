@@ -622,7 +622,9 @@ class ThALES(McStasInstrumentBase):
 
         # ------------------------------ instrument parameters
         myinstr.add_master_parameter("a2", {"OriginCalc": "a2"}, unit="degree")
-        myinstr.add_master_parameter("a3", {"SampleCalc": "a3"}, unit="degree")
+        myinstr.add_master_parameter(
+            "a3", {"SampleCalc": "sample_rotation"}, unit="degree"
+        )
         myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
         myinstr.add_master_parameter("a6", {"AnalyzerCalc": "a6"}, unit="degree")
         myinstr.master["a2"] = 79.10 * ureg.degree
