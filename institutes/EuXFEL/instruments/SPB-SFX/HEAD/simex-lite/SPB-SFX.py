@@ -17,7 +17,7 @@ ureg = pint.get_application_registry()
 
 ############## Mandatory method
 def get_flavours():
-    return ["full"]
+    return ["AGIPD_detector", "JUNGFRAU_detector", "DEMO"]
 
 
 def def_instrument(flavour: Optional[str] = None):
@@ -25,8 +25,12 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour not in get_flavours() and flavour != "":
         raise RuntimeError(f"Flavour {flavour} not in the flavour list")
 
-    if flavour in [None, "None", "", "full"]:
+    if flavour in [None, "None", "", "DEMO"]:
         return SPB_SFX()
+    elif flavour == "AGIPD_detector":
+        return SPB_SFX_AGIPD()
+    elif flavour == "JUNGFRAU_detector":
+        return SPB_SFX_JUNGFRAU()
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
 
@@ -34,21 +38,9 @@ def def_instrument(flavour: Optional[str] = None):
 class SPB_SFX(Instrument):
     """:class: SPB/SFX Instrument"""
 
-    def set_sample_by_file(self, sample_file: str) -> None:
-        propogation = self.calculators["WPGCalculator"]
-        prop_data_collection = propogation.output
-        prop_data = prop_data_collection.to_list()[0]
-
-        # sample_file = "./2nip.pdb"
-        sample_data = SampleData.from_file(sample_file, ASEFormat, "sample_data")
-
-        self.calculators["PMI_calculator"].input = DataCollection(
-            sample_data, prop_data
-        )
-
     def __init__(self):
         super().__init__("SPB_SFX")
-        self.samples = ["2NIP"]
+        # self.samples = ["2NIP"]
         myinstr = self
         source = GaussianSourceCalculator("gaussian_source")
         source.parameters["photon_energy"] = 9000
@@ -98,11 +90,12 @@ class SPB_SFX(Instrument):
         myinstr.add_calculator(diffraction)
 
         myinstr.add_master_parameter(
-            "energy",
+            "photon_energy",
             {source.name: "photon_energy"},
             comment=source.parameters["photon_energy"].comment,
             unit="eV",
         )
+        
 
         myinstr.add_master_parameter(
             "photon_energy_relative_bandwidth",
@@ -124,25 +117,6 @@ class SPB_SFX(Instrument):
         )
 
         myinstr.add_master_parameter(
-            "pixel_size",
-            {diffraction.name: "pixel_size"},
-            comment=diffraction.parameters["pixel_size"].comment,
-            unit="meter",
-        )
-
-        myinstr.add_master_parameter(
-            "pixels_x",
-            {diffraction.name: "pixels_x"},
-            comment=diffraction.parameters["pixels_x"].comment,
-        )
-
-        myinstr.add_master_parameter(
-            "pixels_y",
-            {diffraction.name: "pixels_y"},
-            comment=diffraction.parameters["pixels_y"].comment,
-        )
-
-        myinstr.add_master_parameter(
             "distance",
             {diffraction.name: "distance"},
             comment=diffraction.parameters["distance"].comment,
@@ -154,3 +128,44 @@ class SPB_SFX(Instrument):
             {diffraction.name: "mpi_command"},
             comment=diffraction.parameters["mpi_command"].comment,
         )
+
+        myinstr.master["photon_energy"] = source.parameters["photon_energy"].value_no_conversion
+        myinstr.master["photon_energy_relative_bandwidth"] = source.parameters["photon_energy_relative_bandwidth"].value_no_conversion
+        myinstr.master["pulse_energy"] = source.parameters["pulse_energy"].value_no_conversion
+        myinstr.master["number_of_diffraction_patterns"] = diffraction.parameters["number_of_diffraction_patterns"].value_no_conversion
+        myinstr.master["distance"] = diffraction.parameters["distance"].value_no_conversion
+        myinstr.master["diffraction_mpi_command"] = diffraction.parameters["mpi_command"].value_no_conversion
+
+    def set_sample_by_file(self, sample_file: str) -> None:
+        propogation = self.calculators["WPGCalculator"]
+        prop_data_collection = propogation.output
+        prop_data = prop_data_collection.to_list()[0]
+
+        # sample_file = "./2nip.pdb"
+        sample_data = SampleData.from_file(sample_file, ASEFormat, "sample_data")
+
+        self.calculators["PMI_calculator"].input = DataCollection(
+            sample_data, prop_data
+        )
+
+
+class SPB_SFX_AGIPD(SPB_SFX):
+    """:class: SPB/SFX Instrument with the AGIPD detector"""
+
+    def __init__(self):
+        super().__init__()
+        diffraction = self.calculators["Diffr_calculator"]
+        diffraction.parameters["pixel_size"] = 2e-4  # meter
+        diffraction.parameters["pixels_x"] = 1024
+        diffraction.parameters["pixels_y"] = 1024
+
+
+class SPB_SFX_JUNGFRAU(SPB_SFX):
+    """:class: SPB/SFX Instrument with the JUNGFRAU detector"""
+
+    def __init__(self):
+        super().__init__()
+        diffraction = self.calculators["Diffr_calculator"]
+        diffraction.parameters["pixel_size"] = 7.5e-05  # meter
+        diffraction.parameters["pixels_x"] = 2048
+        diffraction.parameters["pixels_y"] = 2048

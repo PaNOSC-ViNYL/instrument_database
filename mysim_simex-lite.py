@@ -15,23 +15,34 @@ import pint
 ureg = pint.get_application_registry()
 
 instrument_name = "SPB-SFX"
+flavour = ""
+# flavour = "AGIPD_detector"
+# flavour = "JUNGFRAU_detector"
+
+base_dir = f"./SPB_SFX_instrument_{flavour}"
 
 repo.ls_flavours("EuXFEL", instrument_name, "HEAD", "simex-lite")
 
-SPB_SFX = repo.load("EuXFEL", instrument_name, "HEAD", "simex-lite")
+# SPB_SFX = repo.load("EuXFEL", instrument_name, "HEAD", "simex-lite")
+SPB_SFX = repo.load("EuXFEL", instrument_name, "HEAD", "simex-lite", flavour)
+
 
 print(SPB_SFX.master)
-# print(SPB_SFX)
 
 # shutil.rmtree("./SPB_SFX_instrument", ignore_errors=True)
+shutil.rmtree(base_dir, ignore_errors=True)
 
-SPB_SFX.set_instrument_base_dir("./SPB_SFX_instrument")
+# SPB_SFX.set_instrument_base_dir("./SPB_SFX_instrument")
+SPB_SFX.set_instrument_base_dir(base_dir)
 
 SPB_SFX.set_sample_by_file(
     "institutes/EuXFEL/instruments/SPB-SFX/HEAD/simex-lite/2nip.pdb"
 )
-# SPB_SFX.master["energy"] = 6000
-SPB_SFX.master["energy"] = 20000
+SPB_SFX.master["photon_energy"] = 6000
+# SPB_SFX.master["energy"] = 20000
+
+print(SPB_SFX.master)
+print(SPB_SFX)
 
 SPB_SFX.run()
 
