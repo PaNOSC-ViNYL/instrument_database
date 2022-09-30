@@ -1,0 +1,43 @@
+
+
+cd "/tmp/ThALES_scan"
+CALCNAME="ThALEScalc"
+FILE="/".CALCNAME."/sample_IN_DEBUG."
+#SCANPOINTS_RV="1.00 1.25 1.50 1.75 2.00"
+#SCANPOINTS_RH="2.00 2.50 3.00 3.50 4.00"
+SCANPOINTS_RH="0.50"
+SCANPOINTS_RV="1.00 1.25 1.50 1.50 2.00 2.50"
+SCANPOINTS_A2="33 45 60 75 90 105 120 128"
+#SCANPOINTS_A2="75 90"
+
+set auto fix
+set offsets 0.,0., graph 0.1, graph 0.01
+set term pdf size 8in,8in
+set term pdf size 24in,8in fontscale 1.2
+set pointsize 0.5
+set output '/tmp/ThALES_scan/optim_rv.pdf'
+
+#set key tmargin horizontal
+
+do for [A2 in SCANPOINTS_A2]{
+   cd A2
+   pwd
+   set title A2
+   set multiplot layout 1,3
+   
+   do for [VAR in "x y E"]{
+   
+     set xlabel VAR
+     unset ytics
+     set ylabel "Intensity [a.u.]" offset 0
+     
+   plot  for[rv in SCANPOINTS_RV] for[rh in SCANPOINTS_RH] "rv_".rv."-rh_".rh.FILE.VAR u 1:2:3 w yerr t rv."-".rh #, "generation".FILE.VAR u 1:2:3 w yerr t "generation"
+     
+   }
+   unset multiplot
+   cd "../"
+   
+   }
+
+
+set output

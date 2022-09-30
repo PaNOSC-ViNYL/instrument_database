@@ -1,0 +1,185 @@
+set term x11 1 enhanced
+cd ARGV[1]
+
+set palette defined ( 0 'black', 1 'blue',  10000 'light-green',  40000 'dark-red', 40001 'purple')
+#set palette gray
+
+set style line 1 lt 1 lc "black" pt 7
+set style line 2 lt 1 lc "blue" pt 7
+set style line 3 lt 1 lc "blue" pt 6
+set style line 4 lt 1 lc "red" pt 7
+set style line 5 lt 1 lc "red" pt 6
+set style line 6 lt 1 lc "green" pt 7
+set style line 7 lt 1 lc "green" pt 6
+set style line 8 lt 1 lc "orange" pt 7
+set style line 9 lt 1 lc "orange" pt 6
+set style line 10 lt 1 lc "black" pt 6
+
+
+_intensity_label_ = "Relative Intensity [normalized area under the curve]"
+
+MAX_FILES=13
+array files[MAX_FILES] = [ "H5", "H5_1a", "H5_1b","H53_D", "H53_7", "slit_A", "mono_in", "mono_out_rot", "sample_IN", "sample_out", "slit_B", "analyzer_IN", "detector" ]
+array titles[MAX_FILES] = [ "source", "H5 1a", "H5 1b", "elliptic IN", "elliptic OUT",  "slit OUT", "mono IN", "mono OUT", "sample IN", "sample OUT", "slit B", "analyzer IN", "detector"]
+array intensity[MAX_FILES]
+ENERGY_FILES_MIN=7
+ENERGY_FILES_MAX=9
+
+#MAX_FILES=2
+#array files[MAX_FILES] = [ "H5", "H5_1a", "H5_1b","H53_D", "H53_7", "slit_A", "mono_in", "mono_out_rot", "sample", "sample_out", "slit_B", "analyzer_IN", "detector" ]
+#array titles[MAX_FILES] = [ "source", "H5 1a", "H5 1b", "elliptic IN", "elliptic OUT",  "slit OUT", "mono IN", "mono OUT", "sample IN", "sample OUT", "slit B", "analyzer IN", "detector"]
+#array intensity[MAX_FILES]
+#array files[MAX_FILES] =  ["before_slit","detector"]
+#array titles[MAX_FILES] = ["before_slit","detector"]
+#array intensity[MAX_FILES]
+#ENERGY_FILES_MIN=MAX_FILES
+#ENERGY_FILES_MAX=MAX_FILES
+
+var = "x"
+do for [i = 1:MAX_FILES:1] {
+   files[i] = files[i]."_DEBUG"
+  stats files[i].".".var using 1:2 name files[i] nooutput
+  intensity[i] = value(files[i]."_sum_y")
+#  print( sprintf("%d\t%s\t%.2g\t%.2g", i, titles[i], value(files[i]."_sum_y"), intensities(i)))
+}
+
+
+set term pdf size 8in,8in
+set pointsize 0.5
+set output '/tmp/test.pdf'
+
+
+set multiplot layout 1,2 margins 0.1, 0.9, 0.1, 0.9 spacing 0.0
+
+
+
+
+set xtics auto rangelimited
+set ytics format "%3.2g"
+set ylabel _intensity_label_ offset 1
+
+unset key
+var = "x"
+set xlabel var
+set yrange [] writeback
+set key  tmargin vertical maxrows 4 maxcolumns 5
+using_string = '1:($2/value(files[i]."_sum_y")):($3/value(files[i]."_sum_y"))'
+using_string_fit = '1:($2>0 ? ($2/value(files[i]."_sum_y")) : NaN):($3/value(files[i]."_sum_y"))'
+p for [i = 1:MAX_FILES:1] files[i].".".var u @using_string w yerr t titles[i]
+
+unset key
+#set key  tmargin horizontal maxrows 2 maxcolumns 5
+unset ytics
+unset ylabel
+set y2tics
+set y2label
+set yrange restore
+var = "y"
+set xlabel var
+p for [i = 1:MAX_FILES:1] files[i].".".var u @using_string w yerr t titles[i]
+unset y2tics
+set ytics
+
+unset multiplot
+
+
+
+####################### Energy
+set key
+#set xrange [4:6]
+set yrange [*:*]
+set xlabel 'Energy [meV]'
+set ylabel _intensity_label_
+var="E"
+p for [i = 1:MAX_FILES:1] files[i].".".var u @using_string w yerr t titles[i]
+
+
+A=0.1
+sigma=0.05
+mu=5
+gauss(x) = A*exp(-(x-mu)*(x-mu)/(sigma*sigma))
+
+set fit errorvariables
+set samples 500
+do for [i = ENERGY_FILES_MIN:ENERGY_FILES_MAX:1]{
+  _file_ = files[i].".".var
+
+  set title titles[i]
+  stats _file_ u 1 nooutput
+  sigma = STATS_stddev
+
+#  fit [STATS_min:STATS_max] gauss(x) _file_ u @using_string_fit via A,mu,sigma
+  set label 1 sprintf("mu = %0.3f +/- %.3f\nsigma = %.3f +/- %.3f", mu,mu_err,sigma,sigma_err) at screen 0.65, screen 0.8
+  set label 2 sprintf("relative resolution = %.1f \%", sigma/mu*100) at screen 0.65, screen 0.75
+  p  files[i].".".var u @using_string w yerr t titles[i], gauss(x)
+  unset label
+
+}
+###################### Normalization
+set offsets 0.1,0.1,0.2,0.1
+unset xrange
+set xlabel "stage" offset 0,1
+set ylabel "Intensity [neutrons/s]"
+
+set xrange [0:MAX_FILES]
+set yrange [*:*]
+set grid x
+set xtics right
+set xtics rotate by 45
+set log y
+p [0:MAX_FILES+1] sample  [i=1:MAX_FILES:1] '+' using (i):(intensity[i]):xticlabels(titles[i]) w p notitle
+i=5
+#print(sprintf("%.2g",value(files[6]."_sum_y")))
+unset log
+
+
+##################################
+set offsets 0,0,0,0
+do for [i=1:MAX_FILES:1]{ #"mono_out_rot_DEBUG sample_DEBUG sample_out_DEBUG detector_DEBUG"]{
+FILE=files[i]
+set title FILE noenhanced
+unset xrange
+unset yrange
+unset xtics
+set xtics auto
+unset xlabel
+unset ylabel
+
+
+set xlabel 'x [m]'
+set ylabel 'y [m]'
+var="x_y"
+system("awk -f ~/bin/awk/mcstas_xy.awk ".FILE.".".var."> ".FILE.".".var.".dat")
+stats FILE.'.'.var.'.dat'  u 1 index "I" nooutput
+p [STATS_min:STATS_max] FILE.'.'.var.'.dat' index "I" w image t ''
+#set log cb
+#rep
+unset log
+
+
+#system("sed -n '/Errors/q;p' ".FILE.".x_y > ".FILE.".x_y.clean")
+#p FILE.'.x_y.clean' matrix w image
+
+set xlabel 'theta [deg]'
+
+#system("sed -n '/Errors/q;p' ".FILE.".th_y > ".FILE.".th_y.clean")
+#p FILE.'.th_y.clean' matrix w image
+
+set xtics 25
+#set cbrange [:1e4]
+system("awk -f ~/bin/awk/mcstas_xy.awk ".FILE.".th_y > ".FILE.".th_y.dat")
+stats FILE.'.th_y.dat'  u 2 index "I" nooutput
+#set yrange [STATS_min:STATS_max]
+#set log cb
+set log cb
+set cbrange [1:]
+p FILE.'.th_y.dat' index "I" w image t ''
+unset log
+unset cbrange
+}
+
+set output
+#p 'ThALES_mono_trans_out.E' u 1:2:3 w yerr
+#p 'ThALES_mono_trans_out.x' u 1:2:3 w yerr
+
+
