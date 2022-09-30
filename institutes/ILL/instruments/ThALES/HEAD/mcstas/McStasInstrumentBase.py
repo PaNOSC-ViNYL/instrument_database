@@ -123,35 +123,6 @@ class McStasInstrumentBase(Instrument):
 
         return (mycalculator, vin)
 
-    def calculator_before_run(self, calcname) -> None:
-        """
-        Operations to performe before calling the backengine
-        """
-        calc = self.calculators[calcname]
-        previous_calc = None
-        keys = list(self.calculators.keys())
-        index = keys.index(calcname)
-        if index > 0:
-            previous_calc = self.calculators[keys[index - 1]]
-
-        vin = None
-        try:
-            vin = calc.parameters["vin_filename"]
-        except KeyError:
-            return
-
-        if vin is not None and previous_calc is not None:
-            if "mcpl" not in previous_calc.output_keys:
-                raise RuntimeError(
-                    f"Something is wrong with the instrument implementation:\ncalculator {calcname} has an MCPL_input component but the previous does not have an output"
-                )
-            # update the parameter value
-            # this is needed because the output is generated after calling the backengine
-            # so the filename is not set before
-            calc.parameters["vin_filename"].value = (
-                '"' + previous_calc.output["mcpl"].filename + '"'
-            )
-
     # ------------------------------ utility methods made available for the users
     def sim_neutrons(self, number) -> None:
         """Method to set the number of neutrons to be simulated"""
