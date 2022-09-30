@@ -604,13 +604,6 @@ class ThALES(McStasInstrumentBase):
         )
         # ------------------------------------------------------------
 
-        #        myinstr.add_master_parameter(
-        #            "input_file",
-        #            {detector_calculator.name: "filelist"},
-        #            comment="MCPL file generated before the sample",
-        #        )
-        #        myinstr.master["input_file"] = '"sDETECTOR.mcpl.gz"'
-
         detector_all = mycalculator.add_component(
             "detector_all", "Monitor", AT=[0, 0, 0.001], RELATIVE=detector_arm
         )
