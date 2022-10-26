@@ -25,9 +25,9 @@ myinstrument.set_instrument_base_dir(basedir)
 myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+myinstrument.set_sample_by_name("vanadium")
 
-
-myinstrument.sim_neutrons(10)
+myinstrument.sim_neutrons(100000)
 myinstrument.run()
 sys.exit(0)
 

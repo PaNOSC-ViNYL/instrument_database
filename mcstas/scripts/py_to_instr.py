@@ -23,11 +23,17 @@ myinstrument = repo.load(institute, instrument, version, software, flavour, dep=
 myinstrument.set_sample_by_name(sample_name)
 myinstrument.set_sample_environment_by_name(sample_environment_name)
 
+calc_with_sample = myinstrument._calculator_with_sample
+
 for calcname in myinstrument.calculators:
     calc = myinstrument.calculators[calcname]
     # calc.show_components()
-    calc.name = (
-        calcname + "_" + flavour + "_" + sample_name + "_" + sample_environment_name
-    )
+    if calcname == calc_with_sample.name:
+        calc.name = (
+            calcname + "_" + flavour + "_" + sample_name + "_" + sample_environment_name
+        )
+    else:
+        calc.name = calcname + "_" + flavour
+
     if isinstance(calc, instr.McStas_instr):
         calc.write_full_instrument()

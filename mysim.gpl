@@ -25,15 +25,15 @@ array intensity[MAX_FILES]
 ENERGY_FILES_MIN=7
 ENERGY_FILES_MAX=9
 
-#MAX_FILES=2
-#array files[MAX_FILES] = [ "H5", "H5_1a", "H5_1b","H53_D", "H53_7", "slit_A", "mono_in", "mono_out_rot", "sample", "sample_out", "slit_B", "analyzer_IN", "detector" ]
-#array titles[MAX_FILES] = [ "source", "H5 1a", "H5 1b", "elliptic IN", "elliptic OUT",  "slit OUT", "mono IN", "mono OUT", "sample IN", "sample OUT", "slit B", "analyzer IN", "detector"]
+MAX_FILES=2
+array files[MAX_FILES] = [  "sample_out", "slit_B" ]
+array titles[MAX_FILES] = [  "sample OUT", "slit B" ]
 #array intensity[MAX_FILES]
 #array files[MAX_FILES] =  ["before_slit","detector"]
 #array titles[MAX_FILES] = ["before_slit","detector"]
 #array intensity[MAX_FILES]
-#ENERGY_FILES_MIN=MAX_FILES
-#ENERGY_FILES_MAX=MAX_FILES
+ENERGY_FILES_MIN=MAX_FILES
+ENERGY_FILES_MAX=MAX_FILES
 
 var = "x"
 do for [i = 1:MAX_FILES:1] {
