@@ -217,6 +217,37 @@ class ThALES(McStasInstrumentBase):
             unit="angstrom",
         )
 
+        RHmono = mycalculator.add_parameter(
+            "double",
+            "RHmono",
+            comment="Monochromator horizontal focusing. Calculated by default",
+            value=-1,
+            unit="",
+        )
+        # setting default value for RHmono if not provided
+        mycalculator.append_initialize(
+            "if(RHmono<0) RHmono= (1/( ( 1/"
+            + str(ThALES_L)
+            + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 ));"
+        )
+
+        RVmono = mycalculator.add_parameter(
+            "double",
+            "RVmono",
+            comment="Monochromator horizontal focusing. Calculated by default",
+            value=-1,
+            unit="",
+        )
+        # setting default value for RVmono if not provided
+        mycalculator.append_initialize(
+            "if(RVmono<0) RVmono= (1/( ( 1/"
+            + str(ThALES_L)
+            + " + 1/7.0 ) / (2*sin(DEG2RAD*a2/2) )));"
+        )
+        mycalculator.append_initialize(
+            'printf("(RHmono,RVmono) = (%.2f,%.2f)\\n", RHmono, RVmono);'
+        )
+
         # imported source and associated parameters: check the source file!
         # - lambda
         # - dlambda
@@ -225,7 +256,7 @@ class ThALES(McStasInstrumentBase):
         HCS = source.HCS_source(mycalculator)
         HCS.E0 = "Ei"
         HCS.target_index = 1
-        HCS.flux = 1e8
+        HCS.flux = 5e9
 
         # ------------------------------------------------------------
         # start of the guide
@@ -364,6 +395,8 @@ class ThALES(McStasInstrumentBase):
         Monochromator.RH = (
             "(1/( ( 1/" + str(ThALES_L) + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 ))"
         )
+        Monochromator.RH = RHmono
+        Monochromator.RV = RVmono
         Monochromator.DM = monochromator_d
         Monochromator.width = 0.25
         Monochromator.height = 0.2
