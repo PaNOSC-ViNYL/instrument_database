@@ -9,6 +9,7 @@ from libpyvinyl.Parameters import Parameter
 # ------------------------------ Extras
 # import os  # to add the path of custom mcstas components
 
+import math
 
 # list here all the common parts to be imported
 from typing import List, Optional, Any
@@ -35,6 +36,11 @@ class McStasInstrumentBase(Instrument):
         self._sample_hash = None
 
         self._add_monitors = True
+        self.samples = ["None", "vanadium", "H2O", "D2O", "sqw", "Vanadium"]
+
+        self.focus_xw = None
+        self.focus_yh = None
+        self.target_z = None
 
     def add_sample_arms(self, mycalculator, previous_component):
         """The set_AT and set_ROTATE should be called afterwards.
@@ -126,6 +132,8 @@ class McStasInstrumentBase(Instrument):
                 calculatorname = list(self.calculators.keys())[-1]
                 mycalculator = self.calculators[calculatorname]
 
+        self.add_monitor(mycalculator, "MCPL_in", 0)
+
         if hasSample:
             self.add_sample_arms(mycalculator, vin)
 
@@ -178,6 +186,14 @@ class McStasInstrumentBase(Instrument):
 
         return psd
 
+    def set_sample_focus(self, xwidth, yheight, zdistance):
+        self.focus_xw = xwidth
+        self.focus_yh = yheight
+        self.target_z = zdistance
+
+    def focus_angle(self, h, z):
+        return 2 * math.atan(h / 2 / z)
+
     # ------------------------------
     # this implements what is foreseen in the libpyvinyl.Instrument class
     def set_sample_by_name(self, name: str) -> None:
@@ -191,7 +207,7 @@ class McStasInstrumentBase(Instrument):
             mycalculator.remove_component(self.sample)
         if name in ["empty", "Empty", "None", "none"]:
             self.sample = None
-        elif name in ["v_sample", "vanadium"]:
+        elif name in ["v_sample"]:
             self.sample_name = "vanadium"
             self.sample = mycalculator.add_component(
                 self.sample_name,
@@ -215,7 +231,7 @@ class McStasInstrumentBase(Instrument):
             # Absorption fraction           =0.0425179
             # Single   scattering intensity =1.65546e+07 (coh=1.65473e+07 inc=7331.45)
             # Multiple scattering intensity =276313
-        elif name in ["sqw", "H2O", "D2O", "quartz"]:
+        elif name in ["sqw", "H2O", "D2O", "quartz", "Vanadium", "vanadium"]:
             self.sample_name = "sqw"
             self.sample = mycalculator.add_component(
                 self.sample_name,
@@ -226,15 +242,22 @@ class McStasInstrumentBase(Instrument):
                 RELATIVE=self._sample_arm,
             )
             s = self.sample
+            s.append_EXTEND("if(!SCATTERED) ABSORB;")
             s.Sqw_coh = 0
             s.Sqw_inc = 0
             s.sigma_coh = -1
             s.sigma_inc = -1
             # s.xwidth = 0.01
-            s.radius = 0.01
+            s.radius = 0.005
             s.yheight = 0.01
-            s.thickness = 0.001
-            s.set_SPLIT(20)
+            s.thickness = 0  # 0.002
+            s.verbose = 3
+            s.p_interact = 1
+            s.d_phi = 180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
+
+            s.set_SPLIT(
+                20 * round(2 * math.pi / self.focus_angle(self.focus_xw, self.target_z))
+            )
 
             if name == "H2O":
                 s.Sqw_coh = '"H2O_liq.qSq"'
@@ -243,16 +266,20 @@ class McStasInstrumentBase(Instrument):
             elif name == "quartz":
                 s.Sqw_coh = '"SiO2_liq.qSq"'
                 s.Sqw_inc = '"SiO2_liq.qSq"'
-
+            elif name in ["Vanadium", "vanadium"]:
+                s.rho = 1 / 13.827
+                s.sigma_abs = 5.08
+                s.sigma_inc = 4.935
+                s.sigma_coh = 0
             else:
-                self.calculators[self._calculator_name].add_parameter(
+                mycalculator.add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
                 )
                 s.Sqw_coh = "sqw_file"
                 self.add_master_parameter(
                     "sqw_file",
                     # here I would need to get the name of the calculator in which the sample is defined
-                    {self.calculators[self._calculator_name].name: "sqw_file"},
+                    {mycalculator.name: "sqw_file"},
                 )
 
         # quartz_sample.radius = 0.005
@@ -285,3 +312,9 @@ class McStasInstrumentBase(Instrument):
         for calc in self.calculators:
             mycalc = self.calculators[calc]
             mycalc.settings(ncount=number)
+
+    def set_seed(self, number) -> None:
+        """Setting the simulation seed"""
+        for calc in self.calculators:
+            mycalc = self.calculators[calc]
+            mycalc.settings(seed=number)

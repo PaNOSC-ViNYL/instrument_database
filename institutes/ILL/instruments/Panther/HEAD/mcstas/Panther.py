@@ -483,6 +483,7 @@ class Panther(McStasInstrumentBase):
         self._sample_environment_arm.set_AT(Lcs - Lbsd, RELATIVE=sample_mcpl_arm)
 
         # default sample
+        self.set_sample_focus(Lsd, 2, Lsd)
         sample = self.set_sample_by_name("vanadium")
 
         Sample_Out = mycalculator.add_component(

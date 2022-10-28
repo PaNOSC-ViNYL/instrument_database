@@ -178,7 +178,6 @@ class ThALES(McStasInstrumentBase):
 
         super().__init__("ThALES")
 
-        self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
         self.sample_environments = ["None", "10T", "Orange"]
 
         #
@@ -416,19 +415,23 @@ class ThALES(McStasInstrumentBase):
         self._sample_environment_arm.set_AT([0, 0, 0.250], RELATIVE=sample_mcpl_arm)
 
         # default sample
-        sample = self.set_sample_by_name("vanadium")
-        sample.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
+        self.set_sample_focus(0.03, 0.04, 0.250)
+
+        sample = self.set_sample_by_name("Vanadium")
+        sample.set_ROTATED([0, 0, 0], RELATIVE=self._sample_arm)
 
         Sample_Out = mycalculator.add_component("Sample_Out", "Arm")
         Sample_Out.set_AT([0, 0, 0], RELATIVE=self._sample_arm)
-        # Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
+        #        Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
+        Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
-        self.add_monitor(mycalculator, "sample_out", 0)
+        self.add_monitor(mycalculator, "sample_out", 0.249)
 
         after_sample_slit = mycalculator.add_component("after_sample_slit", "Slit")
         after_sample_slit.xwidth = 0.03
         after_sample_slit.yheight = 0.04
-        after_sample_slit.set_AT([0, 0, 0.250], RELATIVE=Sample_Out)
+        slit_distance = 0.250
+        after_sample_slit.set_AT([0, 0, slit_distance], RELATIVE=Sample_Out)
 
         self.add_monitor(mycalculator, "slit_B")
 

@@ -19,15 +19,16 @@ set style line 10 lt 1 lc "black" pt 6
 _intensity_label_ = "Relative Intensity [normalized area under the curve]"
 
 MAX_FILES=13
-array files[MAX_FILES] = [ "H5", "H5_1a", "H5_1b","H53_D", "H53_7", "slit_A", "mono_in", "mono_out_rot", "sample_IN", "sample_out", "slit_B", "analyzer_IN", "detector" ]
+array files[MAX_FILES] = [ "OriginCalc/H5", "OriginCalc/H5_1a", "OriginCalc/H5_1b","H53_D", "H53_7", "slit_A", "mono_in", "mono_out_rot", "sample_IN", "SampleCalc/sample_out", "slit_B", "analyzer_IN", "detector" ]
 array titles[MAX_FILES] = [ "source", "H5 1a", "H5 1b", "elliptic IN", "elliptic OUT",  "slit OUT", "mono IN", "mono OUT", "sample IN", "sample OUT", "slit B", "analyzer IN", "detector"]
 array intensity[MAX_FILES]
 ENERGY_FILES_MIN=7
 ENERGY_FILES_MAX=9
 
-MAX_FILES=2
-array files[MAX_FILES] = [  "sample_out", "slit_B" ]
-array titles[MAX_FILES] = [  "sample OUT", "slit B" ]
+MAX_FILES=3
+array files[MAX_FILES] = [  "MCPL_in", "sample_out", "slit_B" ]
+array titles[MAX_FILES] = [  "MCPL in", "sample OUT", "slit B" ]
+array statsnames[MAX_FILES] = [ "MCPL_in", "sample_out", "slit_B" ]
 #array intensity[MAX_FILES]
 #array files[MAX_FILES] =  ["before_slit","detector"]
 #array titles[MAX_FILES] = ["before_slit","detector"]
@@ -38,9 +39,9 @@ ENERGY_FILES_MAX=MAX_FILES
 var = "x"
 do for [i = 1:MAX_FILES:1] {
    files[i] = files[i]."_DEBUG"
-  stats files[i].".".var using 1:2 name files[i] nooutput
-  intensity[i] = value(files[i]."_sum_y")
-#  print( sprintf("%d\t%s\t%.2g\t%.2g", i, titles[i], value(files[i]."_sum_y"), intensities(i)))
+  stats files[i].".".var using 1:2 name statsnames[i] nooutput
+  intensity[i] = value(statsnames[i]."_sum_y")
+#  print( sprintf("%d\t%s\t%.2g\t%.2g", i, titles[i], value(statsnames[i]."_sum_y"), intensities(i)))
 }
 
 
@@ -63,8 +64,8 @@ var = "x"
 set xlabel var
 set yrange [] writeback
 set key  tmargin vertical maxrows 4 maxcolumns 5
-using_string = '1:($2/value(files[i]."_sum_y")):($3/value(files[i]."_sum_y"))'
-using_string_fit = '1:($2>0 ? ($2/value(files[i]."_sum_y")) : NaN):($3/value(files[i]."_sum_y"))'
+using_string = '1:($2/value(statsnames[i]."_sum_y")):($3/value(statsnames[i]."_sum_y"))'
+using_string_fit = '1:($2>0 ? ($2/value(statsnames[i]."_sum_y")) : NaN):($3/statsnames(files[i]."_sum_y"))'
 p for [i = 1:MAX_FILES:1] files[i].".".var u @using_string w yerr t titles[i]
 
 unset key
@@ -129,7 +130,7 @@ set xtics rotate by 45
 set log y
 p [0:MAX_FILES+1] sample  [i=1:MAX_FILES:1] '+' using (i):(intensity[i]):xticlabels(titles[i]) w p notitle
 i=5
-#print(sprintf("%.2g",value(files[6]."_sum_y")))
+#print(sprintf("%.2g",value(statsnames[6]."_sum_y")))
 unset log
 
 

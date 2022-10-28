@@ -26,8 +26,9 @@ myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 myinstrument.set_sample_by_name("vanadium")
-
-myinstrument.sim_neutrons(100000)
+print(myinstrument)
+myinstrument.sim_neutrons(500000)
+myinstrument.set_seed(654321)
 myinstrument.run()
 sys.exit(0)
 
