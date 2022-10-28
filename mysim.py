@@ -25,7 +25,9 @@ myinstrument.set_instrument_base_dir(basedir)
 myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+print(myinstrument.get_total_SPLIT())
 myinstrument.set_sample_by_name("vanadium")
+myinstrument.set_sample_by_name("H2O")
 print(myinstrument)
 myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)
