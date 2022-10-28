@@ -242,7 +242,7 @@ class McStasInstrumentBase(Instrument):
                 RELATIVE=self._sample_arm,
             )
             s = self.sample
-            s.append_EXTEND("if(!SCATTERED) ABSORB;")
+            # s.append_EXTEND("if(!SCATTERED) ABSORB;")
             s.Sqw_coh = 0
             s.Sqw_inc = 0
             s.sigma_coh = -1
@@ -260,9 +260,16 @@ class McStasInstrumentBase(Instrument):
             )
 
             if name == "H2O":
-                s.Sqw_coh = '"H2O_liq.qSq"'
+                s.Sqw_coh = '"H2O_liq_290_coh.sqw"'
+                s.Sqw_inc = '"H2O_liq_290_inc.sqw"'
+                s.sigma_coh = 7.75
+                s.sigma_inc = 161
             elif name == "D2O":
-                s.Sqw_coh = '"D2O_liq.qSq"'
+                s.Sqw_coh = '"D2O_liq_290_coh.sqw"'
+                s.Sqw_inc = '"D2O_liq_290_inc.sqw"'
+                s.sigma_coh = 15.411
+                s.sigma_inc = 4.1008
+
             elif name == "quartz":
                 s.Sqw_coh = '"SiO2_liq.qSq"'
                 s.Sqw_inc = '"SiO2_liq.qSq"'
@@ -318,3 +325,15 @@ class McStasInstrumentBase(Instrument):
         for calc in self.calculators:
             mycalc = self.calculators[calc]
             mycalc.settings(seed=number)
+
+    def get_total_SPLIT(self):
+        split = 1
+        for calc in self.calculators:
+            # print("Calculator: ", calc)
+            mycalc = self.calculators[calc]
+            for component in mycalc.component_list:
+                # print(component.name, component.SPLIT)
+
+                if component.SPLIT > 1:
+                    split = split * component.SPLIT
+        return split
