@@ -482,6 +482,36 @@ class ThALES(McStasInstrumentBase):
             unit="degree",
             value=33,
         )
+        RHanalyzer = mycalculator.add_parameter(
+            "double",
+            "RHanalyzer",
+            comment="Monochromator horizontal focusing. Calculated by default",
+            value=-1,
+            unit="",
+        )
+        # setting default value for RHmono if not provided
+        mycalculator.append_initialize(
+            "if(RHanalyzer<0) RHanalyzer= 2 *"
+            + str(dist_sample_ana)
+            + " / sin(DEG2RAD*a6/2);"
+        )
+
+        RVanalyzer = mycalculator.add_parameter(
+            "double",
+            "RVanalyzer",
+            comment="Monochromator horizontal focusing. Calculated by default",
+            value=-1,
+            unit="",
+        )
+        # setting default value for RVmono if not provided
+        mycalculator.append_initialize(
+            "if(RVanalyzer<0) RVanalyzer= 2 * "
+            + str(dist_ana_det)
+            + " * sin(DEG2RAD*a6/2) ;"
+        )
+        mycalculator.append_initialize(
+            'printf("(RHanalyzer,RVanalyzer) = (%.2f,%.2f)\\n", RHanalyzer, RVanalyzer);'
+        )
 
         self.add_monitor(mycalculator, "analyzer_IN")
 
@@ -492,11 +522,12 @@ class ThALES(McStasInstrumentBase):
         analyzer.mosaich = 30
         analyzer.mosaicv = 30
         analyzer.r0 = 0.7
-        analyzer.RV = "2*" + str(dist_ana_det) + "*sin(DEG2RAD*a6/2)"
-        analyzer.RH = "2*" + str(dist_ana_det) + "/sin(DEG2RAD*a6/2)"
+        analyzer.RV = RVanalyzer
+        analyzer.RH = RHanalyzer
         analyzer.DM = 3.355  # PG 002
         analyzer.width = 0.17
         analyzer.height = 0.13
+        Monochromator.verbose = 1
         analyzer.set_AT([0, 0, 0], RELATIVE=Ana_Cradle)
         analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE=Ana_Cradle)
 

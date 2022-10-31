@@ -251,7 +251,7 @@ class McStasInstrumentBase(Instrument):
             s.radius = 0.005
             s.yheight = 0.01
             s.thickness = 0  # 0.002
-            s.verbose = 3
+            s.verbose = 2
             s.p_interact = 1
             s.d_phi = 180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
 
