@@ -80,7 +80,6 @@ class Panther(McStasInstrumentBase):
         """Conversion from energy to angle
         for Bragg law with lattice parameter
         equal to the monochromator lattice"""
-        d_lattice = self.parameters["OriginCalc"]["monochromator_d"].pint_value
         wl = math.sqrt(81.80421 * ureg.meV / value) * ureg.angstrom
         return self.wavelength_to_angle(wl).to("degrees")
 
@@ -163,9 +162,16 @@ class Panther(McStasInstrumentBase):
         mycalculator, Origin = self.add_new_section("OriginCalc")
 
         mono_index = mycalculator.add_parameter(
-            "int", "mono_index", comment="Monochromator", value=0
+            "int",
+            "mono_index",
+            comment="Monochromator index, automatically based on the energy if set to -1",
+            value=-1,
         )
-        mono_index.add_interval(0, len(monochromators), True)
+        mono_index.add_interval(-1, len(monochromators), True)
+
+        # gnuplot> lambda(x) = sqrt(81.80421/x)
+        # gnuplot> angle(x,d) = 2*asin(lambda(x)/2/d)*180/pi
+        # gnuplot> p for[ d in "3.3550 1.6775 1.2763 1.1183 0.8282"]  angle(x,d) t d, 35 lt -1 t "35", 70 lt -1 t "70"
 
         # put in the binary the lattice parameters
         mycalculator.add_declare_var(
@@ -175,10 +181,6 @@ class Panther(McStasInstrumentBase):
             value=mono_lattices,
             comment="monochromator lattice parameter",
         )
-        mycalculator.add_declare_var("double", "mono_d")
-        mycalculator.append_initialize(
-            'mono_d = mono_ds[mono_index]; printf("mono_d = %.4f\\n",mono_d);'
-        )  # get the value corresponing to the selected monochromator
 
         a2 = mycalculator.add_parameter(
             "double",
@@ -187,26 +189,21 @@ class Panther(McStasInstrumentBase):
             unit="degree",
             value=0,
         )
-        mycalculator.append_initialize("double lambda = sqrt(81.80421036/Ei);")
-        mycalculator.append_initialize(
-            "if(a2==0) a2 = asin(lambda/2/mono_d)*RAD2DEG;"
-        )  # put a warning if A2 does not match
-        mycalculator.append_initialize(
-            'printf("a2 = %.2f\\n",a2);'
-        )  # put a warning if A2 does not match
+        a2.add_option(0, True)  # for automatic calculation
+        a2.add_interval(36.00, 58.97, True)
 
         mono_rv = mycalculator.add_parameter(
             "double",
             "mono_rv",
             comment="Monochromator vertical focusing: internally calculated if value is zero",
-            value=0,  # flat by default -> calculated internally
+            value=-1,  # flat by default -> calculated internally
             unit="",
         )
         mono_rh = mycalculator.add_parameter(
             "double",
             "mono_rh",
             comment="Monochromator horizontal focusing: internally calculated if value is zero",
-            value=0,  # flat by default -> calculated internally
+            value=-1,  # flat by default -> calculated internally
             unit="",
         )
 
@@ -245,6 +242,41 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
         mycalculator.add_declare_var("double", "neutron_velocity")
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
+        mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
+        # mycalculator.append_initialize(
+        #    "if(a2<=0) a2 = asin(lambda/2/mono_d)*RAD2DEG;"
+        # )  # put a warning if A2 does not match
+        a2_interval = a2.get_intervals()[0]
+        mycalculator.add_declare_var("double", "mono_d")
+        mycalculator.append_initialize(
+            "if(mono_index<0){\n"
+            + '  printf("Selecting monochromator...");\n'
+            + "  for(mono_index=0; mono_index < "
+            + str(len(monochromators))
+            + " && !(a2 > "
+            + str(a2_interval[0].m)
+            + " && a2<"
+            + str(a2_interval[1].m)
+            + "); ++mono_index){\n"
+            + "    mono_d = mono_ds[mono_index];\n"
+            + "    a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
+            + 'printf("mono_d = %.4f\\n",mono_d);\n'
+            + 'printf("a2 = %.2f\\n",a2);\n'
+            + "  }\n"
+            + "}else{\n"
+            + "  mono_d = mono_ds[mono_index];\n"
+            + "  a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
+            + "}\n"
+        )
+        mycalculator.append_initialize(
+            'printf("mono_d = %.4f\\n",mono_d);'
+        )  # get the value corresponing to the selected monochromator
+        mycalculator.append_initialize(
+            'printf("a2 = %.2f\\n",a2);'
+        )  # put a warning if A2 does not match
+
+        mycalculator.append_initialize('printf("mono_index = %d\\n", mono_index);')
+
         # ------------------------------------------------------------
         H12 = mycalculator.add_component("H12", "Arm", AT=[0, 0, 0], RELATIVE=HCS)
 
@@ -285,44 +317,41 @@ class Panther(McStasInstrumentBase):
         self.add_monitor(mycalculator, "sapphire", width=0.2, height=0.2)
 
         # guide = self._add_chopper_guide(  index , position,  guide_template, guide_lenth)
-        chopper = mycalculator.add_component(
-            "chopper_1",
+        BC1 = mycalculator.add_component(
+            "BC1",
             "DiskChopper",
             AT=1.4199,
             RELATIVE=H12_bouchon,
         )
-        chopper.set_parameters(
-            nu="chopper_rpm/60 * 2 / chopper_ratio / 6.0",
+        bc_nslits = 6
+        BC1.set_parameters(
+            nu="chopper_rpm/60 * 2 / chopper_ratio /" + str(bc_nslits),
             radius=0.300,
             yheight=0.175,
-            nslit=6,
+            nslit=bc_nslits,
             isfirst=1,
             abs_out=1,
             xwidth=0.150,
+            phase=0,
         )
 
         self.add_monitor(mycalculator, "chopper1", width=0.2, height=0.2)
 
         diaphragm = mycalculator.add_component(
-            "diaphragm1", "Slit", AT=0.5825, RELATIVE=chopper
+            "diaphragm1", "Slit", AT=0.5825, RELATIVE=BC1
         )
         diaphragm.set_parameters(xwidth=0.150, yheight=0.500)
 
-        chopper2 = mycalculator.copy_component(
-            "chopper_2", chopper, AT=0.800, RELATIVE=chopper
-        )
-        chopper3 = mycalculator.copy_component(
-            "chopper_3", chopper, AT=0.800, RELATIVE=chopper2
-        )
-        chopper4 = mycalculator.copy_component(
-            "chopper_4", chopper, AT=0.800, RELATIVE=chopper3
-        )
-        chopper5 = mycalculator.copy_component(
-            "chopper_5", chopper, AT=0.800, RELATIVE=chopper4
-        )
-        chopper.verbose = 1
-
+        BC2 = mycalculator.copy_component("BC2", BC1, AT=0.800, RELATIVE=BC1)
+        BC2.delay = "0.800 * neutron_velocity"
+        BC2.isfirst = 0
+        BC3 = mycalculator.copy_component("BC3", BC2, AT=0.800, RELATIVE=BC2)
+        BC4 = mycalculator.copy_component("BC4", BC2, AT=0.800, RELATIVE=BC3)
+        BC5 = mycalculator.copy_component("BC5", BC2, AT=0.800, RELATIVE=BC4)
+        BC1.verbose = 1
+        BC1.isfirst = 1
         # ------------------------------
+        L_bc5_fermi = 0
         DCH = mycalculator.add_parameter(
             "double",
             "dch",
@@ -331,22 +360,28 @@ class Panther(McStasInstrumentBase):
             value=0,
         )
         # automatically calculate dhc if not given as input parameter
-        mycalculator.append_initialize("if(dch==0) dch=37.8 + 136.0*sin(DEG2RAD*a2/2);")
+        mycalculator.append_initialize(
+            'if(dch==0) dch=(37.8 + 136.0*sin(DEG2RAD*a2/2))/1000;printf("dch = %.2f\\n", dch);'
+        )
         diaphragm = mycalculator.add_component(  # AT=9.8185, RELATIVE=HCS
-            "heavy_diaphragm", "Slit", AT=0.5011, RELATIVE=chopper5
+            "heavy_diaphragm", "Slit", AT=0.5011, RELATIVE=BC5
         )
         diaphragm.set_parameters(xwidth=DCH, yheight=0.150)
+        L_bc5_fermi = L_bc5_fermi + diaphragm.AT_data[2]
 
         # ------------------------------
         # adds monitors at the same position of the previous component
-        self.add_monitor(mycalculator, "diaphram")
+        self.add_monitor(mycalculator, "diaphram", width=DCH, height=diaphragm.yheight)
 
         # AT=12.1485, RELATIVE=HCS)
         Monochromator_Arm = mycalculator.add_component(
-            "Monochromator_Arm", "Arm", AT=2.8311, RELATIVE=chopper5
+            "Monochromator_Arm", "Arm", AT=2.8311, RELATIVE=BC5
         )
+        L_bc5_fermi = Monochromator_Arm.AT_data[2]
 
-        self.add_monitor(mycalculator, "mono_in")
+        self.add_monitor(
+            mycalculator, "mono_in", width=DCH, height=2 * diaphragm.yheight
+        )
 
         Monochromator = mycalculator.add_component(
             "Monochromator", "Monochromator_curved"
@@ -368,7 +403,7 @@ class Panther(McStasInstrumentBase):
         Monochromator.RH = mono_rh
         Monochromator.DM = "mono_d"
         Monochromator.verbose = 1
-        #    Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
+        # Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
         Monochromator.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
         Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
 
@@ -389,29 +424,29 @@ class Panther(McStasInstrumentBase):
         )
 
         mycalculator.append_initialize(
-            "if(mono_rv==0) mono_rv = RMV_u + acos(1- RMV_w/sin(DEG2RAD*a2/2));"
+            "if(mono_rv<0) mono_rv = (RMV_u + acos(1- RMV_w/sin(DEG2RAD*a2/2)))/1000.;"
         )
         mycalculator.append_initialize(
-            "if(mono_rh==0) mono_rh = RMH_g + RMH_h * sin(DEG2RAD*a2/2);"
+            "if(mono_rh<0) mono_rh = (RMH_g + RMH_h * sin(DEG2RAD*a2/2))/1000.;"
         )
 
         mycalculator.add_declare_var("float", "mono_mosaic")
         mycalculator.append_initialize(
-            "mono_mosaic = (mono_index==2 || mono_index==4) ? 0.3 : 0.5;"
+            "mono_mosaic = (mono_index==2 || mono_index==4) ? 30 : 50;"  # 0.3: 0.5
         )
-
-        self.add_monitor(mycalculator, "mono_out")
 
         Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
         Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
         Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
 
-        self.add_monitor(mycalculator, "mono_out_rot", [0, 0, 0.1])
+        self.add_monitor(mycalculator, "mono_out_rot", 1.7, width=0.8, height=0.3)
 
         # AT=13.8485, RELATIVE=HCS)
+
         fermi = mycalculator.add_component(
             "fermi_chopper", "FermiChopper", AT=1.700, RELATIVE=Monochromator_Out
         )
+        L_bc5_fermi = L_bc5_fermi + fermi.AT_data[2]
         fermi.set_parameters(
             radius=0.31,
             nslit=45,
@@ -419,10 +454,12 @@ class Panther(McStasInstrumentBase):
             w=0.0006,
             yheight=0.113,
             nu="chopper_rpm/60",  # 1/60 to convert RPM into Hz
-            verbose=3,
+            verbose=1,
             eff=0.86 * 0.8,
             m=0,
             R0=0,  # no super mirror
+            zero_time=0,
+            delay=str(L_bc5_fermi) + " * neutron_velocity",
         )
         # optimal time focusing:
         Lcs = 0.8  # [m] chopper-sample distance
@@ -430,16 +467,16 @@ class Panther(McStasInstrumentBase):
         Lmc = 1.7  # [m] monochromator-chopper distance
         Lms = Lmc + Lcs  # [m] monochromator-sample distance
         Lhm = 4.123  # [m] distance between the horizontal virtual source and the monochromator
+        mycalculator.add_parameter(
+            "double", "Efoc", comment="Focusing energy", unit="meV", value=0
+        )
+        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
         mycalculator.append_initialize(
             "if(chopper_rpm==0) chopper_rpm = 60*neutron_velocity * tan(DEG2RAD*a2 / 2) / PI / (({Lcs} + {Lsd}*pow((1 - Efoc / Ei),(-3/2))) * (1 - {Lms} / {Lhm}));".format(
                 Lcs=Lcs, Lsd=Lsd, Lms=Lms, Lhm=Lhm
             )
         )
-
-        mycalculator.add_parameter(
-            "double", "Efoc", comment="Focusing energy", unit="meV", value=0
-        )
-        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
+        ##        mycalculator.append_initialize('printf("%
 
         # ------------------------------
         bsw = mycalculator.add_parameter(
@@ -512,11 +549,18 @@ class Panther(McStasInstrumentBase):
 
         OriginCalc = myinstr.calculators["OriginCalc"]
 
+        # myinstr.add_master_parameter(
+        #     "mono_index",
+        #     {OriginCalc.name: "mono_index"},
+        #     unit=OriginCalc.parameters["mono_index"].unit,
+        #     comment=OriginCalc.parameters["mono_index"].comment,
+        # )
+
         myinstr.add_master_parameter(
-            "mono_index",
-            {OriginCalc.name: "mono_index"},
-            unit=OriginCalc.parameters["mono_index"].unit,
-            comment=OriginCalc.parameters["mono_index"].comment,
+            "energy",
+            {OriginCalc.name: "Ei"},
+            unit=OriginCalc.parameters["Ei"].unit,
+            comment=OriginCalc.parameters["Ei"].comment,
         )
 
 
