@@ -28,6 +28,7 @@ myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 print(myinstrument.get_total_SPLIT())
 myinstrument.set_sample_by_name("vanadium")
 myinstrument.set_sample_by_name("H2O")
+myinstrument.sample_cylinder_shape(0.005, 0.01)
 print(myinstrument)
 myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)

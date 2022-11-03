@@ -72,6 +72,42 @@ class McStasInstrumentBase(Instrument):
             value=0,
         )
 
+        mycalculator.add_parameter(
+            "double",
+            "sample_width",
+            comment="width of the sample if shape is box",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_height",
+            comment="height of the sample if shape is box or cylinder",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_depth",
+            comment="depth of the sample if shape is box",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_radius",
+            comment="radius of the sample if shape is sphere or cylinder",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_thickness",
+            comment="thickness of the sample if it is hollow",
+            unit="m",
+            value=0.0,
+        )
+
     def add_new_section(
         self, new_calcname, output_arm=None, hasSample=False, section_name=None
     ):
@@ -154,13 +190,12 @@ class McStasInstrumentBase(Instrument):
         if self._add_monitors is False:
             return
 
-        instr = calculator
-        monitor = instr.add_component(name + "_DEBUG", "Monitor_nD")
+        monitor = calculator.add_component(name + "_DEBUG", "Monitor_nD")
         monitor.filename = '"' + name + '_DEBUG"'
         monitor.xwidth = width
         monitor.yheight = height
         monitor.bins = bins
-        monitor.options = '"energy limits=[{0:.2f} {1:.2f}] x y, parallel"'.format(
+        monitor.options = '"energy limits=[{0:.2f} {1:.2f}] x y time auto, parallel"'.format(
             #        energy - denergy, energy + denergy
             0,
             25,
@@ -169,7 +204,7 @@ class McStasInstrumentBase(Instrument):
         # monitor.options = '"energy limits=[Ei-dE, Ei+dE] x y, borders, parallel"'
         monitor.set_AT(position, RELATIVE="PREVIOUS")
 
-        psd = instr.add_component(name + "_psd_DEBUG", "Monitor_nD")
+        psd = calculator.add_component(name + "_psd_DEBUG", "Monitor_nD")
         psd.filename = '"' + name + '_DEBUG"'
         psd.xwidth = width
         psd.yheight = height
@@ -177,7 +212,7 @@ class McStasInstrumentBase(Instrument):
         psd.options = '"x y, parallel"'
         psd.set_AT([0, 0, 0], RELATIVE="PREVIOUS")
 
-        psd = instr.add_component(name + "_psdcyl_DEBUG", "Monitor_nD")
+        psd = calculator.add_component(name + "_psdcyl_DEBUG", "Monitor_nD")
         psd.filename = '"' + name + '_DEBUG"'
         psd.xwidth = 2 * radius
         psd.yheight = height
@@ -193,6 +228,56 @@ class McStasInstrumentBase(Instrument):
 
     def focus_angle(self, h, z):
         return 2 * math.atan(h / 2 / z)
+
+    def _set_sample_shape(
+        self, radius: float, width: float, height: float, depth: float, thickness: float
+    ) -> None:
+        mycalculator = self._calculator_with_sample
+        mycalculator.parameters["sample_radius"].value = radius
+        mycalculator.parameters["sample_width"].value = width
+        mycalculator.parameters["sample_height"].value = height
+        mycalculator.parameters["sample_depth"].value = depth
+        mycalculator.parameters["sample_thickness"].value = thickness
+
+    def sample_sphere_shape(self, radius: float, thickness: float = 0) -> None:
+        if radius <= 0:
+            raise RuntimeError("Radius of spheric sample should be >0")
+        self._set_sample_shape(radius, 0, 0, 0, thickness)
+
+    def sample_cylinder_shape(
+        self, radius: float, height: float, thickness: float = 0
+    ) -> None:
+        if radius <= 0:
+            raise RuntimeError("Radius of cylindric sample should be >0")
+        if height <= 0:
+            raise RuntimeError("Height of cylindric sample should be >0")
+        self._set_sample_shape(radius, 0, height, 0, thickness)
+
+    def sample_box_shape(
+        self, width: float, height: float, depth: float, thickness: float = 0
+    ) -> None:
+        if width <= 0:
+            raise RuntimeError("Width of box sample should be >0")
+        if height <= 0:
+            raise RuntimeError("Height of box sample should be >0")
+        if depth <= 0:
+            raise RuntimeError("Depth of box sample should be >0")
+
+        self._set_sample_shape(0, width, height, depth, thickness)
+
+    def _check_sample_shape(self):
+        mycalculator = self._calculator_with_sample
+
+        r = mycalculator.parameters["sample_radius"].value
+        w = mycalculator.parameters["sample_width"].value
+        # h = mycalculator.parameters["sample_height"].value
+        # d = mycalculator.parameters["sample_depth"].value
+        # t = mycalculator.parameters["sample_thickness"].value
+
+        if r <= 0 and w <= 0:
+            raise RuntimeError(
+                "Sample shape should be defined by: sample_sphere_shape or sample_cylinder_shape or sample_box_shape methods"
+            )
 
     # ------------------------------
     # this implements what is foreseen in the libpyvinyl.Instrument class
@@ -247,10 +332,10 @@ class McStasInstrumentBase(Instrument):
             s.Sqw_inc = 0
             s.sigma_coh = -1
             s.sigma_inc = -1
-            # s.xwidth = 0.01
-            s.radius = 0.005
-            s.yheight = 0.01
-            s.thickness = 0  # 0.002
+            s.xwidth = "sample_width"
+            s.radius = "sample_radius"  # 0.005
+            s.yheight = "sample_height"
+            s.thickness = "sample_thickness"  # 0  # 0.002
             s.verbose = 2
             s.p_interact = 1
             s.d_phi = 180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
@@ -313,24 +398,26 @@ class McStasInstrumentBase(Instrument):
         #        self.__sample_hash = hash(frozenset(vars(self.sample)))
         return self.sample
 
+    def run(self):
+        self._check_sample_shape()
+        return super().run()
+
     # ------------------------------ utility methods made available for the users
     def sim_neutrons(self, number) -> None:
         """Method to set the number of neutrons to be simulated"""
-        for calc in self.calculators:
-            mycalc = self.calculators[calc]
+        for mycalc in self.calculators.values():
             mycalc.settings(ncount=number)
 
     def set_seed(self, number) -> None:
         """Setting the simulation seed"""
-        for calc in self.calculators:
-            mycalc = self.calculators[calc]
+        for mycalc in self.calculators.values():
             mycalc.settings(seed=number)
 
     def get_total_SPLIT(self):
         split = 1
-        for calc in self.calculators:
+        for mycalc in self.calculators.values():
             # print("Calculator: ", calc)
-            mycalc = self.calculators[calc]
+            # mycalc = self.calculators[calc]
             for component in mycalc.component_list:
                 # print(component.name, component.SPLIT)
 
