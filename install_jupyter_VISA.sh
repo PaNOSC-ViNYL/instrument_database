@@ -4,7 +4,7 @@ set -o pipefail
 echo "Installing the necessary packages and softwares as subdirectories of the current directory"
 
 # first clone the instrument database
-git clone  --recurse-submodules https://github.com/PaNOSC-ViNYL/instrument_database.git
+git clone -b thales_multicalculators --recurse-submodules https://github.com/PaNOSC-ViNYL/instrument_database.git
 cd instrument_database/
 
 # create a python environment
