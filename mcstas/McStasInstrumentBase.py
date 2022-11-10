@@ -367,12 +367,25 @@ class McStasInstrumentBase(Instrument):
                 mycalculator.add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
                 )
+                mycalculator.add_parameter(
+                    "string",
+                    "sqw_inc",
+                    comment="File with incoherent Sqw in McStas convention (disabled by default)",
+                    value="0",
+                )
                 s.Sqw_coh = "sqw_file"
                 self.add_master_parameter(
                     "sqw_file",
                     # here I would need to get the name of the calculator in which the sample is defined
                     {mycalculator.name: "sqw_file"},
+                    comment=mycalculator.parameters["sqw_file"].comment,
                 )
+                self.add_master_parameter(
+                    "sqw_inc",
+                    {mycalculator.name: "sqw_inc"},
+                    comment=mycalculator.parameters["sqw_file"].comment,
+                )
+                self.master["sqw_inc"] = 0
 
         # quartz_sample.radius = 0.005
         # quartz_sample.yheight = 0.05
