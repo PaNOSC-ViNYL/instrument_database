@@ -385,7 +385,7 @@ class McStasInstrumentBase(Instrument):
                     {mycalculator.name: "sqw_inc"},
                     comment=mycalculator.parameters["sqw_file"].comment,
                 )
-                self.master["sqw_inc"] = 0
+                self.master["sqw_inc"] = "0"
 
         # quartz_sample.radius = 0.005
         # quartz_sample.yheight = 0.05
