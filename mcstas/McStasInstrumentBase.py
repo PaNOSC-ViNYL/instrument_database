@@ -364,6 +364,9 @@ class McStasInstrumentBase(Instrument):
                 s.sigma_inc = 4.935
                 s.sigma_coh = 0
             else:
+                s.sigma_abs = 0
+                s.sigma_coh = 0
+                s.sigma_inc = 0
                 mycalculator.add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
                 )
@@ -371,7 +374,7 @@ class McStasInstrumentBase(Instrument):
                     "string",
                     "sqw_inc",
                     comment="File with incoherent Sqw in McStas convention (disabled by default)",
-                    value="0",
+                    value='"0"',
                 )
                 s.Sqw_coh = "sqw_file"
                 s.Sqw_inc = "sqw_inc"
@@ -386,7 +389,7 @@ class McStasInstrumentBase(Instrument):
                     {mycalculator.name: "sqw_inc"},
                     comment=mycalculator.parameters["sqw_file"].comment,
                 )
-                self.master["sqw_inc"] = "0"
+                self.master["sqw_inc"] = '"0"'
 
         # quartz_sample.radius = 0.005
         # quartz_sample.yheight = 0.05
