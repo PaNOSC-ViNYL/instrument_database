@@ -374,6 +374,7 @@ class McStasInstrumentBase(Instrument):
                     value="0",
                 )
                 s.Sqw_coh = "sqw_file"
+                s.Sqw_inc = "sqw_inc"
                 self.add_master_parameter(
                     "sqw_file",
                     # here I would need to get the name of the calculator in which the sample is defined
