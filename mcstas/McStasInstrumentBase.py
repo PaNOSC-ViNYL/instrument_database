@@ -30,7 +30,7 @@ class McStasInstrumentBase(Instrument):
         # the components of the position for the sample and sample environment
         self._sample_environment_arm = None
         self._sample_arm = None
-
+        self.sample = None
         self._calculator_with_sample = None
 
         self._sample_hash = None

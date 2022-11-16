@@ -137,7 +137,7 @@ class Panther(McStasInstrumentBase):
 
         super().__init__("Panther")
 
-        self._add_monitors = True
+        self._add_monitors = False
 
         self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
         self.sample_environments = ["None", "10T", "Orange"]
@@ -343,15 +343,24 @@ class Panther(McStasInstrumentBase):
         diaphragm.set_parameters(xwidth=0.150, yheight=0.500)
 
         BC2 = mycalculator.copy_component("BC2", BC1, AT=0.800, RELATIVE=BC1)
-        BC2.delay = "0.800 * neutron_velocity"
+        tdelay = "0.800 / neutron_velocity"
+        BC2.delay = tdelay
         BC2.isfirst = 0
+        # BC2.phase = 41.3346
+        BC2.nu = "-" + BC1.nu
         BC3 = mycalculator.copy_component("BC3", BC2, AT=0.800, RELATIVE=BC2)
+        BC3.nu = BC1.nu
+        BC3.delay = BC2.delay + " + " + tdelay
         BC4 = mycalculator.copy_component("BC4", BC2, AT=0.800, RELATIVE=BC3)
+        BC4.delay = BC3.delay + " + " + tdelay
         BC5 = mycalculator.copy_component("BC5", BC2, AT=0.800, RELATIVE=BC4)
+        BC5.delay = BC4.delay + " + " + tdelay
         BC1.verbose = 1
-        BC1.isfirst = 1
+
+        L_bc5_fermi = BC2.AT_data[2] + BC3.AT_data[2] + BC4.AT_data[2] + BC5.AT_data[2]
+        print("L_bc5_fermi before BC3 = ", BC2.AT_data[2] + BC3.AT_data[2])
         # ------------------------------
-        L_bc5_fermi = 0
+
         DCH = mycalculator.add_parameter(
             "double",
             "dch",
@@ -367,7 +376,6 @@ class Panther(McStasInstrumentBase):
             "heavy_diaphragm", "Slit", AT=0.5011, RELATIVE=BC5
         )
         diaphragm.set_parameters(xwidth=DCH, yheight=0.150)
-        L_bc5_fermi = L_bc5_fermi + diaphragm.AT_data[2]
 
         # ------------------------------
         # adds monitors at the same position of the previous component
@@ -377,7 +385,7 @@ class Panther(McStasInstrumentBase):
         Monochromator_Arm = mycalculator.add_component(
             "Monochromator_Arm", "Arm", AT=2.8311, RELATIVE=BC5
         )
-        L_bc5_fermi = Monochromator_Arm.AT_data[2]
+        L_bc5_fermi = L_bc5_fermi + Monochromator_Arm.AT_data[2]
 
         self.add_monitor(
             mycalculator, "mono_in", width=DCH, height=2 * diaphragm.yheight
@@ -398,7 +406,7 @@ class Panther(McStasInstrumentBase):
         Monochromator.gap = 0.0005
         Monochromator.mosaic = "mono_mosaic"  # depends if PG or Cu
         Monochromator.r0 = 1
-        Monochromator.t0 = 0  # remove transmitted neutrons
+        Monochromator.t0 = 1  # remove transmitted neutrons
         Monochromator.RV = mono_rv
         Monochromator.RH = mono_rh
         Monochromator.DM = "mono_d"
@@ -422,12 +430,19 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize(  # different values for Cu
             "if(mono_index == 2 || mono_index == 4 ){ RMV_u=12.7;  RMV_w=0.449; RMH_g=45; RMH_h=221;}"
         )
+        # optimal time focusing:
+        Lcs = 0.8  # [m] chopper-sample distance
+        Lsd = 2.5  # [m] sample-detector distance
+        Lmc = 1.7  # [m] monochromator-chopper distance
+        Lms = Lmc + Lcs  # [m] monochromator-sample distance
+        Lhm = 4.123  # [m] distance between the horizontal virtual source and the monochromator
 
         mycalculator.append_initialize(
             "if(mono_rv<0) mono_rv = (RMV_u + acos(1- RMV_w/sin(DEG2RAD*a2/2)))/1000.;"
         )
         mycalculator.append_initialize(
-            "if(mono_rh<0) mono_rh = (RMH_g + RMH_h * sin(DEG2RAD*a2/2))/1000.;"
+            # "if(mono_rh<0) mono_rh = (RMH_g + RMH_h * sin(DEG2RAD*a2/2))/1000.;"
+            f"if(mono_rh<0) mono_rh = 2*(1./(1./{Lhm}+1./{Lms})  )/ sin(DEG2RAD*a2/2);"
         )
 
         mycalculator.add_declare_var("float", "mono_mosaic")
@@ -443,12 +458,19 @@ class Panther(McStasInstrumentBase):
 
         # AT=13.8485, RELATIVE=HCS)
 
+        beamstop = mycalculator.add_component(
+            "BS", "Beamstop", AT=1, RELATIVE=Monochromator_Arm
+        )
+        beamstop.set_parameters(xwidth=0.5, yheight=0.5)
+
         fermi = mycalculator.add_component(
             "fermi_chopper", "FermiChopper", AT=1.700, RELATIVE=Monochromator_Out
         )
         L_bc5_fermi = L_bc5_fermi + fermi.AT_data[2]
+        print(L_bc5_fermi)
+
         fermi.set_parameters(
-            radius=0.31,
+            radius=0.031,
             nslit=45,
             length=0.023,
             w=0.0006,
@@ -458,25 +480,25 @@ class Panther(McStasInstrumentBase):
             eff=0.86 * 0.8,
             m=0,
             R0=0,  # no super mirror
-            zero_time=0,
-            delay=str(L_bc5_fermi) + " * neutron_velocity",
+            zero_time=2,
+            # delay=0.007,
+            # delay=str(L_bc5_fermi) + " / neutron_velocity",
+            #            delay=0.0065,
+            # phase=-23.1209 * 2,
         )
-        # optimal time focusing:
-        Lcs = 0.8  # [m] chopper-sample distance
-        Lsd = 2.5  # [m] sample-detector distance
-        Lmc = 1.7  # [m] monochromator-chopper distance
-        Lms = Lmc + Lcs  # [m] monochromator-sample distance
-        Lhm = 4.123  # [m] distance between the horizontal virtual source and the monochromator
+
         mycalculator.add_parameter(
             "double", "Efoc", comment="Focusing energy", unit="meV", value=0
         )
-        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
+        #        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
         mycalculator.append_initialize(
             "if(chopper_rpm==0) chopper_rpm = 60*neutron_velocity * tan(DEG2RAD*a2 / 2) / PI / (({Lcs} + {Lsd}*pow((1 - Efoc / Ei),(-3/2))) * (1 - {Lms} / {Lhm}));".format(
                 Lcs=Lcs, Lsd=Lsd, Lms=Lms, Lhm=Lhm
             )
         )
-        ##        mycalculator.append_initialize('printf("%
+        mycalculator.append_initialize(
+            'printf("Chopper_rpm = %.2f\\nNeutron velocity: %.2f\\nE_focus: %.2f\\n", chopper_rpm, neutron_velocity, Efoc );'
+        )
 
         # ------------------------------
         bsw = mycalculator.add_parameter(
