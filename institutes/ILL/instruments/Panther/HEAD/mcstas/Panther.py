@@ -49,7 +49,7 @@ ureg = pint.get_application_registry()
 
 ############## Mandatory method
 def get_flavours():
-    return ["None"]
+    return ["None", "nosection"]
 
 
 ############## Mandatory method
@@ -60,6 +60,8 @@ def def_instrument(flavour: Optional[str] = None):
 
     if flavour in [None, "None", "", "full"]:
         return Panther()
+    if flavour == "nosection":
+        return Panther(False)
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
 
@@ -135,12 +137,7 @@ class Panther(McStasInstrumentBase):
     def __init__(self, do_section=True):
         """Here the real definition of the instrument is performed"""
 
-        super().__init__("Panther")
-
-        self._add_monitors = False
-
-        self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
-        self.sample_environments = ["None", "10T", "Orange"]
+        super().__init__("Panther", do_section)
 
         # ------------------------------ some local variables
         myinstr = self
@@ -280,24 +277,8 @@ class Panther(McStasInstrumentBase):
         # ------------------------------------------------------------
         H12 = mycalculator.add_component("H12", "Arm", AT=[0, 0, 0], RELATIVE=HCS)
 
-        self.add_monitor(
-            mycalculator,
-            "source",
-            position=[0, 0, 0],
-            width=0.20,
-            height=0.20,
-            bins=100,
-            radius=0.30,
-            energy=5,
-            denergy=4.9,
-        )
-        if self._add_monitors:
-            HCS.target_index = HCS.target_index + 3
-
         H12_bouchon = mycalculator.add_component("B", "Slit", AT=4.6975, RELATIVE=H12)
         H12_bouchon.set_parameters(radius=0.100)
-
-        self.add_monitor(mycalculator, "bouchon", width=0.20, height=0.20)
 
         sapphire_arm = mycalculator.add_component(
             "sapphire_arm", "Arm", AT=0.5, RELATIVE=H12_bouchon
@@ -313,8 +294,6 @@ class Panther(McStasInstrumentBase):
             yheight=0.3,
             thickness=1.11,
         )
-
-        self.add_monitor(mycalculator, "sapphire", width=0.2, height=0.2)
 
         # guide = self._add_chopper_guide(  index , position,  guide_template, guide_lenth)
         BC1 = mycalculator.add_component(
@@ -332,10 +311,8 @@ class Panther(McStasInstrumentBase):
             isfirst=1,
             abs_out=1,
             xwidth=0.150,
-            phase=0,
+            phase=-41.3346 / 2,
         )
-
-        self.add_monitor(mycalculator, "chopper1", width=0.2, height=0.2)
 
         diaphragm = mycalculator.add_component(
             "diaphragm1", "Slit", AT=0.5825, RELATIVE=BC1
@@ -379,7 +356,6 @@ class Panther(McStasInstrumentBase):
 
         # ------------------------------
         # adds monitors at the same position of the previous component
-        self.add_monitor(mycalculator, "diaphram", width=DCH, height=diaphragm.yheight)
 
         # AT=12.1485, RELATIVE=HCS)
         Monochromator_Arm = mycalculator.add_component(
@@ -387,18 +363,14 @@ class Panther(McStasInstrumentBase):
         )
         L_bc5_fermi = L_bc5_fermi + Monochromator_Arm.AT_data[2]
 
-        self.add_monitor(
-            mycalculator, "mono_in", width=DCH, height=2 * diaphragm.yheight
-        )
-
         Monochromator = mycalculator.add_component(
             "Monochromator", "Monochromator_curved"
         )
         Monochromator.set_parameters(  # width=0.300, height=0.220
             NH=11,
             NV=15,
-            zwidth=0.19,
-            yheight=0.19,
+            zwidth=0.019,
+            yheight=0.019,
         )
 
         #   Monochromator.reflect = '"HOPG.rfl"'
@@ -454,8 +426,6 @@ class Panther(McStasInstrumentBase):
         Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
         Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
 
-        self.add_monitor(mycalculator, "mono_out_rot", 1.7, width=0.8, height=0.3)
-
         # AT=13.8485, RELATIVE=HCS)
 
         beamstop = mycalculator.add_component(
@@ -470,7 +440,7 @@ class Panther(McStasInstrumentBase):
         print(L_bc5_fermi)
 
         fermi.set_parameters(
-            radius=0.031,
+            radius=0.0006 * 45,
             nslit=45,
             length=0.023,
             w=0.0006,
@@ -530,8 +500,6 @@ class Panther(McStasInstrumentBase):
             RELATIVE=before_sample_diaphragm,
         )
 
-        self.add_monitor(mycalculator, "sample_IN")
-
         # ------------------------------------------------------------
         # this new section contains the sample and the sample environment
         mycalculator, sample_mcpl_arm = self.add_new_section(
@@ -548,25 +516,108 @@ class Panther(McStasInstrumentBase):
         Sample_Out = mycalculator.add_component(
             "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
         )
-        # Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
-        self.add_monitor(mycalculator, "sample_out", 0)
+        # adding a shielding to avoid saving neutrons outside acceptance
+        #        bs = mycalculator.add_component(
+        #            "acceptance", "Beamstop", AT=[-2, 0, 0], RELATIVE=Sample_Out
+        #        )
+        #        bs.set_parameters(
+        #            xwidth=100,
+        #            yheight=100,
+        #        )
+        # Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
         # ------------------------------------------------------------
         mycalculator, detector_arm = self.add_new_section("DetectorCalc", Sample_Out)
         # ------------------------------------------------------------
-        # the beam is at 1.4m from the ground and the detector height is 2m,
-        # so need to shift the detector 40cm lower
+
+        # collimator = mycalculator.add_component(
+        #     "collimator", "Collimator_radial", AT=[0, 0, 0], RELATIVE=detector_arm
+        # )
+        # collimator.set_parameters(
+        #     xwidth=0,
+        #     yheight=2,
+        #     length=1,
+        #     theta_min=5,
+        #     theta_max=136,
+        #     nchans=9 * 32,
+        #     radius=1,
+        #     nslit=1,
+        #     roc=0.1,
+        #     verbose=1,
+        # )
+
+        time_channels = 512
+        tube_width = 0.022
+        theta_bins = 9 * 32 + 8
+        theta_min = -5
+        angle_increment = math.asin(tube_width / 2.0 / Lsd) * 2  # * 180 / math.pi
+        theta_max = theta_bins * angle_increment * 180 / math.pi + theta_min
+
+        y_channels = 512
+
+        theta_max = 180
+        theta_min = -180
+        theta_bins = 180
+
         detector = mycalculator.add_component(
-            "PSD", "Monitor_nD", AT=[0, -0.4, 0], RELATIVE=detector_arm
+            "PSD_TOF",
+            "Monitor_nD",
+            AT=[0, -0.4, 0],
+            RELATIVE=detector_arm,
         )
-        #        detector.3He_pressure=10
-        detector.xwidth = Lsd  # 2.580 m
-        detector.yheight = 2.0
-        detector.restore_neutron = 0
-        detector.filename = '"detector.dat"'
-        detector.options = '"theta limits=[5 136] bins=296, time auto banana"'
+
+        detector.set_parameters(
+            xwidth=Lsd,  # 2.580 m
+            yheight=2.0,
+            # detector.restore_neutron = 1
+            filename='"detector_TOF.dat"',
+            options=(  # 9*32+8(spacers)
+                f'" theta bins={theta_bins} limits=[{theta_min}:{theta_max}], y bins={y_channels}, time bins={time_channels} auto all list"'  # , 3He_pressure=10"'
+            ),
+        )
+
+        """
+        angle = 0
+        angle_increment = math.asin(tube_width / 2.0 / Lsd) * 2  # * 180 / math.pi
+        itube = 0
+
+        for ibank in range(0, 9):  # 9
+            for i in range(0, 32):  # 32
+                # the beam is at 1.4m from the ground and the detector height is 2m,
+                # so need to shift the detector 40cm lower
+                # arm = mycalculator.add_component(
+                #     f"arm_{itube}",
+                #     "Arm",
+                #     AT=[0, 0, 0],
+                #     ROTATED=[0, angle, 0],
+                #     RELATIVE=detector_arm,
+                # )
+                # print(f"angle: {angle} (+{angle_increment})")
+
+                detector = mycalculator.add_component(
+                    f"PSD_{itube}",
+                    "Monitor_nD",
+                    AT=[Lsd * math.sin(angle), -0.4, Lsd * math.cos(angle)],
+                    RELATIVE=detector_arm,
+                )
+
+                #        image
+                detector.xwidth = tube_width  # Lsd  # 2.580 m
+                detector.yheight = 2.0
+                # detector.restore_neutron = 1
+                detector.filename = f'"detector_{itube}.dat"'
+                detector.options = (
+                    f'"  y bins=512, time bins=512 parallel 3He_pressure=10"'
+                )
+   
+   
+                angle = angle + angle_increment
+                itube = itube + 1
+            # at the end of each bank there is a Cd spacer of the size of one tube
+            angle = angle + angle_increment
         # 32 tubes in 9 banks with space between banks equal to one tube
+        """
         # ------------------------------ instrument parameters
 
         OriginCalc = myinstr.calculators["OriginCalc"]

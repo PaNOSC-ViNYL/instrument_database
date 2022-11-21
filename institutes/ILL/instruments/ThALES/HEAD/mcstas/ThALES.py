@@ -23,7 +23,6 @@ my_configurator = functions.Configurator()
 # from institutes.ILL.sources.HEAD.mcstas import Full as source
 # from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 from institutes.ILL.sources.HEAD.mcstas import Monochromator_source as source
-from institutes.ILL.samples.vanadium import set_vanadium_sample
 
 # ------------------------------ Mandatory classes to use
 from libpyvinyl.Instrument import Instrument
@@ -53,7 +52,7 @@ addCryostat = True
 
 ############## Mandatory method
 def get_flavours():
-    return ["full", "from_sample", "merge", "nosection"]
+    return ["full", "nosection"]
 
 
 ############## Mandatory method
@@ -64,11 +63,7 @@ def def_instrument(flavour: Optional[str] = None):
 
     if flavour in [None, "None", "", "full"]:
         return ThALES()
-    elif flavour == "from_sample":
-        return ThALES_from_sample()
-    elif flavour == "merge":
-        return ThALES_merge()
-    elif flavour == "nosection":
+    if flavour == "nosection":
         return ThALES(False)
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
@@ -176,7 +171,7 @@ class ThALES(McStasInstrumentBase):
     def __init__(self, do_section=True):
         """Here the real definition of the instrument is performed"""
 
-        super().__init__("ThALES")
+        super().__init__("ThALES", do_section)
 
         self.sample_environments = ["None", "10T", "Orange"]
 
@@ -199,6 +194,7 @@ class ThALES(McStasInstrumentBase):
         # ------------------------------------------------------------
         # Start with a first section and declaring its parameters
         mycalculator, Origin = self.add_new_section("OriginCalc")
+        OriginCalc = mycalculator
 
         a2 = mycalculator.add_parameter(
             "double",
@@ -255,8 +251,8 @@ class ThALES(McStasInstrumentBase):
         # - dE
         HCS = source.HCS_source(mycalculator)
         HCS.E0 = "Ei"
-        HCS.target_index = 1
-        HCS.flux = 5e9
+        HCS.target_index = 2
+        HCS.flux = 35e9
 
         # ------------------------------------------------------------
         # start of the guide
@@ -264,7 +260,6 @@ class ThALES(McStasInstrumentBase):
         H5.set_AT([0, 0, 2.155], RELATIVE=HCS)
 
         # adds monitors at the same position of the previous component
-        self.add_monitor(mycalculator, "H5")
 
         H53_1a = mycalculator.add_component("H5_1", "Guide_gravity")
         # material: Al 5083
@@ -279,13 +274,9 @@ class ThALES(McStasInstrumentBase):
         H53_1a.reflect = '"supermirror_m3.rfl"'
         H53_1a.set_AT([0, 0, 0], RELATIVE=H5)
 
-        self.add_monitor(mycalculator, "H5_1a", H53_1a.l)
-
         H53_1b = mycalculator.copy_component("H5_1b", H53_1a)
         H53_1b.l = 1.775
         H53_1b.set_AT([0, 0, H53_1a.l], RELATIVE=H53_1a)
-
-        self.add_monitor(mycalculator, "H5_1b", [0, 0, H53_1b.l])
 
         # membrane
         # gap 25 mm
@@ -327,9 +318,8 @@ class ThALES(McStasInstrumentBase):
         )
 
         # adds monitors at the same position of the previous component
-        self.add_monitor(mycalculator, "H53_D")
 
-        H53_7 = mycalculator.add_component("H53_7", "Guide_tapering")
+        H53_7 = mycalculator.add_component("H53_7_parabolic", "Guide_tapering")
         H53_7.option = '"elliptical"'
         H53_7.w1 = 0.06
         H53_7.h1 = 0.12
@@ -359,20 +349,27 @@ class ThALES(McStasInstrumentBase):
         H53_7out.set_AT([0, 0, H53_7.l], RELATIVE=H53_7)
 
         # adds monitors at the same position of the previous component
-        self.add_monitor(mycalculator, "H53_7")
 
         slit_A = mycalculator.add_component("slit_A", "Slit")
         slit_A.xwidth = 0.04
         slit_A.yheight = 0.12
         slit_A.set_AT([0, 0, H53_7.l + 0.3], RELATIVE=H53_7)
 
-        # adds monitors at the same position of the previous component
-        self.add_monitor(mycalculator, "slit_A")
+        # monitor
+        counter = mycalculator.add_component(
+            "counter", "Monitor_nD", AT=[0.04, 0.04, 1.9], RELATIVE=slit_A
+        )
+        counter.set_parameters(
+            xwidth=0.01,
+            yheight=0.01,
+            zdepth=0.01,
+            filename='"counter.dat"',
+            restore_neutron=1,
+            options='"box intensity, bins=1 pressure=0.001"',
+        )
 
         Monochromator_Arm = mycalculator.add_component("Monochromator_Arm", "Arm")
         Monochromator_Arm.set_AT([0, 0, 2], RELATIVE=slit_A)
-
-        self.add_monitor(mycalculator, "mono_in")
 
         # double check the probability of reflection
         Monochromator = mycalculator.add_component(
@@ -405,20 +402,14 @@ class ThALES(McStasInstrumentBase):
         Monochromator.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
         Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
 
-        self.add_monitor(mycalculator, "mono_out")
-
         Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
         Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
         Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
-
-        self.add_monitor(mycalculator, "mono_out_rot", [0, 0, 0.1])
 
         before_sample_slit = mycalculator.add_component("before_sample_slit", "Slit")
         before_sample_slit.xwidth = 0.03
         before_sample_slit.yheight = 0.028
         before_sample_slit.set_AT([0, 0, ThALES_L - 0.250], RELATIVE=Monochromator_Out)
-
-        # self.add_monitor(mycalculator, "sample_slit_IN", 0.200)
 
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
@@ -427,16 +418,14 @@ class ThALES(McStasInstrumentBase):
             RELATIVE=before_sample_slit,
         )
 
-        self.add_monitor(mycalculator, "sample_IN")
-
         # ------------------------------------------------------------
         # this new section contains the sample and the sample environment
-        mycalculator, sample_mcpl_arm = self.add_new_section(
+        SampleCalc, sample_mcpl_arm = self.add_new_section(
             "SampleCalc", sample_mcpl_arm, True
         )
         # ------------------------------------------------------------
 
-        a4 = mycalculator.add_parameter(
+        a4 = SampleCalc.add_parameter(
             "double",
             "a4",
             comment="Angle between reflected by sample and incident beams",
@@ -453,36 +442,31 @@ class ThALES(McStasInstrumentBase):
         sample = self.set_sample_by_name("Vanadium")
         sample.set_ROTATED([0, 0, 0], RELATIVE=self._sample_arm)
 
-        Sample_Out = mycalculator.add_component("Sample_Out", "Arm")
+        Sample_Out = SampleCalc.add_component("Sample_Out", "Arm")
         Sample_Out.set_AT([0, 0, 0], RELATIVE=self._sample_arm)
         #        Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
         Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
-        self.add_monitor(mycalculator, "sample_out", 0.249)
-
-        after_sample_slit = mycalculator.add_component("after_sample_slit", "Slit")
+        after_sample_slit = SampleCalc.add_component("after_sample_slit", "Slit")
         after_sample_slit.xwidth = 0.03
         after_sample_slit.yheight = 0.04
         slit_distance = 0.250
         after_sample_slit.set_AT([0, 0, slit_distance], RELATIVE=Sample_Out)
 
-        self.add_monitor(mycalculator, "slit_B")
-
-        Ana_Cradle = mycalculator.add_component("Ana_Cradle", "Arm")
-        Ana_Cradle.set_AT([0, 0, dist_sample_ana], RELATIVE=Sample_Out)
-
         # ------------------------------------------------------------
-        mycalculator, Ana_Cradle = self.add_new_section("AnalyzerCalc", Ana_Cradle)
+        AnalyzerCalc, after_sample_slit = self.add_new_section(
+            "AnalyzerCalc", after_sample_slit
+        )
         # ------------------------------------------------------------
 
-        a6 = mycalculator.add_parameter(
+        a6 = AnalyzerCalc.add_parameter(
             "double",
             "a6",
             comment="Angle between reflected by analyzer and incident beams",
             unit="degree",
             value=33,
         )
-        RHanalyzer = mycalculator.add_parameter(
+        RHanalyzer = AnalyzerCalc.add_parameter(
             "double",
             "RHanalyzer",
             comment="Monochromator horizontal focusing. Calculated by default",
@@ -490,13 +474,13 @@ class ThALES(McStasInstrumentBase):
             unit="",
         )
         # setting default value for RHmono if not provided
-        mycalculator.append_initialize(
+        AnalyzerCalc.append_initialize(
             "if(RHanalyzer<0) RHanalyzer= 2 *"
             + str(dist_sample_ana)
             + " / sin(DEG2RAD*a6/2);"
         )
 
-        RVanalyzer = mycalculator.add_parameter(
+        RVanalyzer = AnalyzerCalc.add_parameter(
             "double",
             "RVanalyzer",
             comment="Monochromator horizontal focusing. Calculated by default",
@@ -504,18 +488,21 @@ class ThALES(McStasInstrumentBase):
             unit="",
         )
         # setting default value for RVmono if not provided
-        mycalculator.append_initialize(
+        AnalyzerCalc.append_initialize(
             "if(RVanalyzer<0) RVanalyzer= 2 * "
             + str(dist_ana_det)
             + " * sin(DEG2RAD*a6/2) ;"
         )
-        mycalculator.append_initialize(
+        AnalyzerCalc.append_initialize(
             'printf("(RHanalyzer,RVanalyzer) = (%.2f,%.2f)\\n", RHanalyzer, RVanalyzer);'
         )
 
-        self.add_monitor(mycalculator, "analyzer_IN")
+        Ana_Cradle = AnalyzerCalc.add_component("Ana_Cradle", "Arm")
+        Ana_Cradle.set_AT(
+            [0, 0, dist_sample_ana - slit_distance], RELATIVE=after_sample_slit
+        )
 
-        analyzer = mycalculator.add_component("analyzer", "Monochromator_curved")
+        analyzer = AnalyzerCalc.add_component("analyzer", "Monochromator_curved")
         analyzer.gap = 0.0005
         analyzer.NH = 11
         analyzer.NV = 9
@@ -531,56 +518,41 @@ class ThALES(McStasInstrumentBase):
         analyzer.set_AT([0, 0, 0], RELATIVE=Ana_Cradle)
         analyzer.set_ROTATED([0, "a6*0.5", 0], RELATIVE=Ana_Cradle)
 
-        Ana_Out = mycalculator.add_component(
+        Ana_Out = AnalyzerCalc.add_component(
             "Ana_Out", "Arm", AT=[0, 0, 0], ROTATED=[0, "a6", 0], RELATIVE=Ana_Cradle
         )
 
-        self.add_monitor(mycalculator, "analyzer_slit_IN")
-
-        slit = mycalculator.add_component("slit", "Slit")
+        slit_distance = 0.340
+        slit = AnalyzerCalc.add_component("slit", "Slit")
         slit.xwidth = 0.03
         slit.yheight = 0.08
-        slit.set_AT([0, 0, 0.340], RELATIVE=Ana_Out)
+        slit.set_AT([0, 0, slit_distance], RELATIVE=Ana_Out)
 
-        #    res_monitor = mycalculator.add_component("res_monitor", "Res_monitor")
-        #    res_monitor.res_sample_comp = "res_sample"
-        #    res_monitor.filename = '"res_monitor"'
-        #    res_monitor.xwidth = 0.05
-        #    res_monitor.yheight = 0.12
-        #    res_monitor.set_WHEN("SAMPLE==0")
-        #    res_monitor.set_AT([0, 0, dist_ana_det], RELATIVE="Ana_Out")
-
-        detector_arm = mycalculator.add_component(
-            "detector_arm", "Arm", AT=[0, 0, dist_ana_det], RELATIVE="Ana_Out"
+        # ------------------------------------------------------------
+        DetectorCalc, slit = self.add_new_section("DetectorCalc", slit)
+        # ------------------------------------------------------------
+        detector_arm = DetectorCalc.add_component(
+            "detector_arm",
+            "Arm",
+            AT=[0, 0, dist_ana_det - slit_distance],
+            RELATIVE=slit,
         )
-        self.add_monitor(mycalculator, "detector", [0, 0, 0])
 
-        # ------------------------------------------------------------
-        mycalculator, detector_arm = self.add_new_section("DetectorCalc", detector_arm)
-        # ------------------------------------------------------------
-
-        detector_all = mycalculator.add_component(
-            "detector_all", "Monitor_nD", AT=[0, 0, 0.001], RELATIVE=detector_arm
+        detector_all = DetectorCalc.add_component(
+            "detector_all", "Monitor_nD", AT=[0, 0, 0], RELATIVE=detector_arm
         )
         detector_all.xwidth = 0.05
         detector_all.yheight = 0.12
         detector_all.restore_neutron = 0
         detector_all.options = '"intensity, square bins=1, file=detector_all.dat"'
 
-        # detector = mycalculator.add_component("detector_final", "Monitor_nD")
-        # detector.xwidth = 0.05
-        # detector.yheight = 0.12
-        # detector.bins = 1
-        # detector.options = '"p n energy"'
-        # detector.set_AT([0, 0, dist_ana_det + 0.002], RELATIVE="Ana_Out")
-
         # ------------------------------ instrument parameters
-        myinstr.add_master_parameter("a2", {"OriginCalc": "a2"}, unit="degree")
+        myinstr.add_master_parameter("a2", {OriginCalc.name: "a2"}, unit="degree")
         myinstr.add_master_parameter(
-            "a3", {"SampleCalc": "sample_rotation"}, unit="degree"
+            "a3", {SampleCalc.name: "sample_rotation"}, unit="degree"
         )
-        myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
-        myinstr.add_master_parameter("a6", {"AnalyzerCalc": "a6"}, unit="degree")
+        myinstr.add_master_parameter("a4", {SampleCalc.name: "a4"}, unit="degree")
+        myinstr.add_master_parameter("a6", {AnalyzerCalc.name: "a6"}, unit="degree")
         myinstr.master["a2"] = 79.10 * ureg.degree
         myinstr.master["a3"] = 0 * ureg.degree
         myinstr.master["a4"] = 60 * ureg.degree
@@ -589,126 +561,6 @@ class ThALES(McStasInstrumentBase):
         # Do not add sample parameters. They should be modified externally retrieving
         # sample with .sample
         # this obviously will require the instrument to be recompiled
-
-
-class ThALES_merge(ThALES):
-    def set_sample_by_name(self, name):
-        pass
-
-    def set_sample_environment_by_name(self, name):
-        pass
-
-    def __init__(self):
-        super().__init__()
-
-        instr = self
-        instr.name = "ThALES_merge"
-        instr.set_sample_by_name("None")
-        instr.set_sample_environment_by_name("None")
-
-        for calcname in instr.calculators:
-
-            calc = instr.calculators[calcname]
-            calc.name = calcname + "_merge"
-            calc.settings(checks=False)
-            remove_comp = []
-            for comp in calc.component_list[::-1]:
-                if comp.component_name == "Progress_bar":
-                    break
-                if comp.name == "detector_arm":
-                    comp.set_AT([0, 0, 0], RELATIVE="ABSOLUTE")
-                    continue
-                if comp.name == "detector_all":
-                    continue
-                calc.remove_component(comp)
-
-            #        calc.add_component(
-            #            "Origin", "Progress_bar", AT=[0, 0, 0], before="detector_arm"
-            #        )
-
-            vin = calc.add_component(
-                "Vin",
-                "MCPL_input",
-                AT=[0, 0, 0],
-                #            RELATIVE="detector_arm",
-                after="Origin",
-            )
-            vin.filelist = "filelist"
-
-            #
-        instr.calculators[instr._calculator_name].add_parameter(
-            "string", "filelist", comment="name of MCPL input file", value='"none"'
-        )
-
-        instr.add_master_parameter(
-            "input_file",
-            {instr._calculator_name: "filelist"},
-            comment="MCPL file generated before the sample",
-        )
-        instr.master["input_file"] = '""'
-
-        del instr.master["a2"]
-        del instr.master["a3"]
-        del instr.master["a4"]
-        del instr.master["a6"]
-
-
-def ThALES_from_sample():
-    instr = ThALES()
-
-    instr.name = "ThALESfromsample"
-    # Removing any sample
-    instr.set_sample_by_name("None")
-
-    # removing all components before the sample arm and adding an MCPL input at the place of the sample_arm before the sample environment
-    for calcname in instr.calculators:
-
-        calc = instr.calculators[calcname]
-        calc.name = calcname + "_sample"
-        calc.settings(checks=False)
-        remove_comp = []
-        first_component_to_remove = "sample_mcpl_arm"
-        first_component_to_remove_found = False
-        for comp in calc.component_list[::-1]:
-            if comp.name == first_component_to_remove:
-                first_component_to_remove_found = True
-                comp.set_AT([0, 0, 0], RELATIVE="ABSOLUTE")
-                continue
-            if first_component_to_remove_found is False:
-                continue
-            if comp.component_name == "Progress_bar":
-                break
-            calc.remove_component(comp)
-
-        comp = calc.component_list[2]
-        if comp.component_name != "MCPL_output":
-            print(calc.show_components())
-            raise RuntimeError("MCPL output component is not immediately after the Arm")
-        calc.remove_component(comp)
-
-        vin = calc.add_component(
-            "Vin",
-            "MCPL_input",
-            AT=[0, 0, 0],
-            #            RELATIVE="detector_arm",
-            after="Origin",
-        )
-        vin.filename = "filelist"
-
-    #
-    instr.calculators[instr._calculator_name].add_parameter(
-        "string", "filelist", comment="name of MCPL input file", value='"none"'
-    )
-
-    instr.add_master_parameter(
-        "input_file",
-        {instr._calculator_name: "filelist"},
-        comment="MCPL file generated before the sample",
-    )
-    instr.master["input_file"] = '""'
-
-    del instr.master["a2"]
-    return instr
 
 
 # ------------------------------ Helper functions

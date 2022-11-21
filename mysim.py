@@ -8,7 +8,9 @@ repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
-myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", dep=False)
+flavour = "full"
+# flavour = "nosection"
+myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 # myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
 
 
@@ -27,12 +29,29 @@ myinstrument.master["a4"] = 60 * ureg.degree
 myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 print(myinstrument.get_total_SPLIT())
 myinstrument.set_sample_by_name("vanadium")
-myinstrument.set_sample_by_name("H2O")
+# myinstrument.set_sample_by_name("H2O")
 myinstrument.sample_cylinder_shape(0.005, 0.01)
 print(myinstrument)
 myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)
-myinstrument.run()
+# sys.exit(0)
+# diagnostics
+# for calc in myinstrument.calculators.values():
+#    calc.show_diagram(analysis=True)
+# mycalc = myinstrument.calculators["OriginCalc"]
+# mycalc.show_diagram(analysis=True)
+import mcstasscript as ms
+
+np = 21
+np = (np - 1) / 2
+dEI = 0.05
+import numpy
+
+for energy in numpy.arange(4.98 - np * dEI, 4.98 + np * dEI, dEI):
+    angle = myinstrument.energy_to_angle(energy * ureg.meV)
+    print(f"{energy}\t{angle}")
+
+# myinstrument.run()
 sys.exit(0)
 
 # myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)
