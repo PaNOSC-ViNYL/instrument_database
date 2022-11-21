@@ -252,7 +252,7 @@ class ThALES(McStasInstrumentBase):
         HCS = source.HCS_source(mycalculator)
         HCS.E0 = "Ei"
         HCS.target_index = 2
-        HCS.flux = 35e9
+        HCS.flux = 35e10
 
         # ------------------------------------------------------------
         # start of the guide
