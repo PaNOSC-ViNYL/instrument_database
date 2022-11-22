@@ -188,6 +188,8 @@ class ThALES(McStasInstrumentBase):
         gGap = 0.001
 
         ThALES_L = 2.000  # distance between monochromator and sample
+        virtsource_mono_distance = 7
+        dist_mono_sample = 2.000
         dist_sample_ana = 1.260  # distance between sample and analyzer
         dist_ana_det = 0.640  # distance between analyzer and detector
 
@@ -222,9 +224,7 @@ class ThALES(McStasInstrumentBase):
         )
         # setting default value for RHmono if not provided
         mycalculator.append_initialize(
-            "if(RHmono<0) RHmono= (1/( ( 1/"
-            + str(ThALES_L)
-            + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 ));"
+            f"if(RHmono<0) RHmono= (1/( ( 1/{dist_mono_sample} + 1/{virtsource_mono_distance} ) *sin(DEG2RAD*a2/2) / 2 ));"
         )
 
         RVmono = mycalculator.add_parameter(
@@ -236,9 +236,7 @@ class ThALES(McStasInstrumentBase):
         )
         # setting default value for RVmono if not provided
         mycalculator.append_initialize(
-            "if(RVmono<0) RVmono= (1/( ( 1/"
-            + str(ThALES_L)
-            + " + 1/7.0 ) / (2*sin(DEG2RAD*a2/2) )));"
+            f"if(RVmono<0) RVmono= (1/( ( 1/{dist_mono_sample} + 1/{virtsource_mono_distance} ) / (2*sin(DEG2RAD*a2/2) )));"
         )
         mycalculator.append_initialize(
             'printf("(RHmono,RVmono) = (%.2f,%.2f)\\n", RHmono, RVmono);'
@@ -252,7 +250,7 @@ class ThALES(McStasInstrumentBase):
         HCS = source.HCS_source(mycalculator)
         HCS.E0 = "Ei"
         HCS.target_index = 2
-        HCS.flux = 35e10
+        HCS.flux = 7e10
 
         # ------------------------------------------------------------
         # start of the guide
@@ -356,8 +354,46 @@ class ThALES(McStasInstrumentBase):
         slit_A.set_AT([0, 0, H53_7.l + 0.3], RELATIVE=H53_7)
 
         # monitor
+
+        Monochromator_Arm = mycalculator.add_component("Monochromator_Arm", "Arm")
+        Monochromator_Arm.set_AT([0, 0, 2], RELATIVE=slit_A)
+
+        # double check the probability of reflection
+        Monochromator = mycalculator.add_component(
+            "Moneochromator", "Monochromator_curved", AT=0, RELATIVE=Monochromator_Arm
+        )
+        #   Monochromator.reflect = '"HOPG.rfl"'
+        #   Monochromator.transmit = '"HOPG.trm"'
+
+        Monochromator.set_parameters(
+            gap=0.0005,
+            NH=13,
+            NV=13,
+            mosaich=30,
+            mosaicv=30,
+            r0=1,
+            t0=0,  # remove transmitted neutrons
+            RV="RVmono",
+            RH="RHmono",
+            DM=monochromator_d,
+            width=0.25,
+            height=0.2,
+            verbose=1,
+        )
+        #    Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
+        Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
+
+        beamstop = mycalculator.add_component(
+            "BS", "Beamstop", AT=[0, 0, 2], RELATIVE=Monochromator_Arm
+        )
+        beamstop.set_parameters(xwidth=1, yheight=1)
+
+        Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
+        Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
+        Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
+
         counter = mycalculator.add_component(
-            "counter", "Monitor_nD", AT=[0.04, 0.04, 1.9], RELATIVE=slit_A
+            "counter", "Monitor_nD", AT=[0.0, 0.0, 0.8], RELATIVE=Monochromator_Out
         )
         counter.set_parameters(
             xwidth=0.01,
@@ -367,44 +403,6 @@ class ThALES(McStasInstrumentBase):
             restore_neutron=1,
             options='"box intensity, bins=1 pressure=0.001"',
         )
-
-        Monochromator_Arm = mycalculator.add_component("Monochromator_Arm", "Arm")
-        Monochromator_Arm.set_AT([0, 0, 2], RELATIVE=slit_A)
-
-        # double check the probability of reflection
-        Monochromator = mycalculator.add_component(
-            "Monochromator", "Monochromator_curved"
-        )
-        #   Monochromator.reflect = '"HOPG.rfl"'
-        #   Monochromator.transmit = '"HOPG.trm"'
-        Monochromator.gap = 0.0005
-        Monochromator.NH = 13
-        Monochromator.NV = 13
-        Monochromator.mosaich = 30
-        Monochromator.mosaicv = 30
-        Monochromator.r0 = 1
-        Monochromator.t0 = 0  # remove transmitted neutrons
-        Monochromator.RV = "2*" + str(ThALES_L) + "*sin(DEG2RAD*a2/2)"
-        Monochromator.RV = (
-            "(1/( ( 1/" + str(ThALES_L) + " + 1/7.0 ) / (2*sin(DEG2RAD*a2/2))))"
-        )
-        Monochromator.RH = "2*" + str(ThALES_L) + "/sin(DEG2RAD*a2/2)"
-        Monochromator.RH = (
-            "(1/( ( 1/" + str(ThALES_L) + " + 1/2.0 ) *sin(DEG2RAD*a2/2) / 2 ))"
-        )
-        Monochromator.RH = RHmono
-        Monochromator.RV = RVmono
-        Monochromator.DM = monochromator_d
-        Monochromator.width = 0.25
-        Monochromator.height = 0.2
-        Monochromator.verbose = 1
-        #    Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
-        Monochromator.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
-        Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
-
-        Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
-        Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
-        Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
 
         before_sample_slit = mycalculator.add_component("before_sample_slit", "Slit")
         before_sample_slit.xwidth = 0.03
@@ -466,6 +464,7 @@ class ThALES(McStasInstrumentBase):
             unit="degree",
             value=33,
         )
+
         RHanalyzer = AnalyzerCalc.add_parameter(
             "double",
             "RHanalyzer",
@@ -474,10 +473,9 @@ class ThALES(McStasInstrumentBase):
             unit="",
         )
         # setting default value for RHmono if not provided
+        ana_focus = 1.0 / (1.0 / dist_sample_ana + 1.0 / dist_ana_det)
         AnalyzerCalc.append_initialize(
-            "if(RHanalyzer<0) RHanalyzer= 2 *"
-            + str(dist_sample_ana)
-            + " / sin(DEG2RAD*a6/2);"
+            f"if(RHanalyzer<0) RHanalyzer= 2 * {dist_sample_ana} / sin(DEG2RAD*a6/2);"
         )
 
         RVanalyzer = AnalyzerCalc.add_parameter(
@@ -489,9 +487,7 @@ class ThALES(McStasInstrumentBase):
         )
         # setting default value for RVmono if not provided
         AnalyzerCalc.append_initialize(
-            "if(RVanalyzer<0) RVanalyzer= 2 * "
-            + str(dist_ana_det)
-            + " * sin(DEG2RAD*a6/2) ;"
+            f"if(RVanalyzer<0) RVanalyzer= 2 * {ana_focus} * sin(DEG2RAD*a6/2) ;"
         )
         AnalyzerCalc.append_initialize(
             'printf("(RHanalyzer,RVanalyzer) = (%.2f,%.2f)\\n", RHanalyzer, RVanalyzer);'

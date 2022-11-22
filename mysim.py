@@ -51,7 +51,7 @@ for energy in numpy.arange(4.98 - np * dEI, 4.98 + np * dEI, dEI):
     angle = myinstrument.energy_to_angle(energy * ureg.meV)
     print(f"{energy}\t{angle}")
 
-# myinstrument.run()
+myinstrument.run()
 sys.exit(0)
 
 # myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)

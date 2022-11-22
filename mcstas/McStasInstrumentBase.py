@@ -341,7 +341,7 @@ class McStasInstrumentBase(Instrument):
             s.d_phi = 180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
 
             s.set_SPLIT(
-                10 * round(2 * math.pi / self.focus_angle(self.focus_xw, self.target_z))
+                2 * round(2 * math.pi / self.focus_angle(self.focus_xw, self.target_z))
             )
 
             if name == "H2O":
@@ -429,6 +429,11 @@ class McStasInstrumentBase(Instrument):
         """Setting the simulation seed"""
         for mycalc in self.calculators.values():
             mycalc.settings(seed=number)
+
+    def force_compile(self, force_compile: bool) -> None:
+        """Setting the force compile on all the calculators"""
+        for mycalc in self.calculators.values():
+            mycalc.settings(force_compile=force_compile)
 
     def get_total_SPLIT(self):
         split = 1
