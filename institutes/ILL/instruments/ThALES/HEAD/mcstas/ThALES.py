@@ -438,7 +438,6 @@ class ThALES(McStasInstrumentBase):
         self.set_sample_focus(0.03, 0.04, 0.250)
 
         sample = self.set_sample_by_name("Vanadium")
-        sample.set_ROTATED([0, 0, 0], RELATIVE=self._sample_arm)
 
         Sample_Out = SampleCalc.add_component("Sample_Out", "Arm")
         Sample_Out.set_AT([0, 0, 0], RELATIVE=self._sample_arm)
@@ -545,7 +544,7 @@ class ThALES(McStasInstrumentBase):
         # ------------------------------ instrument parameters
         myinstr.add_master_parameter("a2", {OriginCalc.name: "a2"}, unit="degree")
         myinstr.add_master_parameter(
-            "a3", {SampleCalc.name: "sample_rotation"}, unit="degree"
+            "a3", {SampleCalc.name: "sample_y_rotation"}, unit="degree"
         )
         myinstr.add_master_parameter("a4", {SampleCalc.name: "a4"}, unit="degree")
         myinstr.add_master_parameter("a6", {AnalyzerCalc.name: "a6"}, unit="degree")

@@ -62,13 +62,13 @@ class McStasInstrumentBase(Instrument):
             "sample_arm",
             "Arm",
             AT=[0, 0, 0],
-            ROTATED=[0, "sample_rotation", 0],
+            ROTATED=[0, "sample_y_rotation", 0],
             RELATIVE=previous_component,
         )
 
         a3 = mycalculator.add_parameter(
             "double",
-            "sample_rotation",
+            "sample_y_rotation",
             comment="sample table rotation angle",
             unit="degree",
             value=0,
