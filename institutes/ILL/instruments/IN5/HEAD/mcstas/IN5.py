@@ -92,6 +92,7 @@ class IN5(McStasInstrumentBase):
         #inc = mycalculator.add_parameter("string", "inc", comment="", value="NULL")
 
         # thickness=0, height=0.025, radius=0.005, order=0)
+        #================ Distances
         L_gap = 0.2130  # gap VTE+OT-H16
         L_Guide1 = 4.3900  # for gerade Guide1
         L_Guide21 = 0.6950  # for gerade Guide21
@@ -134,20 +135,6 @@ class IN5(McStasInstrumentBase):
         #----------------------------------------------------------------
         
         
-        Ch_Ltot[0] = 0;
-        Ch_Ltot[1] = L_gap+L_Guide1+0.0003+L_Guide21+disk_gap/2.0;
-        Ch_Ltot[2] = Ch_Ltot[1]+disk_gap+L_Guide22;
-        Ch_Ltot[3] = Ch_Ltot[2]+disk_gap+L_Guide23+L_Guide3+L_Guide41+2*0.0003;
-        Ch_Ltot[4] = Ch_Ltot[3]+disk_gap+L_Guide42;
-        Ch_Ltot[5] = Ch_Ltot[4]+disk_gap+L_Guide43;
-        Ch_Ltot[6] = Ch_Ltot[5]+disk_gap+L_Guide44;
-        
-        
-        for (i=0;i<=6;i++)
-        {
-            Ch_phase[i]  =  Ch_Ltot[i]/neutron_velocity;
-        }
-
         #========================================
         #   Actual sample and detector
         #========================================
@@ -183,15 +170,18 @@ class IN5(McStasInstrumentBase):
             complist = mycalculator.component_list[fcomp:lcomp]
             for component in complist:
                 
-                if component.component_name in "Guide_channeled":
-                    L= L + component.l
                 if component.component_name != fcomp:
-                    L= L+component.AT[3]
-                
+                    if component.AT[0] == 0 and component.AT[1]==0:
+                        L= L+component.AT[3]
+                    else:
+                        L= L+math.sqrt(component.AT[0]*component.AT[0]+component.AT[1]*component.AT[1]+component.AT[3]+component.AT[3])
                 
                 if debug:
                     print("@"+component.name+": L = "+L)
             return L
+
+        def tofdelay(fcomp, lcomp):
+            return str(calcLtof(Chopper0,Chopper1))+"/neutron_velocity"
         
         ## CHOPPER TIME-RESET##########################/
         Chopper0 = mycalculator.add_component("DC0", "DiskChopper", AT=0.23, RELATIVE="PREVIOUS")
@@ -205,7 +195,6 @@ class IN5(McStasInstrumentBase):
             isfirst=1
         )
         
-        calcLtof(Chopper0, first=True)
         
         """
         GERADE Guide
@@ -225,7 +214,6 @@ class IN5(McStasInstrumentBase):
             mx = 1, my=2 ,
             W = Guide_W
         )
-        calcLtof(Guide1)
 
 
         Guide21 = mycalculator.copy_component("Guide21", Guide1, AT=L_Guide1+0.0003, RELATIVE=Guide1)
@@ -242,7 +230,7 @@ class IN5(McStasInstrumentBase):
             theta_0 = 0.17,
             radius = 0.285,
             yheight = Ch_height[1],
-            nu  = speed/60, nslit = 2, delay = str(calcLtof(Chopper0,Chopper1))+"/neutron_velocity" #Ch_phase[1]
+            nu  = speed/60, nslit = 2, delay = tofdelay(Chopper0,Chopper1) #Ch_phase[1]
         )
 
 
@@ -259,7 +247,7 @@ class IN5(McStasInstrumentBase):
             theta_0 = 9.0,
             radius = 0.285,
             yheight = 0.16813,
-            nu   = speed/60, nslit = 2, delay = Ch_phase[2]
+            nu   = speed/60, nslit = 2, delay = tofdelay(Chopper0,Chopper2) #Ch_phase[2]
         )
         
 
@@ -299,7 +287,7 @@ class IN5(McStasInstrumentBase):
         Chopper3  = mycalculator.add_component("Chopper3","DiskChopper",AT=L_Guide41+disk_gap/2,RELATIVE=Guide41)
         Chopper3.set_parameters(
             theta_0 = 9.5, radius = 0.299, yheight =  0.081,
-            nu   = speed/60*ratio, nslit = 2, delay = Ch_phase[3]
+            nu   = speed/60*ratio, nslit = 2, delay = tofdelay(Chopper0,Chopper3) #Ch_phase[3]
         )
 
         Guide42 = mycalculator.copy_component("Guide42", Guide41,AT=L_Guide41+disk_gap,RELATIVE=Guide41)
@@ -314,7 +302,7 @@ class IN5(McStasInstrumentBase):
         Chopper4  = mycalculator.add_component("Chopper4","DiskChopper",AT=L_Guide42+disk_gap/2,RELATIVE=Guide42)
         Chopper4.set_parameters(
             theta_0 = 9.5, radius = 0.299, yheight = 0.08031,
-            nu   = speed/60, nslit = 2, delay = Ch_phase[4]
+            nu   = speed/60, nslit = 2, delay = tofdelay(Chopper0, Chooper4) # Ch_phase[4]
         )
 
 
@@ -331,9 +319,8 @@ class IN5(McStasInstrumentBase):
         Chopper5  = mycalculator.add_component("Chopper5","DiskChopper",AT=L_Guide43+disk_gap/2,RELATIVE=Guide43)
         Chopper5.set_parameters(
             theta_0 = 3.25, radius = 0.304, yheight =  0.07069,
-            nu = speed/60, nslit = 2, delay = Ch_phase[5]
+            nu = speed/60, nslit = 2, delay = tofdelay(Chopper0, Chopper5) #Ch_phase[5]
         )
-
 
         Guide44 = mycalculator.copy_component("Guide44",Guide43,AT=L_Guide43+disk_gap,RELATIVE=Guide43)
         Guide44.set_parameters(
@@ -344,16 +331,14 @@ class IN5(McStasInstrumentBase):
             l = L_Guide44,
         )
         
-        
         Chopper6  = mycalculator.add_component("Chopper6","DiskChopper",AT=L_Guide44+disk_gap/2,RELATIVE=Guide44)
         Chopper6.set_parameters(
             theta_0 = 3.25,
             radius = 0.304, yheight =  0.0700,
             nu = speed/60,
             nslit = 2,
-            delay = Ch_phase[6]
+            delay = tofdelay(Chopper0, Chopper6) #Ch_phase[6]
         )
-
 
         Guide45 = mycalculator.copy_component("Guide45",Guide44,AT=L_Guide44+disk_gap,RELATIVE=Guide44)
         Guide45.set_parameters(
@@ -363,24 +348,19 @@ class IN5(McStasInstrumentBase):
             h2 = 0.05663,
             l = L_Guide45,
         )
-
         
-        Collimator = mycalculator.add_component("Collimator","Guide_channeled",AT=L_Guide45+mono_gap,RELATIVE=Guide45)
+        Collimator = mycalculator.copy_component("Collimator", Guide45,AT=L_Guide45+mono_gap,RELATIVE=Guide45)
         Collimator.set_parameters(
-            w1 = 0.01400, h1 = 0.05617, w2 = 0.01400, h2 = 0.05400, l = L_Collimator,
-            R0 = Guide_Ro, Qcx = Guide_Qc, alphax = Guide_alpha, mx = 2,
-            W  = Guide_W,  Qcy = Guide_Qc, alphay = Guide_alpha, my = 3
+            w1 = Guide45.w2, h1 = 0.05617,
+            w2 = Guide45.w2, h2 = 0.05400,
+            l = L_Collimator,
         )
 
-        
-        
         Det_sample_t = mycalculator.add_component("Detector", "Monitor_nD",
                                                   AT=L_Collimator+0.0002,RELATIVE=Collimator)
         Det_sample_t.set_parameters(xwidth=0.014, yheight=0.054,
                                     options="auto t bins=20", restore_neutron=1)
         
-
-
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
@@ -489,3 +469,16 @@ class IN5(McStasInstrumentBase):
         # sample with .sample
         # this obviously will require the instrument to be recompiled
         
+
+        # Ch_Ltot = L_gap+L_Guide1+0.0003+L_Guide21+disk_gap/2.0;
+        # Ch_Ltot[2] = Ch_Ltot[1]+disk_gap+L_Guide22;
+        # Ch_Ltot[3] = Ch_Ltot[2]+disk_gap+L_Guide23+L_Guide3+L_Guide41+2*0.0003;
+        # Ch_Ltot[4] = Ch_Ltot[3]+disk_gap+L_Guide42;
+        # Ch_Ltot[5] = Ch_Ltot[4]+disk_gap+L_Guide43;
+        # Ch_Ltot[6] = Ch_Ltot[5]+disk_gap+L_Guide44;
+        
+        
+        # for (i=0;i<=6;i++)
+        # {
+        #     Ch_phase[i]  =  Ch_Ltot[i]/neutron_velocity;
+        # }
