@@ -312,7 +312,8 @@ class Panther(McStasInstrumentBase):
             isfirst=1,
             abs_out=1,
             xwidth=0.150,
-            phase=-41.3346 / 2,
+            #phase=-41.3346 / 2,
+            #phase=-41
         )
 
         diaphragm = mycalculator.add_component(
@@ -321,7 +322,8 @@ class Panther(McStasInstrumentBase):
         diaphragm.set_parameters(xwidth=0.150, yheight=0.500)
 
         BC2 = mycalculator.copy_component("BC2", BC1, AT=0.800, RELATIVE=BC1)
-        tdelay = "0.800 / neutron_velocity"
+        BC1.phase=-41
+        tdelay = "-0.800 / neutron_velocity"
         BC2.delay = tdelay
         BC2.isfirst = 0
         # BC2.phase = 41.3346
