@@ -1,0 +1,163 @@
+/*******************************************************************************
+*
+* McStas, neutron ray-tracing package
+*         Copyright 1997-2002, All rights reserved
+*         Risoe National Laboratory, Roskilde, Denmark
+*         Institut Laue Langevin, Grenoble, France
+*
+* Component: TOF_cylPSDxy_monitor
+*
+* %I
+* Written by:  Shervin Nourbakhsh
+* Date: October 2023
+* Origin: ILL
+* Based on TOF_cyl_PSD_monitor by Kim Lefmann
+*
+* Cylindrical (2pi) PSD Time-of-flight monitor.
+*
+* %D
+*
+* %P
+* INPUT PARAMETERS:
+*
+* radius: [m]           Cylinder radius
+* yheight: [m]          Cylinder height
+* nphi: [deg]           Number of angular bins
+* ny: [1]               Number of bins on the vertical axis
+* nt: [1]               Number of time bins
+* phimin: [deg]         Beginning of the detector
+* phimax: [deg]         End of the detector
+* tmin: [s]             Beginning of time window
+* tmax: [s]             End of time window
+* filename: [string]    Name of file in which to store the detector image
+* restore_neutron: [1]  If set, the monitor does not influence the neutron state
+* nowritefile: [1]      If set, monitor will skip writing to disk
+*
+* OUTPUT PARAMETERS:
+*
+* TOF_N: []             Array of neutron counts
+* TOF_p: []             Array of neutron weight counts
+* TOF_p2: []            Array of second moments
+*
+* %E
+*******************************************************************************/
+
+DEFINE COMPONENT Cyl_TOF
+DEFINITION PARAMETERS ()
+  SETTING PARAMETERS (nt=128, nphi=90, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, phimax=180, tmin=0, tmax=1, restore_neutron=0)
+OUTPUT PARAMETERS ()
+/* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
+
+DECLARE
+%{
+  DArray3d TOF_N;
+  DArray3d TOF_p;
+  DArray3d TOF_p2;
+  double phibinwidth, ybinwidth, tbinwidth;
+%}
+
+INITIALIZE
+%{
+  int iphi, iy, it;
+
+  TOF_N  = create_darr3d(nphi, ny, nt);
+  TOF_p  = create_darr3d(nphi, ny, nt);
+  TOF_p2 = create_darr3d(nphi, ny, nt);
+
+  for (iphi=0; i<nphi; iphi++) {
+    for (iy=0; iy<ny; iy++)
+      for(it=0; it<nt; it++){
+	{
+	  TOF_N[iphi][iy][it] = 0;
+	  TOF_p[iphi][iy][it] = 0;
+	  TOF_p2[iphi][iy][it] = 0;
+	}
+      }
+  }
+
+  phibinwidth = (phimax-phimin)/(double)nphi;
+  ybinwidyh   = (yheight)      /(double)ny;
+  tbinwidth   = (tmax-tmin)    /(double)nt;
+  // Use instance name for monitor output if no input was given
+  if (!strcmp(filename,"\0")) sprintf(filename,NAME_CURRENT_COMP);
+%}
+
+TRACE
+%{
+  int iphi,iy,it;
+  double cyl_t0,cyl_t1,dt,phi,yh;
+  
+  if(!cylinder_intersect(&cyl_t0, &cyl_t1, x,y,z,vx,vy,vz, radius, yheight))
+   /* No hit */
+    ABSORB;
+  if(cyl_t0>0)  /* Neutron hits cylinder from the outside */
+    ABSORB;
+
+  /* propagate the neutron to the cylinder surface */
+  dt=cyl_t1;
+  PROP_DT(dt);
+  yh = yheight/2;
+    
+  if(y >= yh || y <= -yh)
+    ABSORB;  /* Neutron hits cylinder ends; no detectors here */
+  
+  /* Calculate pixel */
+  phi=atan2(x,z)*RAD2DEG;
+  if (phi >= phimin && phi <= phimax) {
+    if (t >= tmin && t <= tmax) {
+      iphi = floor( (phi-phimin)/phibinwidth );
+      iy   = floor( (y+yh)/ybinwidth )
+      it   = floor( (t-tmin)/tbinwidth );
+      double p2 = p*p;
+      
+#pragma acc atomic
+      TOF_N[iphi][iy][it] = TOF_N[iphi][iy][it]+1;
+      
+#pragma acc atomic
+      TOF_p[iphi][iy][it] = TOF_p[iphi][iy][it]+p;
+      
+#pragma acc atomic
+      TOF_p2[iphi][iy][it] = TOF_p2[iphi][iy][it]+p2;
+    }
+  }
+
+  
+  if (restore_neutron) {
+    RESTORE_NEUTRON(INDEX_CURRENT_COMP, x, y, z, vx, vy, vz, t, sx, sy, sz, p);
+  }
+%}
+
+SAVE
+%{
+if (!nowritefile) {
+  for(iphi=0; iphi < nphi; iphi++){
+    char ff[256];
+    char tt[256];
+    sprintf(ff, "%s_%i",filename,iphi);
+    sprintf(tt, "PSD TOF monitor: tube %i ",iphi);
+    DETECTOR_OUT_2D(
+      tt,
+      "Y position [m]",
+      "time [s]",
+      ymin, ymax, tmin, tmax,
+      ny, nt,
+      &PSD_N[iphi][0][0],&PSD_p[iphi][0][0],&PSD_p2[iphi][0][0],
+      ff);
+  }
+}
+%}
+
+FINALLY
+%{
+  destroy_darr3d(TOF_N);
+  destroy_darr3d(TOF_p);
+  destroy_darr3d(TOF_p2);
+%}
+
+MCDISPLAY
+%{
+  magnify("y");
+  circle("xz", 0,0,0,radius);
+%}
+
+END
