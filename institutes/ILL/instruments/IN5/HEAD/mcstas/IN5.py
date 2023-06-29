@@ -84,13 +84,13 @@ class IN5(McStasInstrumentBase):
             "int",
             "nu",
             comment="Rotation frequency of disk choppers",
-            value=8500 / 60,
+            value=int(8500 / 60),
             unit="Hz",
         )
-        nu.add_interval(0, math.inf, True)  # must be positive
+        nu.add_interval(2000.0 / 60, 17000.0 / 60, True)  # must be positive
         ratio = mycalculator.add_parameter("double", "ratio", comment="", value=0.5)
         housing = mycalculator.add_parameter(
-            "string", "housing", comment="", value="Fe.laz"
+            "string", "housing", comment="", value='"Fe.laz"'
         )
         # coh = mycalculator.add_parameter(
         #    "string", "coh", comment="", value="Y3Fe5O12_YIG.laz"
@@ -147,9 +147,9 @@ class IN5(McStasInstrumentBase):
         # ========================================
         #   Actual sample and detector
         # ========================================
-        thickness = 0.0125
-        radius = 0.015
-        height = 0.06
+        # thickness = 0.0125
+        # radius = 0.015
+        # height = 0.06
 
         ang_ini = -11.9175
         # angular range of de detector in degrees
@@ -158,31 +158,38 @@ class IN5(McStasInstrumentBase):
         det_angle = abs(ang_fin - ang_ini) / 2.0 + ang_ini
 
         HCS = source.HCS_source(mycalculator)
-        HCS.E0 = "Ei"
+        HCS.E0 = 0
+        HCS.dE = 0
+
+        HCS.lambda0 = "lambda"
+        HCS.dlambda = "dlambda"
         HCS.target_index = 2
         HCS.flux = 2.5e10
         HCS.radius = 0.100 / 2
 
-        Ei = mycalculator.parameters["Ei"]
-        Ei.value = 15 * ureg.meV
-        Ei.add_interval(7.5, 130, True)
-        del mycalculator.parameters["lambda"]
-        del mycalculator.parameters["dlambda"]
-        mycalculator.add_declare_var("double", "lambda")
-        mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
+        lambda0 = mycalculator.parameters["lambda"]
+        lambda0.value = 4.5
+        # Ei = mycalculator.parameters["Ei"]
+        # Ei.value = 15 * ureg.meV
+        # Ei.add_interval(7.5, 130, True)
+        del mycalculator.parameters["Ei"]
+        del mycalculator.parameters["dE"]
+        # del mycalculator.parameters["lambda"]
+        # del mycalculator.parameters["dlambda"]
+        # mycalculator.add_declare_var("double", "lambda")
+        # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
         mycalculator.add_declare_var("double", "neutron_velocity")
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
 
-        def tofdelay(fcomp, lcomp):
-            return (
-                str(self.calcLtof(mycalculator, Chopper0, Chopper1))
-                + "/neutron_velocity"
-            )
+        def tofdelay(fcomp, lcomp, delay=0):
+            L = self.calcLtof(mycalculator, fcomp.name, lcomp.name)
+            print(f"L = {L}")
+            return str(L) + "/neutron_velocity + " + str(delay)
 
         ## CHOPPER TIME-RESET##########################/
         Chopper0 = mycalculator.add_component(
-            "Chopper0", "DiskChopper", AT=0.23, RELATIVE="PREVIOUS"
+            "Chopper0", "DiskChopper", AT=0.2, RELATIVE="PREVIOUS"
         )
         Chopper0.set_parameters(
             theta_0=20.222,
@@ -190,13 +197,10 @@ class IN5(McStasInstrumentBase):
             yheight=0.2,
             nu=nu,
             nslit=2,
-            delay=0,
+            delay=0.01,
             isfirst=1,
         )
 
-        """
-        GERADE Guide
-        """
         Guide1 = mycalculator.add_component(
             "Guide1", "Guide_channeled", AT=L_gap, RELATIVE=Chopper0
         )
@@ -234,7 +238,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.17,
             nu=nu,
             nslit=2,
-            delay=tofdelay(Chopper0, Chopper1),  # Ch_phase[1]
+            delay=tofdelay(Chopper0, Chopper1, Chopper0.delay),  # Ch_phase[1]
         )
 
         ###GUIDE TO CHOPPER2#######################
@@ -252,7 +256,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.16813,
             nu=nu,
             nslit=2,
-            delay=tofdelay(Chopper0, Chopper2),  # Ch_phase[2]
+            delay=tofdelay(Chopper0, Chopper2, Chopper0.delay),  # Ch_phase[2]
         )
 
         # COMPONENT M1 = Monitor_nD(xwidth=0.03, yheight=0.17,
@@ -289,7 +293,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.081,
             nu="nu * ratio",
             nslit=2,
-            delay=tofdelay(Chopper0, Chopper3),  # Ch_phase[3]
+            delay=tofdelay(Chopper0, Chopper3, Chopper0.delay),  # Ch_phase[3]
         )
 
         Guide42 = mycalculator.copy_component(
@@ -308,7 +312,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.08031,
             nu=nu,
             nslit=2,
-            delay=tofdelay(Chopper0, Chopper4),  # Ch_phase[4]
+            delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
         )
 
         Guide43 = mycalculator.copy_component(
@@ -331,7 +335,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.07069,
             nu=nu,
             nslit=2,
-            delay=tofdelay(Chopper0, Chopper5),  # Ch_phase[5]
+            delay=tofdelay(Chopper0, Chopper5, Chopper0.delay),  # Ch_phase[5]
         )
 
         Guide44 = mycalculator.copy_component(
@@ -354,7 +358,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.0700,
             nu=nu,
             nslit=2,
-            delay=tofdelay(Chopper0, Chopper6),  # Ch_phase[6]
+            delay=tofdelay(Chopper0, Chopper6, Chopper0.delay),  # Ch_phase[6]
         )
 
         Guide45 = mycalculator.copy_component(
@@ -383,7 +387,7 @@ class IN5(McStasInstrumentBase):
             "Detector", "Monitor_nD", AT=L_Collimator + 0.0002, RELATIVE=Collimator
         )
         Det_sample_t.set_parameters(
-            xwidth=0.014, yheight=0.054, options="auto t bins=20", restore_neutron=1
+            xwidth=0.014, yheight=0.054, options='"auto t bins=20"', restore_neutron=1
         )
 
         # ------------------------------
@@ -438,7 +442,7 @@ class IN5(McStasInstrumentBase):
         detideal.set_parameters(
             xwidth=(4.0 - 0.0005 - 0.00002) * 2,
             yheight=3,
-            options="banana, theta limits=[-73.36735 73.36765] bins=100, y bins=100",
+            options='"banana, theta limits=[-73.36735 73.36765] bins=100, y bins=100"',
         )
 
         # ------------ Fe HOUSING------------------------------------------------
@@ -464,7 +468,7 @@ class IN5(McStasInstrumentBase):
             yheight=3.0,
             radius=4.0,
             zdepth=0.02600,
-            awidth="(ang_fin - ang_ini) * PI / 180 * 4.0",
+            awidth=(ang_fin - ang_ini) * math.pi / 180 * 4.0,
             nx=384,
             ny=128,  # type = "events",
             PressureConv=4.75,
@@ -473,16 +477,16 @@ class IN5(McStasInstrumentBase):
             borderx=-1,
             bordery=-1,
             LensOn=1,
-            filename="in5det.dat",
-            FN_Conv="Gas_tables/He3inHe.table",
-            FN_Stop="Gas_tables/He3inCF4.table",
+            filename='"in5det.dat"',
+            FN_Conv='"Gas_tables/He3inHe.table"',
+            FN_Stop='"Gas_tables/He3inCF4.table"',
         )
 
         in5_t = mycalculator.add_component(
             "in5_t", "Monitor_nD", AT=[0, 0, 0], RELATIVE=center_det
         )
         in5_t.set_parameters(
-            options="banana, t limits=[0.0206 0.0216] bins=41, parallel, previous"
+            options='"banana, t limits=[0.0206 0.0216] bins=41, parallel, previous"'
         )
 
         # ------------------------------ instrument parameters
@@ -496,12 +500,23 @@ class IN5(McStasInstrumentBase):
         #     comment=OriginCalc.parameters["mono_index"].comment,
         # )
 
-        myinstr.add_master_parameter(
-            "energy",
-            {OriginCalc.name: "Ei"},
-            unit=OriginCalc.parameters["Ei"].unit,
-            comment=OriginCalc.parameters["Ei"].comment,
-        )
+        #        myinstr.add_master_parameter(
+        #            "energy",
+        #            {OriginCalc.name: "Ei"},
+        #            unit=OriginCalc.parameters["Ei"].unit,
+        #            comment=OriginCalc.parameters["Ei"].comment,
+        #        )
+
+        for c in [
+            "Chopper0",
+            "Chopper1",
+            "Chopper2",
+            "Chopper3",
+            "Chopper4",
+            "Chopper5",
+            "Chopper6",
+        ]:
+            print(c + " L=" + str(self.calcLtof(mycalculator, "Chopper0", c)))
 
         #        myinstr.add_master_parameter(
         #            "a3", {"SampleCalc": "sample_rotation"}, unit="degree"
@@ -513,35 +528,3 @@ class IN5(McStasInstrumentBase):
         #        myinstr.master["a4"] = 60 * ureg.degree
         #        myinstr.master["a6"] = 79.10 * ureg.degree
         # ------------------------------ sample parameters
-        # Do not add sample parameters. They should be modified externally retrieving
-        # sample with .sample
-        # this obviously will require the instrument to be recompiled
-
-        # for (i=0;i<=6;i++)
-        # {
-        #     Ch_phase[i]  =  Ch_Ltot[i]/neutron_velocity;
-        # }
-
-
-# L_gap = 0.2130  # gap VTE+OT-H16
-# L_Guide1 = 4.3900  # for gerade Guide1
-# L_Guide21 = 0.6950  # for gerade Guide21
-# L_Guide22 = 0.1300  # for gerade Guide22
-# L_Guide23 = 0.69500  # for gerade Guide23
-# disk_gap = 0.02  # full gap at choppers
-# L_Guide3 = 5.5125  # for gerade Guide3
-# L_Guide41 = 0.7425  # for gerade Guide41
-# L_Guide42 = 0.0350  # for gerade Guide42
-# L_Guide43 = 0.7500  # for gerade Guide43
-# L_Guide44 = 0.0350  # for gerade Guide44
-# L_Guide45 = 0.7900  # for gerade Guide45
-# mono_gap = 0.0300  # gap for the 1st monitor
-# L_Collimator = 0.1300  # for gerade Collimator
-# L_CollSample = 0.2400 - 0.025  # the sample chamber size & keep
-#
-# Ch_Ltot = L_gap+L_Guide1+0.0003+L_Guide21+disk_gap/2.0;
-# Ch_Ltot[2] = Ch_Ltot[1]+disk_gap+L_Guide22;
-# Ch_Ltot[3] = Ch_Ltot[2]+disk_gap+L_Guide23+L_Guide3+L_Guide41+2*0.0003;
-# Ch_Ltot[4] = Ch_Ltot[3]+disk_gap+L_Guide42;
-# Ch_Ltot[5] = Ch_Ltot[4]+disk_gap+L_Guide43;
-# Ch_Ltot[6] = Ch_Ltot[5]+disk_gap+L_Guide44;

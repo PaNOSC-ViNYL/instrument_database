@@ -36,7 +36,9 @@ myinstrument.sample_cylinder_shape(0.005, 0.01)
 print(myinstrument)
 myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)
-# sys.exit(0)
+
+#print("Ltof: "+str(myinstrument.calcLtof(myinstrument.calculators["OriginCalc"], "Chopper0", "Chopper1", True)))
+#sys.exit(0)
 # diagnostics
 # for calc in myinstrument.calculators.values():
 #    calc.show_diagram(analysis=True)

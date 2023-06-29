@@ -53,20 +53,23 @@ class McStasInstrumentBase(Instrument):
     def calcLtof(
         self, mycalculator: BaseCalculator, fcomp: str, lcomp: str, debug=False
     ):
-        complist = mycalculator.component_list
+        complist = mycalculator.component_list.copy()
+
         firstfound = False
         L = 0
-        for comp in complist:
+        for comp in complist[::-1]:
             if debug:
                 print(comp.name)
-            if comp.name == fcomp:
+            if comp.name == lcomp:
                 firstfound = True
                 if debug:
                     print("first found")
+            if comp.name == fcomp:
+                if not firstfound:
+                    raise Exception("Inverted order of arguments")
+                break
             if not firstfound:
                 continue
-            if comp.name == lcomp:
-                break
             if comp.AT_relative == "ABSOLUTE":
                 print(
                     "WARNING: component "
