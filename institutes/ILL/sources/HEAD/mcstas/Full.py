@@ -2,6 +2,42 @@ from mcstasscript.interface.instr import McCode_instr
 from mcstasscript.helper.mcstas_objects import Component
 
 
+def VCS_source(mcstas_instrument: McCode_instr) -> Component:
+    """
+    Description of the VCS source of the ILL
+
+    :param mcstas_instrument: previously declared McStas instrument to which add the source component
+
+    The source should be added after the origin component is declared
+    """
+    slambda = mcstas_instrument.add_parameter(
+        "double", "lambda", value=0, unit="angstrom"
+    )
+    sdlambda = mcstas_instrument.add_parameter(
+        "double", "dlambda", value=0, unit="angstrom"
+    )
+
+    VCS = mcstas_instrument.add_component(
+        "VCS", "Source_gen", AT=[0, 0, 0], RELATIVE="Origin"
+    )
+
+    VCS.set_parameters(
+        yheight=0.22,
+        xwidth=0.14,
+        focus_xw=0.038,
+        focus_yh=0.2,
+        lambda0="lambda",
+        dlambda="dlambda",
+        T1=216.8,
+        I1=1.24e13,  # /* VCS parameters */
+        T2=33.9,
+        I2=1.02e13,
+        T3=16.7,
+        I3=3.0423e12,
+        verbose=1,
+    )
+
+
 def HCS_source(mcstas_instrument: McCode_instr) -> Component:
     """
     Description of the Hot source of the ILL
