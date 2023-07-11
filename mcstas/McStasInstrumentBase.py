@@ -467,6 +467,50 @@ class McStasInstrumentBase(Instrument):
         #        self.__sample_hash = hash(frozenset(vars(self.sample)))
         return self.sample
 
+    def set_sample_environment_by_name(self, name: str) -> None:
+        """Adding a sample environment to the simulation"""
+        if self._sample_environment_arm is None:
+            raise Exception("No sample environment arm defined in the instrument")
+        # if self.sample_environment is not None:
+        # self.__remove_sample_environment()
+
+        mycalculator = self._calculator_with_sample
+        if name in ["empty", "Empty", "None", "none"]:
+            self.sample_environment = None
+            return
+
+        #### to implement the rest
+        mycryo = None
+        exit = None
+        if name == "10T":
+            mycryo, exit = cryo10T(
+                mycalculator,
+                "10T",
+                [0, 0, 0],
+                self._sample_environment_arm,
+                2,
+            )
+        else:
+            raise NameError("Sample environment name not recognized or not implemented")
+
+        self.sample_environment_name = name
+
+        exit.set_parameters(
+            radius=__sample.radius + 1e-6,
+            yheight=__sample.yheight + 1e-6,
+            priority=100000,
+            material_string='"Exit"',
+        )
+
+        union_master_after_sample = mycalculator.add_component(
+            "master_after_sample",
+            "Union_master",
+            after=self.__sample,
+            AT=[0, 0, 0],
+            RELATIVE=mycryo.name,
+        )
+        union_master_after_sample.allow_inside_start = 1
+
     def run(self):
         self._check_sample_shape()
         self.custom_flags("-I mcstas/components")
