@@ -453,13 +453,16 @@ class IN5(McStasInstrumentBase):
         #%}
 
         mycalculator, center_det = self.add_new_section("DetectorCalc", Sample_Out)
-        mycalculator.add_parameter(
-            "int", "nt", comment="Number of time channels", value=512
+        nt = mycalculator.add_parameter(
+            "double", "nt", comment="Number of time channels", value=512  # int
         )
-        mycalculator.add_parameter(
-            "int", "ny", comment="Number of vertical position channels", value=256
+        ny = mycalculator.add_parameter(
+            "double",
+            "ny",
+            comment="Number of vertical position channels",
+            value=256,  # "int"
         )
-        mycalculator.add_parameter(
+        epchannel = mycalculator.add_parameter(
             "int",
             "epchannel",
             comment="Elastic peak position in number of channels",
@@ -499,10 +502,14 @@ class IN5(McStasInstrumentBase):
         )
         detector.set_parameters(
             nphi=384,
-            ny=128,
-            nt=128,
+            ny=ny,
+            nt=nt,
             yheight=3.0,
             radius=4.0,
+            phimin=-11,
+            phimax=134,
+            tmin=0,
+            tmax=1,
         )
 
         Det_PSD = mycalculator.add_component(

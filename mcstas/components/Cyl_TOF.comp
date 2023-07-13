@@ -78,6 +78,7 @@ INITIALIZE
   }
 
   phibinwidth = (phimax-phimin)/(double)nphi;
+  printf("phibinwidth = %.2f", phibinwidth);
   ybinwidth   = (yheight)      /(double)ny;
   tbinwidth   = (tmax-tmin)    /(double)nt;
   // Use instance name for monitor output if no input was given
