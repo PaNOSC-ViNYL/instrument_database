@@ -36,6 +36,7 @@ def VCS_source(mcstas_instrument: McCode_instr) -> Component:
         I3=3.0423e12,
         verbose=1,
     )
+    return VCS
 
 
 def HCS_source(mcstas_instrument: McCode_instr) -> Component:
