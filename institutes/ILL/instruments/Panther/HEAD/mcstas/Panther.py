@@ -2,6 +2,9 @@
  Panther instrument description.
  Author: Shervin Nourbakhsh
 
+ INFO:
+  - https://www.ill.eu/users/instruments/instruments-list/panther/characteristics
+
  TODO:
  - [ ] sapphire xwidth and yheight unknown
  - [ ] diaphragm1 not present in the Panther schematic
@@ -49,7 +52,7 @@ ureg = pint.get_application_registry()
 
 ############## Mandatory method
 def get_flavours():
-    return ["None", "nosection"]
+    return ["None", "nosection", "full"]
 
 
 ############## Mandatory method
@@ -58,9 +61,9 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour not in get_flavours() and flavour != "":
         raise RuntimeError(f"Flavour {flavour} not in the flavour list")
 
-    if flavour in [None, "None", "", "full"]:
+    if flavour in [None, "None", ""]:
         return Panther()
-    if flavour == "nosection":
+    if flavour in ["nosection", "full"]:
         return Panther(False)
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
@@ -86,50 +89,6 @@ class Panther(McStasInstrumentBase):
         return self.wavelength_to_angle(wl).to("degrees")
 
     # ------------------------------ Specialized methods required by the Instrument class [mandatory]
-
-    def set_sample_environment_by_name(self, name: str) -> None:
-        """Adding a sample environment to the simulation"""
-        if self._sample_environment_arm is None:
-            raise Exception("No sample environment arm defined in the instrument")
-        # if self.sample_environment is not None:
-        # self.__remove_sample_environment()
-
-        mycalculator = self._calculator_with_sample
-        if name in ["empty", "Empty", "None", "none"]:
-            self.sample_environment = None
-            return
-
-        #### to implement the rest
-        mycryo = None
-        exit = None
-        if name == "10T":
-            mycryo, exit = cryo10T(
-                mycalculator,
-                "10T",
-                [0, 0, 0],
-                self._sample_environment_arm,
-                2,
-            )
-        else:
-            raise NameError("Sample environment name not recognized or not implemented")
-
-        self.sample_environment_name = name
-
-        exit.set_parameters(
-            radius=__sample.radius + 1e-6,
-            yheight=__sample.yheight + 1e-6,
-            priority=100000,
-            material_string='"Exit"',
-        )
-
-        union_master_after_sample = mycalculator.add_component(
-            "master_after_sample",
-            "Union_master",
-            after=self.__sample,
-            AT=[0, 0, 0],
-            RELATIVE=mycryo.name,
-        )
-        union_master_after_sample.allow_inside_start = 1
 
     # ------------------------------ Internal methods (not available to users)
 
@@ -239,6 +198,7 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
         mycalculator.add_declare_var("double", "neutron_velocity")
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
+        mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
         # mycalculator.append_initialize(
         #    "if(a2<=0) a2 = asin(lambda/2/mono_d)*RAD2DEG;"
@@ -246,7 +206,7 @@ class Panther(McStasInstrumentBase):
         a2_interval = a2.get_intervals()[0]
         mycalculator.add_declare_var("double", "mono_d")
         mycalculator.append_initialize('printf("%d\\n", mono_index);')
-        mycalculator.append_initialize( # TODO: remove the cast to int (int) in the comparison. Now only needed for McStas3.3 because mono_index is long and the compiler treats it as unsigned
+        mycalculator.append_initialize(  # TODO: remove the cast to int (int) in the comparison. Now only needed for McStas3.3 because mono_index is long and the compiler treats it as unsigned
             "if((int)mono_index<0){\n"
             + '  printf("Selecting monochromator...");\n'
             + "  for(mono_index=0; mono_index < "
@@ -296,6 +256,30 @@ class Panther(McStasInstrumentBase):
             thickness=1.11,
         )
 
+        def tofdelay(fcomp, lcomp, delay=None):
+            if fcomp.name != "BC1":
+                raise RuntimeError(
+                    "First component should be Chopper 0 for detay calculation"
+                )
+            dist = 0.800
+            chopper_distances = {
+                "BC1": dist,
+                "BC2": dist * 2,
+                "BC3": dist * 3,
+                "BC4": dist * 4,
+                "BC5": dist * 5,
+            }
+            if lcomp.name not in chopper_distances:
+                RuntimeError("Last component should be one of the choppers")
+
+            L = chopper_distances[lcomp.name]
+            # L = self.calcLtof(mycalculator, fcomp.name, lcomp.name, debug=True)
+            if delay == None:
+                delay = fcomp.delay
+
+            print(f"{fcomp.name} -> {lcomp.name} : L = {L}; delay = {delay}")
+            return str(L) + "/neutron_velocity + " + str(delay)
+
         # guide = self._add_chopper_guide(  index , position,  guide_template, guide_lenth)
         BC1 = mycalculator.add_component(
             "BC1",
@@ -312,8 +296,7 @@ class Panther(McStasInstrumentBase):
             isfirst=1,
             abs_out=1,
             xwidth=0.150,
-            #phase=-41.3346 / 2,
-            #phase=-41
+            delay=0.002,
         )
 
         diaphragm = mycalculator.add_component(
@@ -322,19 +305,18 @@ class Panther(McStasInstrumentBase):
         diaphragm.set_parameters(xwidth=0.150, yheight=0.500)
 
         BC2 = mycalculator.copy_component("BC2", BC1, AT=0.800, RELATIVE=BC1)
-        BC1.phase=-41
-        tdelay = "-0.800 / neutron_velocity"
-        BC2.delay = tdelay
-        BC2.isfirst = 0
-        # BC2.phase = 41.3346
-        BC2.nu = "-" + BC1.nu
+        BC2.set_parameters(
+            delay=tofdelay(BC1, BC2),
+            isfirst=0,
+            #            nu="-" + BC1.nu,
+        )
+
         BC3 = mycalculator.copy_component("BC3", BC2, AT=0.800, RELATIVE=BC2)
-        BC3.nu = BC1.nu
-        BC3.delay = BC2.delay + " + " + tdelay
+        BC3.delay = tofdelay(BC1, BC3)
         BC4 = mycalculator.copy_component("BC4", BC2, AT=0.800, RELATIVE=BC3)
-        BC4.delay = BC3.delay + " + " + tdelay
+        BC4.delay = tofdelay(BC1, BC4)
         BC5 = mycalculator.copy_component("BC5", BC2, AT=0.800, RELATIVE=BC4)
-        BC5.delay = BC4.delay + " + " + tdelay
+        BC5.delay = tofdelay(BC1, BC5)
         BC1.verbose = 1
 
         L_bc5_fermi = BC2.AT_data[2] + BC3.AT_data[2] + BC4.AT_data[2] + BC5.AT_data[2]
@@ -443,7 +425,7 @@ class Panther(McStasInstrumentBase):
         print(L_bc5_fermi)
 
         fermi.set_parameters(
-            radius=0.0006 * 45,
+            radius=math.sqrt((0.0006 * 45) ** 2 + 0.023 ** 2),
             nslit=45,
             length=0.023,
             w=0.0006,
@@ -453,8 +435,8 @@ class Panther(McStasInstrumentBase):
             eff=0.86 * 0.8,
             m=0,
             R0=0,  # no super mirror
-            zero_time=2,
-            # delay=0.007,
+            # zero_time=2,
+            delay=0.007,
             # delay=str(L_bc5_fermi) + " / neutron_velocity",
             #            delay=0.0065,
             # phase=-23.1209 * 2,
@@ -532,23 +514,29 @@ class Panther(McStasInstrumentBase):
 
         # ------------------------------------------------------------
         mycalculator, detector_arm = self.add_new_section("DetectorCalc", Sample_Out)
-        # ------------------------------------------------------------
+        detector_arm = mycalculator.add_component(
+            "detector_arm", "Arm", AT=[0, -0.4, 0], RELATIVE=detector_arm
+        )
 
-        # collimator = mycalculator.add_component(
-        #     "collimator", "Collimator_radial", AT=[0, 0, 0], RELATIVE=detector_arm
-        # )
-        # collimator.set_parameters(
-        #     xwidth=0,
-        #     yheight=2,
-        #     length=1,
-        #     theta_min=5,
-        #     theta_max=136,
-        #     nchans=9 * 32,
-        #     radius=1,
-        #     nslit=1,
-        #     roc=0.1,
-        #     verbose=1,
-        # )
+        # ------------------------------------------------------------
+        """
+        the is the possibility to simulate the transmission exactly or by approximation depending if nblades is given or not
+        """
+        collimator = mycalculator.add_component(
+            "collimator", "Collimator_radial", AT=[0, 0, 0], RELATIVE=detector_arm
+        )
+        collimator.set_parameters(
+            radius=1,
+            length=1,
+            nchan=9 * 32 + 8,
+            xwidth=0,
+            yheight=2,
+            theta_min=-5,
+            theta_max=136,
+            nslit=1,
+            roc=0.1,
+            verbose=1,
+        )
 
         time_channels = 512
         tube_width = 0.022
@@ -564,20 +552,26 @@ class Panther(McStasInstrumentBase):
         theta_bins = 180
 
         detector = mycalculator.add_component(
-            "PSD_TOF",
-            "Monitor_nD",
+            "detector",
+            "Cyl_TOF",
             AT=[0, -0.4, 0],
             RELATIVE=detector_arm,
         )
 
         detector.set_parameters(
-            xwidth=Lsd,  # 2.580 m
+            nphi=180,
+            ny=y_channels,
+            nt=time_channels,
             yheight=2.0,
-            # detector.restore_neutron = 1
-            filename='"detector_TOF.dat"',
-            options=(  # 9*32+8(spacers)
-                f'" theta bins={theta_bins} limits=[{theta_min}:{theta_max}], y bins={y_channels}, time bins={time_channels} auto all list"'  # , 3He_pressure=10"'
-            ),
+            radius=Lsd,
+            phimin=-11,
+            phimax=134,
+            tmin=0,
+            tmax=1,
+            # nphigroups=1
+            # nphipergroup=1
+            # phigroupgap=0
+            # saveingap= 0|1
         )
 
         """
