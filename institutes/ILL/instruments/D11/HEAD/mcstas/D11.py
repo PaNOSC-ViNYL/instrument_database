@@ -521,8 +521,11 @@ class D11(McStasInstrumentBase):
         )
         collimation_options = [
             40.5,
+            # 37,
             34,
+            # 31,
             28,
+            # 24,
             20.5,
             16.5,
             13.5,
@@ -531,7 +534,7 @@ class D11(McStasInstrumentBase):
             5.5,
             4,
             2.5,
-            1.5,
+            1.5,  # non presente in Nomad
         ]
         collimation.add_option(collimation_options, True)
 
@@ -691,7 +694,7 @@ class D11(McStasInstrumentBase):
         detpos = mycalculator.add_parameter(
             "double", "detpos", comment="Detector distance", unit="m", value=2
         )
-        detpos.add_interval(0, 40, True)
+        detpos.add_interval(1, 28, True)
 
         bs_x = mycalculator.add_parameter(
             "double", "bs_x", comment="Beamstop x position", unit="m", value=0
@@ -700,18 +703,44 @@ class D11(McStasInstrumentBase):
             "double", "bs_y", comment="Beamstop y position", unit="m", value=0
         )
 
+        bs_index = mycalculator.add_parameter(
+            "int",
+            "bs_index",
+            comment="Index to select the beamspot: 0-> beamstop width = 65mm, height=70mm; 1-> beamstop width = 75mm, height=80mm; 2-> beamstop width = 85mm, height=90mm; 3-> beamstop width = 95mm, height=100mm",
+            value=1,
+        )
+        bs_index.add_option([0, 1, 2, 3], True)
+
+        mycalculator.add_declare_var(
+            "double", "bs_w", comment="beam stop width", unit="m", value=0
+        )
+        mycalculator.add_declare_var(
+            "double", "bs_h", comment="beam stop width", unit="m", value=0
+        )
+
+        mycalculator.append_initialize(
+            "if(bs_index == 0){\n"
+            + "  bs_w = 0.065; bs_h = 0.070;\n"
+            + "} else if (bs_index == 1){\n"
+            + "  bs_w = 0.075; bs_h = 0.080;\n"
+            + "} else if (bs_index == 2){\n"
+            + "  bs_w = 0.085; bs_h = 0.090;\n"
+            + "} else if (bs_index == 3){\n"
+            + "  bs_w = 0.095; bs_h = 0.100;\n"
+            + '} else printf("ERROR: bs_index out of range [0-3]\\n");'
+        )
         beamstop = mycalculator.add_component(
             "beamstop", "Beamstop", AT=[bs_x, bs_y, detpos], RELATIVE=center_det
         )
-        beamstop.set_parameters(xwidth=0.01, yheight=0.01)
+        beamstop.set_parameters(xwidth="bs_w", yheight="bs_h")
 
         det_central_ntubes = 192  # number of tubes of the central panel of the detector
         tube_width = 0.008  # width of the tubes
-        tube_length = 1  # tube length
+        tube_length = 1.024  # tube length
         det_length = 0  # length of the tubes
         det_lateral_gap = 0  # gap between the central and lateral panels
         det_lateral_ntubes = 32  # number of tubes of the lateral panels of the detector
-        det_length_nbins = 250
+        det_length_nbins = 256
         detector_central = mycalculator.add_component(
             "detector_central", "Monitor_nD", AT=[0, 0, detpos], RELATIVE=center_det
         )

@@ -35,6 +35,8 @@ class McStasInstrumentBase(Instrument):
         self._sample_environment_arm = None
         self._sample_arm = None
         self.sample = None
+        self._sample_holder = None
+        self._sample_shape = None
         self._calculator_with_sample = None
 
         self._sample_hash = None
@@ -154,6 +156,42 @@ class McStasInstrumentBase(Instrument):
         mycalculator.add_parameter(
             "double",
             "sample_thickness",
+            comment="thickness of the sample if it is hollow",
+            unit="m",
+            value=0.0,
+        )
+
+        mycalculator.add_parameter(
+            "double",
+            "sample_holder_width",
+            comment="width of the sample if shape is box",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_holder_height",
+            comment="height of the sample if shape is box or cylinder",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_holder_depth",
+            comment="depth of the sample if shape is box",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_holder_radius",
+            comment="radius of the sample if shape is sphere or cylinder",
+            unit="m",
+            value=0.0,
+        )
+        mycalculator.add_parameter(
+            "double",
+            "sample_holder_thickness",
             comment="thickness of the sample if it is hollow",
             unit="m",
             value=0.0,
@@ -285,11 +323,169 @@ class McStasInstrumentBase(Instrument):
         self, radius: float, width: float, height: float, depth: float, thickness: float
     ) -> None:
         mycalculator = self._calculator_with_sample
+
         mycalculator.parameters["sample_radius"].value = radius
         mycalculator.parameters["sample_width"].value = width
         mycalculator.parameters["sample_height"].value = height
         mycalculator.parameters["sample_depth"].value = depth
         mycalculator.parameters["sample_thickness"].value = thickness
+
+    def _set_sample_shape_as_holder(self) -> None:
+        mycalculator = self._calculator_with_sample
+        mycalculator.parameters["sample_radius"].value = mycalculator.parameters[
+            "sample_holder_radius"
+        ].value
+        mycalculator.parameters["sample_width"].value = mycalculator.parameters[
+            "sample_holder_width"
+        ].value
+        mycalculator.parameters["sample_height"].value = mycalculator.parameters[
+            "sample_holder_height"
+        ].value
+        mycalculator.parameters["sample_depth"].value = (
+            mycalculator.parameters["sample_holder_depth"].value
+            - 2 * mycalculator.parameters["sample_holder_thickness"].value
+        )
+        mycalculator.parameters["sample_thickness"].value = 0
+
+    def sample_shape(self, shape: str, r=None, w=None, h=None, d=None, th=0) -> None:
+        self._sample_shape = shape
+        if shape in ["shere", "SPHERE"]:
+            if r is None or r <= 0:
+                raise RuntimeError("Radius of spheric sample (r) should be set > 0")
+            self._set_sample_shape(r, 0, 0, 0, th)
+        elif shape in ["cylinder", "CYLINDER"]:
+            if r is None or r <= 0:
+                raise RuntimeError("Radius of cylindric sample (r) should be >0")
+            if h is None or h <= 0:
+                raise RuntimeError("Height of cylindric sample (h) should be >0")
+            self._set_sample_shape(r, 0, h, 0, th)
+        elif shape in ["box", "BOX"]:
+            if w is None or w <= 0:
+                raise RuntimeError("Width of box sample (w) should be >0")
+            if h is None or h <= 0:
+                raise RuntimeError("Height of box sample (h) should be >0")
+            if d is None or d <= 0:
+                raise RuntimeError("Depth of box sample (d) should be >0")
+            self._set_sample_shape(0, w, h, d, th)
+        elif shape in ["holder", "HOLDER"]:
+            self.sample_shape = "holder"
+            self._set_sample_shape_as_holder()
+        else:
+            raise RuntimeError(
+                "Sample shape not among allowed ones: shere, box, cylinder, holder"
+            )
+
+    def sample_holder(
+        self,
+        material: str,
+        shape: str,
+        r: float = None,
+        w: float = None,
+        h: float = None,
+        d: float = None,
+        th: float = 0,
+    ) -> None:
+        """Method to add a sample holder"""
+
+        mycalculator = self._calculator_with_sample
+        if material is None or shape is None:
+            if self._sample_holder is not None:
+                mycalculator.remove_component("sample_holder_in")
+                mycalculator.remove_component("sample_holder_out")
+            return
+
+        s_out = None
+        s_in = None
+        if self._sample_holder is None:
+            self._sample_holder = mycalculator.add_component(
+                "sample_holder_in",
+                "Isotropic_Sqw",
+                before=self.sample,
+                AT=[0, 0, 0],
+                # ROTATED=[0, "a4", 0],
+                RELATIVE=self._sample_arm,
+            )
+            s_in = self._sample_holder
+            # s.append_EXTEND("if(!SCATTERED) ABSORB;")
+            s_in.Sqw_coh = 0
+            s_in.Sqw_inc = 0
+            # s_in.sigma_coh = -1
+            # s_in.sigma_inc = -1
+            s_in.xwidth = "sample_holder_width"
+            s_in.radius = "sample_holder_radius"
+            s_in.yheight = "sample_holder_height"
+            s_in.zdepth = "sample_holder_depth"
+            s_in.thickness = "sample_holder_thickness"
+            s_in.verbose = 2
+            s_in.concentric = 1
+            s_in.p_interact = 1
+
+            s_out = mycalculator.copy_component(
+                "sample_holder_out",
+                self._sample_holder,
+                after=self.sample,
+                AT=0,
+                RELATIVE=self._sample_arm,
+            )
+            s_out.concentric = 0
+        # ------------------------------ material
+        if material == "quartz":
+            s_in.Sqw_coh = '"SiO2_quartza.laz"'
+            s_out.Sqw_coh = '"SiO2_quartza.laz"'
+            # s_in.Sqw_coh = '"Al.laz"'
+            # s_out.Sqw_coh = '"Al.laz"'
+
+        else:
+            raise RuntimeError(
+                "Sample holder material " + material + " not implemented"
+            )
+
+        # ------------------------------ shape
+        if th <= 0:
+            raise RuntimeError("Sample holder thickness should be >0: hollow geometry")
+        mycalculator.parameters["sample_holder_thickness"].value = th
+
+        if shape in ["shere", "SPHERE"]:
+            if r is None or r <= 0:
+                raise RuntimeError(
+                    "Radius of spheric sample holder (r) should be set > 0"
+                )
+
+            mycalculator.parameters["sample_holder_radius"].value = r
+            mycalculator.parameters["sample_holder_width"].value = 0
+            mycalculator.parameters["sample_holder_height"].value = 0
+            mycalculator.parameters["sample_holder_depth"].value = 0
+
+        elif shape in ["cylinder", "CYLINDER"]:
+            if r is None or r <= 0:
+                raise RuntimeError("Radius of cylindric sample (r) should be >0")
+            if h is None or h <= 0:
+                raise RuntimeError("Height of cylindric sample (h) should be >0")
+            mycalculator.parameters["sample_holder_radius"].value = r
+            mycalculator.parameters["sample_holder_width"].value = 0
+            mycalculator.parameters["sample_holder_height"].value = h
+            mycalculator.parameters["sample_holder_depth"].value = 0
+        elif shape in ["box", "BOX"]:
+            if w is None or w <= 0:
+                raise RuntimeError("Width of box sample (w) should be >0")
+            if h is None or h <= 0:
+                raise RuntimeError("Height of box sample (h) should be >0")
+            if d is None or d <= 0:
+                raise RuntimeError("Depth of box sample (d) should be >0")
+            mycalculator.parameters["sample_holder_radius"].value = 0
+            mycalculator.parameters["sample_holder_width"].value = w
+            mycalculator.parameters["sample_holder_height"].value = h
+            mycalculator.parameters["sample_holder_depth"].value = d
+        else:
+            raise RuntimeError(
+                "Sample shape not among allowed ones: shere, box, cylinder"
+            )
+
+        if self._sample_shape == "holder":
+            self._set_sample_shape_as_holder()
+
+        print(s_in)
+        print(s_out)
 
     def sample_sphere_shape(self, radius: float, thickness: float = 0) -> None:
         if radius <= 0:
@@ -342,6 +538,11 @@ class McStasInstrumentBase(Instrument):
 
         if self.sample is not None:
             mycalculator.remove_component(self.sample)
+            if "sqw_file" in mycalculator.parameters:
+                for p in ["sqw_file", "sqw_inc"]:
+                    del mycalculator.parameters[p]
+                    del self.master[p]
+
         if name in ["empty", "Empty", "None", "none"]:
             self.sample = None
         elif name in ["v_sample"]:
@@ -382,11 +583,12 @@ class McStasInstrumentBase(Instrument):
             # s.append_EXTEND("if(!SCATTERED) ABSORB;")
             s.Sqw_coh = 0
             s.Sqw_inc = 0
-            s.sigma_coh = -1
-            s.sigma_inc = -1
+            # s.sigma_coh = -1
+            # s.sigma_inc = -1
             s.xwidth = "sample_width"
             s.radius = "sample_radius"  # 0.005
             s.yheight = "sample_height"
+            s.zdepth = "sample_depth"
             s.thickness = "sample_thickness"  # 0  # 0.002
             s.verbose = 2
             s.p_interact = 1
@@ -439,7 +641,7 @@ class McStasInstrumentBase(Instrument):
                 self.add_master_parameter(
                     "sqw_inc",
                     {mycalculator.name: "sqw_inc"},
-                    comment=mycalculator.parameters["sqw_file"].comment,
+                    comment=mycalculator.parameters["sqw_inc"].comment,
                 )
                 self.master["sqw_inc"] = '"0"'
 
