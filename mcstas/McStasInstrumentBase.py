@@ -311,6 +311,31 @@ class McStasInstrumentBase(Instrument):
 
         return psd
 
+    def add_parameter_to_master(
+        self, mastername: str, calc: BaseCalculator, par: Parameter
+    ) -> None:
+        """Simplify the addition of a parameter to the master parameters"""
+
+        if mastername not in self.master:
+            self.add_master_parameter(
+                mastername,
+                {calc.name: par.name},
+                unit=par.unit,
+                comment=par.comment,
+            )
+        else:
+            links = self.master[mastername].links
+            if calc.name in links:
+                print(
+                    f"WARNING: trying to add again parameter {par.name} from calculator {calc.name} to master parameter {mastername}"
+                )
+                raise RuntimeError(
+                    f"WARNING: trying to add again parameter {par.name} from calculator {calc.name} to master parameter {mastername}"
+                )
+                return
+            links[calc.name] = par.name
+            self.master[mastername].add_links(links)
+
     def set_sample_focus(self, xwidth, yheight, zdistance):
         self.focus_xw = xwidth
         self.focus_yh = yheight
@@ -368,7 +393,7 @@ class McStasInstrumentBase(Instrument):
                 raise RuntimeError("Depth of box sample (d) should be >0")
             self._set_sample_shape(0, w, h, d, th)
         elif shape in ["holder", "HOLDER"]:
-            self.sample_shape = "holder"
+            self._sample_shape = "holder"
             self._set_sample_shape_as_holder()
         else:
             raise RuntimeError(
@@ -392,6 +417,7 @@ class McStasInstrumentBase(Instrument):
             if self._sample_holder is not None:
                 mycalculator.remove_component("sample_holder_in")
                 mycalculator.remove_component("sample_holder_out")
+                self._sample_holder = None
             return
 
         s_out = None
@@ -428,6 +454,10 @@ class McStasInstrumentBase(Instrument):
                 RELATIVE=self._sample_arm,
             )
             s_out.concentric = 0
+        else:
+            s_out = mycalculator.get_component("sample_holder_out")
+            s_in = mycalculator.get_component("sample_holder_in")
+
         # ------------------------------ material
         if material == "quartz":
             s_in.Sqw_coh = '"SiO2_quartza.laz"'
@@ -484,8 +514,8 @@ class McStasInstrumentBase(Instrument):
         if self._sample_shape == "holder":
             self._set_sample_shape_as_holder()
 
-        print(s_in)
-        print(s_out)
+            #        print(s_in)
+            #        print(s_out)
 
     def sample_sphere_shape(self, radius: float, thickness: float = 0) -> None:
         if radius <= 0:
@@ -537,6 +567,14 @@ class McStasInstrumentBase(Instrument):
         mycalculator = self._calculator_with_sample
 
         if self.sample is not None:
+            # add an Arm in order to keep the position
+            mycalculator.add_component(
+                self.sample_name,
+                "Arm",
+                before=self.sample,
+                AT=0,
+                RELATIVE=self._sample_arm,
+            )
             mycalculator.remove_component(self.sample)
             if "sqw_file" in mycalculator.parameters:
                 for p in ["sqw_file", "sqw_inc"]:
@@ -545,6 +583,7 @@ class McStasInstrumentBase(Instrument):
 
         if name in ["empty", "Empty", "None", "none"]:
             self.sample = None
+            self._sample_shape = None
         elif name in ["v_sample"]:
             self.sample_name = "vanadium_old"
             self.sample = mycalculator.add_component(
@@ -569,7 +608,7 @@ class McStasInstrumentBase(Instrument):
             # Absorption fraction           =0.0425179
             # Single   scattering intensity =1.65546e+07 (coh=1.65473e+07 inc=7331.45)
             # Multiple scattering intensity =276313
-        elif name in ["sqw", "H2O", "D2O", "quartz", "Vanadium", "vanadium"]:
+        elif name in ["sqw", "H2O", "D2O", "quartz", "Vanadium", "vanadium", "qSq"]:
             self.sample_name = "sqw"
             self.sample = mycalculator.add_component(
                 self.sample_name,
@@ -617,14 +656,22 @@ class McStasInstrumentBase(Instrument):
                 s.sigma_abs = 5.08
                 s.sigma_inc = 4.935
                 s.sigma_coh = 0
+            elif name in ["qSq"]:
+                s.powder_format = '"qSq"'
+                sqwfile = mycalculator.add_parameter(
+                    "string", "qSq_file", comment="File of the qSq in McStas convention"
+                )
+                s.Sqw_coh = "qSq_file"
+                self.add_parameter_to_master("qSq_file", mycalculator, sqwfile)
+
             else:
                 s.sigma_abs = 0
                 s.sigma_coh = 0
                 s.sigma_inc = 0
-                mycalculator.add_parameter(
+                sqwfile = mycalculator.add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
                 )
-                mycalculator.add_parameter(
+                sqwinc = mycalculator.add_parameter(
                     "string",
                     "sqw_inc",
                     comment="File with incoherent Sqw in McStas convention (disabled by default)",
@@ -632,17 +679,8 @@ class McStasInstrumentBase(Instrument):
                 )
                 s.Sqw_coh = "sqw_file"
                 s.Sqw_inc = "sqw_inc"
-                self.add_master_parameter(
-                    "sqw_file",
-                    # here I would need to get the name of the calculator in which the sample is defined
-                    {mycalculator.name: "sqw_file"},
-                    comment=mycalculator.parameters["sqw_file"].comment,
-                )
-                self.add_master_parameter(
-                    "sqw_inc",
-                    {mycalculator.name: "sqw_inc"},
-                    comment=mycalculator.parameters["sqw_inc"].comment,
-                )
+                self.add_parameter_to_master("sqw_file", mycalculator, sqwfile)
+                self.add_parameter_to_master("sqw_inc", mycalculator, sqwinc)
                 self.master["sqw_inc"] = '"0"'
 
         # quartz_sample.radius = 0.005

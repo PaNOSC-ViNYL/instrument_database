@@ -339,7 +339,7 @@ class D11(McStasInstrumentBase):
     def __init__(self, movable_guide_config, do_section=True, remove_H15=False):
         """Here the real definition of the instrument is performed"""
 
-        super().__init__("IN5", do_section)
+        super().__init__("D11", do_section)
 
         # ------------------------------ some local variables
         def add_multislit(mycalculator, name: str, position, relative, forms):
@@ -450,7 +450,9 @@ class D11(McStasInstrumentBase):
             velocity_selector_arm = velocity_selector_mcpl_arm
 
         # attenuators
+        AttenuatorCalc = mycalculator
         attenuation_values = [
+            1,  # no attenuator (attenuator out)
             8.325,  # attenuator 1
             26.21,  # attenuator 2
             72.23,  # attenuator 3
@@ -464,9 +466,13 @@ class D11(McStasInstrumentBase):
             "int",
             "attenuator_index",
             comment="select the attenuation level by combining attenuator 1,2,3",
-            value=0,
+            value=6,
         )
-        attenuator_index.add_interval(0, 7, True)
+        attenuator_index.add_interval(0, len(attenuation_values) - 1, True)
+        self.add_parameter_to_master(
+            attenuator_index.name, mycalculator, attenuator_index
+        )
+
         mycalculator.add_declare_var(
             "double",
             "att_factor",
@@ -475,20 +481,25 @@ class D11(McStasInstrumentBase):
         )
 
         attenuator = mycalculator.add_component(
-            "attenuator", "Filter_gen", AT=0, RELATIVE=velocity_selector_arm
+            "attenuator", "Filter_gen", AT=0.01, RELATIVE=velocity_selector_arm
         )
         attenuator.set_parameters(
             filename='"institutes/ILL/instruments/D11/HEAD/mcstas/data/attenuator1.trm"',
+            # filename='"HOPG.trm"',
             scaling="1.0/att_factor[attenuator_index]",
             xwidth=0.1,
             yheight=0.1,
+            verbose=1,
         )
 
         PSD_attenuator = mycalculator.add_component(
-            "PSD_attenuator", "Monitor_nD", AT=0.001, RELATIVE=attenuator
+            "PSD_attenuator", "Monitor_nD", AT=0.011, RELATIVE=attenuator
         )
         PSD_attenuator.set_parameters(
-            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
+            #            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
+            xwidth=1,
+            yheight=1,
+            options='"lambda"',
         )
 
         Vrpm = mycalculator.add_parameter(
@@ -554,6 +565,7 @@ class D11(McStasInstrumentBase):
         )
 
         # ----------------------------------------
+        CollimationCalc = mycalculator
         collimation = mycalculator.add_parameter(
             "double",
             "collimation",
@@ -561,6 +573,8 @@ class D11(McStasInstrumentBase):
             unit="m",
             value=1.5,
         )
+        self.add_parameter_to_master(collimation.name, mycalculator, collimation)
+
         collimation_options = [
             40.5,
             # 37,
@@ -720,10 +734,10 @@ class D11(McStasInstrumentBase):
         )
         # self._sample_environment.set_ROTATED([0, det_angle, 0])
 
-        self.sample_box_shape(0.02, 0.03, 0.0035, 0.00125)
+        # self.sample_box_shape(0.02, 0.03, 0.0035, 0.00125)
         # default sample
         self.set_sample_focus(8, 3, 8)  # FIXME
-        sample = self.set_sample_by_name("vanadium")
+        sample = self.set_sample_by_name("None")
 
         Sample_Out = mycalculator.add_component(
             "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
@@ -737,6 +751,7 @@ class D11(McStasInstrumentBase):
             "double", "detpos", comment="Detector distance", unit="m", value=2
         )
         detpos.add_interval(1, 28, True)
+        self.add_parameter_to_master(detpos.name, mycalculator, detpos)
 
         bs_x = mycalculator.add_parameter(
             "double", "bs_x", comment="Beamstop x position", unit="m", value=0
