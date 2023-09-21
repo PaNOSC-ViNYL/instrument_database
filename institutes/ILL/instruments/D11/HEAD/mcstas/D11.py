@@ -422,6 +422,18 @@ class D11(McStasInstrumentBase):
             'dlambda = dlambda*lambda;printf("dlambda = %.2f\\n", dlambda);'
         )
 
+        sourcefluxfix = mycalculator.add_component(
+            "sourcefluxfix", "Filter_gen", AT=0.1, RELATIVE=mysource
+        )
+        sourcefluxfix.set_parameters(
+            filename='"institutes/ILL/instruments/D11/HEAD/mcstas/data/attenuator1.trm"',
+            # filename='"HOPG.trm"',
+            scaling=0.01,
+            xwidth=mysource.xwidth * 2,
+            yheight=mysource.yheight * 2,
+            verbose=0,
+        )
+
         AlWindow1 = mycalculator.add_component(
             "Alw1", "Al_window", AT=2.33, RELATIVE=mysource
         )
