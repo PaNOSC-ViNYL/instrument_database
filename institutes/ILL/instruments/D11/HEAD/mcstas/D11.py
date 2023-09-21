@@ -98,7 +98,7 @@ def def_instrument(flavour: Optional[str] = None):
     }
 
     if flavour in [None, "None", "", "full", "Borkron_1972"]:
-        return D11(movable_guide_config["Borkron_1972"], do_section=True)
+        return D11(movable_guide_config["Borofloat_2001"], do_section=True)
     if flavour in movable_guide_config:
         return D11(movable_guide_config[flavour], do_section=True)
     if flavour == "nosection":
@@ -342,50 +342,6 @@ class D11(McStasInstrumentBase):
         super().__init__("D11", do_section)
 
         # ------------------------------ some local variables
-        def add_multislit(mycalculator, name: str, position, relative, forms):
-            """
-            # Function that simplifies the addition of multiform/multisize collimation holes
-            forms : is a list of either single values indicating a radius or a pair indicating xwidth and yheight
-            e.g. forms = [ 1, 4, (2,3) ]
-            """
-            slit = mycalculator.add_component(name, "Slit", AT=0, RELATIVE="PREVIOUS")
-            slit.set_parameters(
-                radius=name + "_radius",
-                xwidth=name + "_xwidth",
-                yheight=name + "_yheight",
-            )
-            mycalculator.add_declare_var("double", name + "_radius")
-            mycalculator.add_declare_var("double", name + "_xwidth")
-            mycalculator.add_declare_var("double", name + "_yheight")
-            ind = mycalculator.add_parameter(
-                "int",
-                name + "_index",
-                comment="Index to select the collimation form and size for diaphragm "
-                + name,
-                value=0,
-            )
-            ind.add_interval(0, len(forms), True)  # only this values are admitted
-            mycalculator.append_initialize("switch(" + name + "_index){")
-            for i in range(0, len(forms)):
-                form = forms[i]
-                mycalculator.append_initialize("case " + str(i) + ":")
-                try:
-                    if len(form) == 2:
-                        mycalculator.append_initialize(name + "_radius = UNSET;")
-                        mycalculator.append_initialize(
-                            name + "_xwidth = " + str(form[0]) + ";"
-                        )
-                        mycalculator.append_initialize(
-                            name + "_yheight = " + str(form[1]) + ";"
-                        )
-                except TypeError:
-                    mycalculator.append_initialize(
-                        name + "_radius = " + str(form) + ";"
-                    )
-                    mycalculator.append_initialize(name + "_xwidth = UNSET;")
-                    mycalculator.append_initialize(name + "_yheight = UNSET;")
-                mycalculator.append_initialize("break;")
-            mycalculator.append_initialize("}")
 
         # ------------------------------------------------------------
         # Start with a first section and declaring its parameters
@@ -724,11 +680,29 @@ class D11(McStasInstrumentBase):
             collimation_length = collimation_length - movable_guide_config["l"][i]
 
         # /* Gap 17 mm at 20.5 m collimation */
+
+        # ------------------------------ Disk 1
+        self.add_multislit(
+            mycalculator,
+            "disk1",
+            [
+                {"x": 0.035, "y": 0.035, "r": None},  # 0°
+                {"x": 0.020, "y": 0.020, "r": None},  # 45°
+                {"x": 0.015, "y": 0.015, "r": None},  # 90°
+                {"x": None, "y": None, "r": 0.020},  # 135°
+                {"x": None, "y": None, "r": 0.015},  # 180°
+                {"x": None, "y": None, "r": 0.010},  # 225°
+                {"x": 0.025, "y": 0.040, "r": None},  # 270°
+                {"x": 0.030, "y": 0.030, "r": None},  # 315°
+            ],
+            movable_guide_config["l"][15] + 2.5 - 0.5,
+            "mg15",
+        )
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
             "Arm",
-            AT=0,
+            AT=movable_guide_config["l"][15] + 2.5 - 0.02,
             RELATIVE="mg15",
         )
 
@@ -738,9 +712,7 @@ class D11(McStasInstrumentBase):
             "SampleCalc", sample_mcpl_arm, True
         )
         # ------------------------------------------------------------
-        self._sample_arm.set_AT(
-            movable_guide_config["l"][15] + 2.5, RELATIVE=sample_mcpl_arm
-        )
+        self._sample_arm.set_AT(0.02, RELATIVE=sample_mcpl_arm)
         self._sample_environment_arm.set_AT(
             self._sample_arm.AT_data, RELATIVE=sample_mcpl_arm
         )
@@ -748,7 +720,7 @@ class D11(McStasInstrumentBase):
 
         # self.sample_box_shape(0.02, 0.03, 0.0035, 0.00125)
         # default sample
-        self.set_sample_focus(8, 3, 8)  # FIXME
+        # self.sample_focus(8, 3, 8)  # FIXME
         sample = self.set_sample_by_name("None")
 
         Sample_Out = mycalculator.add_component(

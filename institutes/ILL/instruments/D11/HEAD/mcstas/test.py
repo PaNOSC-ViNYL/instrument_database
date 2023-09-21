@@ -28,7 +28,7 @@ ureg = pint.get_application_registry()
 basedir = "/tmp/" + instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
-myinstrument.sim_neutrons(500000)
+myinstrument.sim_neutrons(80000000)
 myinstrument.set_seed(654321)
 
 
@@ -71,11 +71,12 @@ def run_test(myinstrument, test_number, acquisition_time):
     data = myinstrument.output
     detectors = data[calcname_data].get_data()["data"]
     detectors_data = {}
+    detectors_trueMC = {}
     for detector in detectors:
         if detector.name in ["detector_central", "detector_left", "detector_right"]:
             detectors_data[detector.name] = detector.Intensity * acquisition_time
-
-    return detectors_data
+            detectors_trueMC[detector.name] = detector.Ncount
+    return detectors_data, detectors_trueMC
 
 
 def data_test(test_number):
@@ -100,25 +101,39 @@ def data_test(test_number):
     return detectors_data
 
 
-def compare(d, s):
-    print("{:18}: {:>10} {:>10} | {:>10}".format("", "data", "sim", "data/sim"))
+def compare(d, s, mc):
+    print(
+        "{:18}: {:>10} {:>10} | {:>10} | {:>10}".format(
+            "", "data", "sim", "data/sim", "MC count"
+        )
+    )
     for key in d.keys():
         dsum = np.sum(d[key])
         ssum = np.sum(s[key])
+        mcsum = np.sum(mc[key])
         ratio = dsum / ssum
-        print("{:18}: {:10.0f} {:10.0f} | {:10.2f}".format(key, dsum, ssum, ratio))
+        print(
+            "{:18}: {:10.0f} {:10.0f} | {:10.2f} | {:10.0f}".format(
+                key, dsum, ssum, ratio, mcsum
+            )
+        )
 
 
 darr = []
 sarr = []
-for itest in range(0, 3):
+mcarr = []
+ntests = 1
+for itest in range(0, ntests):
     darr.append(data_test(itest))
-    sarr.append(run_test(myinstrument, itest, acquisition_time))
+    intensity, count = run_test(myinstrument, itest, acquisition_time)
+    sarr.append(intensity)
+    mcarr.append(count)
 
-for itest in range(0, 3):
+for itest in range(0, ntests):
     d = darr[itest]
     s = sarr[itest]
-    compare(d, s)
+    mc = mcarr[itest]
+    compare(d, s, mc)
 
 sys.exit(0)
 print(

@@ -311,6 +311,43 @@ class McStasInstrumentBase(Instrument):
 
         return psd
 
+    def add_multislit(self, mycalculator, name: str, forms, at=0, relative="PREVIOUS"):
+        """
+        # Function that simplifies the addition of multiform/multisize collimation holes
+        forms : is a list dictionaries { x, y, r}
+        e.g.
+        forms = [
+        {"x": 0.035, "y": 0.035, "r": None},  # 0°
+        {"x": 0.020, "y": 0.020, "r": None},  # 45°
+        {"x": 0.015, "y": 0.015, "r": None},  # 90°
+        {"x": None, "y": None, "r": 0.020},  # 135°
+        {"x": None, "y": None, "r": 0.015},  # 180°
+        {"x": None, "y": None, "r": 0.010},  # 225°
+        {"x": 0.025, "y": 0.040, "r": None},  # 270°
+        {"x": 0.030, "y": 0.030, "r": None},  # 315°
+        ]
+        """
+
+        disk_index = mycalculator.add_parameter(
+            "int",
+            "{}_index".format(name),
+            comment="Position of {}".format(name),
+            value=0,
+        )
+        allowed_values = []
+        allowed_values.extend(range(0, len(forms)))
+        disk_index.add_option(allowed_values, True)
+        for i in range(0, len(forms)):
+            size = forms[i]
+            diaph = mycalculator.add_component(
+                "{}_{:d}".format(name, i),
+                "Slit",
+                AT=at,
+                RELATIVE=relative,
+                WHEN="{}=={:d}".format(disk_index.name, i),
+            )
+            diaph.set_parameters(xwidth=size["x"], yheight=size["y"], radius=size["r"])
+
     def add_parameter_to_master(
         self, mastername: str, calc: BaseCalculator, par: Parameter
     ) -> None:
@@ -336,10 +373,27 @@ class McStasInstrumentBase(Instrument):
             links[calc.name] = par.name
             self.master[mastername].add_links(links)
 
-    def set_sample_focus(self, xwidth, yheight, zdistance):
+    def sample_focus(self, xwidth, yheight, zdistance):
+        # if xwidth is None or yheight is None or zdistance is None:
         self.focus_xw = xwidth
         self.focus_yh = yheight
         self.target_z = zdistance
+
+    # ------------------------------
+    def set_sample_focus(self):
+        if self.sample is not None and self.sample.component_name == "Isotropic_Sqw":
+            if self.focus_yh is not None and self.target_z is not None:
+                self.sample.d_phi = (
+                    180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
+                )
+
+            if self.focus_xw is not None and self.target_z is not None:
+                self.sample.set_SPLIT(
+                    2
+                    * round(
+                        2 * math.pi / self.focus_angle(self.focus_xw, self.target_z)
+                    )
+                )
 
     def focus_angle(self, h, z):
         return 2 * math.atan(h / 2 / z)
@@ -562,6 +616,7 @@ class McStasInstrumentBase(Instrument):
             )
 
     # ------------------------------
+
     # this implements what is foreseen in the libpyvinyl.Instrument class
     def set_sample_by_name(self, name: str) -> None:
         """Set the sample component
@@ -625,11 +680,8 @@ class McStasInstrumentBase(Instrument):
             s.thickness = "sample_thickness"  # 0  # 0.002
             s.verbose = 1
             s.p_interact = 1
-            s.d_phi = 180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
 
-            s.set_SPLIT(
-                2 * round(2 * math.pi / self.focus_angle(self.focus_xw, self.target_z))
-            )
+            self.set_sample_focus()
 
             if name == "H2O":
                 s.Sqw_coh = '"H2O_liq_290_coh.sqw"'
