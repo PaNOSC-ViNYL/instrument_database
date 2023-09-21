@@ -1,3 +1,5 @@
+# #python institutes/ILL/instruments/D11/HEAD/mcstas/test.py | tail -12 >  institutes/ILL/instruments/D11/HEAD/mcstas/test/test.log; git diff institutes/ILL/instruments/D11/HEAD/mcstas/test/test.log
+
 from instrumentdatabaseapi import instrumentdatabaseapi as API
 
 import sys

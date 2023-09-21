@@ -429,8 +429,8 @@ class D11(McStasInstrumentBase):
             filename='"institutes/ILL/instruments/D11/HEAD/mcstas/data/attenuator1.trm"',
             # filename='"HOPG.trm"',
             scaling=0.01,
-            xwidth=mysource.xwidth * 2,
-            yheight=mysource.yheight * 2,
+            xwidth=mysource.xwidth * 3,
+            yheight=mysource.yheight * 3,
             verbose=0,
         )
 
