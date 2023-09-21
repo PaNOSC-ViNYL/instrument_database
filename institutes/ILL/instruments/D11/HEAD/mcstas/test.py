@@ -59,7 +59,7 @@ def set_tests(myinstrument, test_number):
             raise RuntimeError("Test number out of range")
 
 
-def run_test(myinstrument, test_number):
+def run_test(myinstrument, test_number, acquisition_time):
     calcname = "OriginCalc"
     calcname_data = calcname + "_data"
 
@@ -71,7 +71,7 @@ def run_test(myinstrument, test_number):
     detectors_data = {}
     for detector in detectors:
         if detector.name in ["detector_central", "detector_left", "detector_right"]:
-            detectors_data[detector.name] = detector.Intensity
+            detectors_data[detector.name] = detector.Intensity * acquisition_time
 
     return detectors_data
 
@@ -111,7 +111,7 @@ darr = []
 sarr = []
 for itest in range(0, 3):
     darr.append(data_test(itest))
-    sarr.append(run_test(myinstrument, itest))
+    sarr.append(run_test(myinstrument, itest, acquisition_time))
 
 for itest in range(0, 3):
     d = darr[itest]

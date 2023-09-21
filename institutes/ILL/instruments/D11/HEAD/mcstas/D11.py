@@ -489,7 +489,7 @@ class D11(McStasInstrumentBase):
             scaling="1.0/att_factor[attenuator_index]",
             xwidth=0.1,
             yheight=0.1,
-            verbose=1,
+            verbose=0,
         )
 
         PSD_attenuator = mycalculator.add_component(
@@ -787,7 +787,10 @@ class D11(McStasInstrumentBase):
             + '} else printf("ERROR: bs_index out of range [0-3]\\n");'
         )
         beamstop = mycalculator.add_component(
-            "beamstop", "Beamstop", AT=[bs_x, bs_y, detpos], RELATIVE=center_det
+            "beamstop",
+            "Beamstop",
+            AT=[bs_x, bs_y, "{} - 0.08".format(detpos.name)],
+            RELATIVE=center_det,
         )
         beamstop.set_parameters(xwidth="bs_w", yheight="bs_h")
 
@@ -795,7 +798,9 @@ class D11(McStasInstrumentBase):
         tube_width = 0.008  # width of the tubes
         tube_length = 1.024  # tube length
         det_length = 0  # length of the tubes
-        det_lateral_gap = 0  # gap between the central and lateral panels
+        det_lateral_gap = (
+            -0.004
+        )  # gap between the central and lateral panels: last pixels are overlapping
         det_lateral_ntubes = 32  # number of tubes of the lateral panels of the detector
         det_length_nbins = 256
         detector_central = mycalculator.add_component(
@@ -835,7 +840,7 @@ class D11(McStasInstrumentBase):
                 + det_lateral_gap
                 + detector_right.xwidth / 2,
                 0,
-                detpos,
+                "{} - 0.04".format(detpos.name),
             ]
         )
         detector_left = mycalculator.copy_component(
