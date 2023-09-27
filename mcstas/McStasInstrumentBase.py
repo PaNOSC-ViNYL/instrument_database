@@ -311,9 +311,9 @@ class McStasInstrumentBase(Instrument):
 
         return psd
 
-    def add_multislit(self, mycalculator, name: str, forms, at=0, relative="PREVIOUS"):
+    def add_multislit(self, mycalculator, name: str, forms, at=0, relative="PREVIOUS", after=None,align=None):
         """
-        # Function that simplifies the addition of multiform/multisize collimation holes
+        Function that simplifies the addition of multiform/multisize collimation holes
         forms : is a list dictionaries { x, y, r}
         e.g.
         forms = [
@@ -326,6 +326,8 @@ class McStasInstrumentBase(Instrument):
         {"x": 0.025, "y": 0.040, "r": None},  # 270°
         {"x": 0.030, "y": 0.030, "r": None},  # 315°
         ]
+
+        param align : None or 'b'
         """
 
         disk_index = mycalculator.add_parameter(
@@ -337,6 +339,20 @@ class McStasInstrumentBase(Instrument):
         allowed_values = []
         allowed_values.extend(range(0, len(forms)))
         disk_index.add_option(allowed_values, True)
+
+
+        ywidthmin=None
+        if align is not None:
+            if align != "b":
+                raise RuntimeError("parameter 'align' for add_multislit function not allowed: only None or 'b'")
+            
+            for i in range(0, len(forms)):
+                size = forms[i]
+                if size["r"] is not None:
+                    if ywidthmin is None or size["y"] < ywidthmin:
+                        ywidthmin = size["y"]
+
+        
         for i in range(0, len(forms)):
             size = forms[i]
             diaph = mycalculator.add_component(
@@ -344,9 +360,16 @@ class McStasInstrumentBase(Instrument):
                 "Slit",
                 AT=at,
                 RELATIVE=relative,
+                after=after,
                 WHEN="{}=={:d}".format(disk_index.name, i),
             )
-            diaph.set_parameters(xwidth=size["x"], yheight=size["y"], radius=size["r"])
+
+            if size["y"] is not None and ywidthmin is not None and size["y"]> ywidthmin:
+                ymin = -size["y"] /2+ywidthmin
+                ymax = -size["y"] /2+ywidthmin
+                diaph.set_parameters(xwidth=size["x"], ymin=ymin, ymax=ymax, radius=size["r"])                       
+            else:
+                diaph.set_parameters(xwidth=size["x"], yheight=size["y"], radius=size["r"])
 
     def add_parameter_to_master(
         self, mastername: str, calc: BaseCalculator, par: Parameter

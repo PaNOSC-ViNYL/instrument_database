@@ -11,7 +11,7 @@
  TODO:
   - [ ] controllare il comportamento del MCPL output:
         da verificare che i neutroni nel file abbiamo una posizione non nulla che e' impostata rispetto all'Arm definito per l'MCPL
-  - [ ] addmultislit: da debuggare
+  - [X] addmultislit: da debuggare
   - [ ] implementare il nuovo detector installato nel 2021
     - [ ] tube_length ?
 """
@@ -132,7 +132,7 @@ def H15(mycalculator, mysource, SourceTarget):
     SourceTarget = PinkCarter
     mysource.focus_xw = SourceTarget.w1
     mysource.focus_yh = SourceTarget.h1
-    mysource.dist = SourceTarget.AT_data[2]
+
 
     AlWindow2 = mycalculator.add_component(
         "Alw2", "Al_window", AT=3.522 + 0.001, RELATIVE=SourceTarget
@@ -398,6 +398,7 @@ class D11(McStasInstrumentBase):
         SourceTarget = mycalculator.add_component(
             "SourceTarget", "Arm", AT=AlWindow1.thickness, RELATIVE=AlWindow1
         )
+        mysource.dist = AlWindow1.AT_data[2]
 
         if remove_H15 is False:
             mycalculator, lastcomponent = H15(mycalculator, mysource, SourceTarget)
@@ -680,7 +681,64 @@ class D11(McStasInstrumentBase):
             collimation_length = collimation_length - movable_guide_config["l"][i]
 
         # /* Gap 17 mm at 20.5 m collimation */
+        gap=0.001
+        # ------------------------------ Disk 4
+        self.add_multislit(
+            mycalculator,
+            "disk4",
+            [
+                {"x": 0.043, "y": 0.080, "r": None},  # 0°
+                {"x": 0.050, "y": 0.055, "r": None},  # 45°
+                {"x": None, "y": None, "r": 0.030},  # 90°
+                {"x": None, "y": None, "r": 0.020},  # 135°
+                {"x": None, "y": None, "r": 0.010},  # 180°
+                {"x": None, "y": None, "r": 0.000},  # 225°
+                {"x": 0.0395, "y": 0.055, "r": None},  # 270°
+                {"x": None, "y": None, "r": 0.000},  # 315°
+            ],
+            movable_guide_config["l"][8]+gap,
+            "mg8",
+            align="b",
+            after="mg8",
+        )
+        # ------------------------------ Disk 3
+        self.add_multislit(
+            mycalculator,
+            "disk3",
+            [
+                {"x": 0.050, "y": 0.080, "r": None},  # 0°
+                {"x": 0.050, "y": 0.055, "r": None},  # 45°
+                {"x": None, "y": None, "r": 0.030},  # 90°
+                {"x": None, "y": None, "r": 0.020},  # 135°
+                {"x": None, "y": None, "r": 0.010},  # 180°
+                {"x": None, "y": None, "r": 0.005},  # 225°
+                {"x": 0.038, "y": 0.055, "r": None},  # 270°
+                {"x": None, "y": None, "r": 0.000},  # 315°
+            ],
+            movable_guide_config["l"][12]+gap,
+            "mg12",
+            align="b",
+            after="mg12",
+        )
 
+        # ------------------------------ Disk 2
+        self.add_multislit(
+            mycalculator,
+            "disk2",
+            [
+                {"x": 0.0365, "y": 0.040, "r": None},  # 0°
+                {"x": 0.050, "y": 0.055, "r": None},  # 45°
+                {"x": None, "y": None, "r": 0.030},  # 90°
+                {"x": None, "y": None, "r": 0.020},  # 135°
+                {"x": None, "y": None, "r": 0.010},  # 180°
+                {"x": None, "y": None, "r": 0.005},  # 225°
+                {"x": 0.0285, "y": 0.031, "r": None},  # 270°
+                {"x": None, "y": None, "r": 0.000},  # 315°
+            ],
+            movable_guide_config["l"][15] + 2.5 - 1.5,
+            "mg15",
+            align="b",
+        )
         # ------------------------------ Disk 1
         self.add_multislit(
             mycalculator,
@@ -697,14 +755,20 @@ class D11(McStasInstrumentBase):
             ],
             movable_guide_config["l"][15] + 2.5 - 0.5,
             "mg15",
+                        align="b",
+            
         )
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
             "Arm",
-            AT=movable_guide_config["l"][15] + 2.5 - 0.02,
+            AT=movable_guide_config["l"][15] + 2.5 - 0.05,
             RELATIVE="mg15",
         )
+        PSD_sample = mycalculator.add_component(
+            "PSD_sample", "Monitor_nD", AT=0, RELATIVE=sample_mcpl_arm
+        )
+        PSD_sample.set_parameters(xwidth=0.1, yheight=0.1, options='"xy"')
 
         # ------------------------------------------------------------
         # this new section contains the sample and the sample environment
@@ -712,7 +776,7 @@ class D11(McStasInstrumentBase):
             "SampleCalc", sample_mcpl_arm, True
         )
         # ------------------------------------------------------------
-        self._sample_arm.set_AT(0.02, RELATIVE=sample_mcpl_arm)
+        self._sample_arm.set_AT(0.05, RELATIVE=sample_mcpl_arm)
         self._sample_environment_arm.set_AT(
             self._sample_arm.AT_data, RELATIVE=sample_mcpl_arm
         )
@@ -738,10 +802,10 @@ class D11(McStasInstrumentBase):
         self.add_parameter_to_master(detpos.name, mycalculator, detpos)
 
         bs_x = mycalculator.add_parameter(
-            "double", "bs_x", comment="Beamstop x position", unit="m", value=0
+            "double", "bs_x", comment="Beamstop x position", unit="m", value=141
         )
         bs_y = mycalculator.add_parameter(
-            "double", "bs_y", comment="Beamstop y position", unit="m", value=0
+            "double", "bs_y", comment="Beamstop y position", unit="m", value=650
         )
 
         bs_index = mycalculator.add_parameter(
@@ -751,6 +815,9 @@ class D11(McStasInstrumentBase):
             value=1,
         )
         bs_index.add_option([0, 1, 2, 3], True)
+        self.add_parameter_to_master(
+            bs_index.name, mycalculator, bs_index
+        )
 
         mycalculator.add_declare_var(
             "double", "bs_w", comment="beam stop width", unit="m", value=0
@@ -773,7 +840,9 @@ class D11(McStasInstrumentBase):
         beamstop = mycalculator.add_component(
             "beamstop",
             "Beamstop",
-            AT=[bs_x, bs_y, "{} - 0.08".format(detpos.name)],
+            AT=["bs_x - 141",
+                "bs_y - 650",
+                "{} - 0.08".format(detpos.name)],
             RELATIVE=center_det,
         )
         beamstop.set_parameters(xwidth="bs_w", yheight="bs_h")
