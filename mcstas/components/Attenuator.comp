@@ -1,0 +1,121 @@
+/***********************************************************************
+*
+* McStas, neutron ray-tracing package
+*         Copyright 1997-2002, All rights reserved
+*         Risoe National Laboratory, Roskilde, Denmark
+*         Institut Laue Langevin, Grenoble, France
+*
+* Component: Filter_gen
+* %I
+* Written by:  E. Farhi
+* Date: Dec, 15th, 2002
+* Version: $Revision$
+* Origin: ILL
+* Release: McStas 1.6
+*
+* This components may either set the flux or change it (filter-like), using
+* an external data filename.
+*
+* %D
+* This component changes the neutron flux (weight) in order to match
+* a reference table in a filename.
+* Typically you may set the neutron flux (source-like), or multiply it
+* using a transmission table (filter-like).
+* The component may be placed after a source, in order to e.g.
+* simulate a real source from a reference table, or used as a filter (BeO)
+* or as a window (Al). The behaviour of the component is
+* specified using the 'options' parameter, or from the filename itself (see below)
+* If the thickness for the transmission data filename D was t0, and a different
+* thickness t1 would be required, then the resulting transmission is:
+*   D^(t1/t0).
+* You may use the 'thickness' and 'scaling' parameter for that purpose.
+*
+* <b>File format:</b>
+* This filename may be of any 2-columns free format (k[Angs-1],p), (omega[meV],p)
+* and (lambda[Angs],p) where p is the weight. The type of the filename may be
+* written explicitely in the filename, as a comment, or using the 'options'
+* parameter.
+* Non mumerical content in filename is treated as comment (e.g. lines starting
+* with '#' character).
+* A table rebinning and linear interpolation are performed.
+*
+* EXAMPLE : in order to simulate a PG filter, using the lib/data/HOPG.trm file
+*      Filter_gen(xwidth=.1 yheight=.1, filename="HOPG.trm")
+* A Sapphire filter, using the lib/data/Al2O3_sapphire.trm file
+*      Filter_gen(xwidth=.1 yheight=.1, filename="Al2O3_sapphire.trm")
+* A Berylium filter, using the lib/data/Be.trm file
+*      Filter_gen(xwidth=.1 yheight=.1, filename="Be.trm")
+*   an other possibility to simulate a Be filter is to use the PowderN component:
+*      PowderN(xwidth=.1, yheight=.1, zdepth=.1, reflections="Be.laz", p_inc=1e-4)
+*
+* in this filename, the comment line
+*     # wavevector multiply
+* sets the behaviour of the component. One may as well have used
+*     options="wavevector multiply"
+* in the component instance parameters.
+*
+*%P
+* filename: [str] name of the filename to look at (first two columns data). Data D should rather be sorted (ascending order) and monotonic filename may contain options (see below) as comment
+* options: [str] string that can contain: "[ k p ]"      or "wavevector" for filename type, "[ omega p]"   or "energy", "[ lambda p ]" or "wavelength", "set"          to set the weight according to the table,"multiply"     to multiply (instead of set) the weight by factor,"add"          to add to current flux,"verbose"      to display additional informations.
+* thickness: [1] relative thickness. D = D^(thickness).
+* scaling: [1] scaling factor. D = D*scaling.
+* xmin:    [m] dimension of filter
+* xmax:    [m] dimension of filter
+* ymin:    [m] dimension of filter
+* ymax:    [m] dimension of filter
+* xwidth:  [m] Width/diameter of filter). Overrides xmin,xmax.
+* yheight: [m] Height of filter. Overrides ymin,ymax.
+* verbose: [1] Flag to select verbose output.
+*
+* %L
+* <a href="../data/HOPG.trm">HOPG.trm</a> filename as an example.
+*%E
+***********************************************************************/
+DEFINE COMPONENT Attenuator
+DEFINITION PARAMETERS ()
+SETTING PARAMETERS (xmin=-0.05, xmax=0.05, ymin=-0.05, ymax=0.05,
+  xwidth=0, yheight=0, scaling=1)
+OUTPUT PARAMETERS ()
+/* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
+
+SHARE
+%{
+%}
+
+DECLARE
+%{
+%}
+
+INITIALIZE
+%{
+
+  if (xwidth  > 0) { xmax = xwidth/2;  xmin = -xmax; }
+  if (yheight > 0) { ymax = yheight/2; ymin = -ymax; }
+
+%}
+
+TRACE
+%{
+  PROP_Z0;
+  if ( (x>xmin && x<xmax && y>ymin && y<ymax))
+  {
+    p *= scaling;
+    SCATTER;
+  }
+%}
+
+FINALLY
+%{
+%}
+
+MCDISPLAY
+%{
+  
+  multiline(5, (double)xmin, (double)ymin, 0.0,
+               (double)xmax, (double)ymin, 0.0,
+               (double)xmax, (double)ymax, 0.0,
+               (double)xmin, (double)ymax, 0.0,
+               (double)xmin, (double)ymin, 0.0);
+%}
+
+END

@@ -311,7 +311,16 @@ class McStasInstrumentBase(Instrument):
 
         return psd
 
-    def add_multislit(self, mycalculator, name: str, forms, at=0, relative="PREVIOUS", after=None,align=None):
+    def add_multislit(
+        self,
+        mycalculator,
+        name: str,
+        forms,
+        at=0,
+        relative="PREVIOUS",
+        after=None,
+        align=None,
+    ):
         """
         Function that simplifies the addition of multiform/multisize collimation holes
         forms : is a list dictionaries { x, y, r}
@@ -340,19 +349,19 @@ class McStasInstrumentBase(Instrument):
         allowed_values.extend(range(0, len(forms)))
         disk_index.add_option(allowed_values, True)
 
-
-        ywidthmin=None
+        ywidthmin = None
         if align is not None:
             if align != "b":
-                raise RuntimeError("parameter 'align' for add_multislit function not allowed: only None or 'b'")
-            
+                raise RuntimeError(
+                    "parameter 'align' for add_multislit function not allowed: only None or 'b'"
+                )
+
             for i in range(0, len(forms)):
                 size = forms[i]
                 if size["r"] is not None:
                     if ywidthmin is None or size["y"] < ywidthmin:
                         ywidthmin = size["y"]
 
-        
         for i in range(0, len(forms)):
             size = forms[i]
             diaph = mycalculator.add_component(
@@ -364,12 +373,22 @@ class McStasInstrumentBase(Instrument):
                 WHEN="{}=={:d}".format(disk_index.name, i),
             )
 
-            if size["y"] is not None and ywidthmin is not None and size["y"]> ywidthmin:
-                ymin = -size["y"] /2+ywidthmin
-                ymax = -size["y"] /2+ywidthmin
-                diaph.set_parameters(xwidth=size["x"], ymin=ymin, ymax=ymax, radius=size["r"])                       
+            if (
+                size["y"] is not None
+                and ywidthmin is not None
+                and size["y"] > ywidthmin
+            ):
+                ymin = -size["y"] / 2 + ywidthmin
+                ymax = -size["y"] / 2 + ywidthmin
+                diaph.set_parameters(
+                    xwidth=size["x"], ymin=ymin, ymax=ymax, radius=size["r"]
+                )
             else:
-                diaph.set_parameters(xwidth=size["x"], yheight=size["y"], radius=size["r"])
+                diaph.set_parameters(
+                    xwidth=size["x"], yheight=size["y"], radius=size["r"]
+                )
+
+        return disk_index
 
     def add_parameter_to_master(
         self, mastername: str, calc: BaseCalculator, par: Parameter
@@ -383,6 +402,7 @@ class McStasInstrumentBase(Instrument):
                 unit=par.unit,
                 comment=par.comment,
             )
+            self.master[mastername] = par.value
         else:
             links = self.master[mastername].links
             if calc.name in links:
@@ -395,6 +415,7 @@ class McStasInstrumentBase(Instrument):
                 return
             links[calc.name] = par.name
             self.master[mastername].add_links(links)
+        self.master[mastername] = self.master[mastername].value
 
     def sample_focus(self, xwidth, yheight, zdistance):
         # if xwidth is None or yheight is None or zdistance is None:
@@ -450,6 +471,21 @@ class McStasInstrumentBase(Instrument):
         mycalculator.parameters["sample_thickness"].value = 0
 
     def sample_shape(self, shape: str, r=None, w=None, h=None, d=None, th=0) -> None:
+        """
+        Sets the sample's shape parameters
+
+         :param shape: accepted values are shere, cylinder, box, holder
+         :param r:     None or float value of the radius for shere or cylinder shapes
+         :param w:     None or width of box shape
+         :param h:     None or height of cylinder and box shapes
+         :param d:     None or depth of box shape
+         :param th:    thickness of hollow shapes
+
+        Exceptions:
+           RuntimeError in case given values are not defined for the selected shape.
+
+        Only parameters related to the selected shapes are used, the others are discarded.
+        """
         self._sample_shape = shape
         if shape in ["shere", "SPHERE"]:
             if r is None or r <= 0:
