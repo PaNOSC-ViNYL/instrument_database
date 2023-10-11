@@ -1024,7 +1024,7 @@ class D11(McStasInstrumentBase):
         elif test_number == 2:  # with sample
             myinstrument.set_sample_by_name("qSq")
             myinstrument.master[
-                "qSq_file"
+                "sqw_file"
             ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
             #                '"simul_5711.sq"'
         elif test_number == -1:  # direct beam no beamstop
