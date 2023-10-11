@@ -65,6 +65,10 @@ def get_flavours():
     ]
 
 
+def def_tests(flavour: Optional[str] = None):
+    myinstrument = def_instrument(flavour)
+
+
 ############## Mandatory method
 def def_instrument(flavour: Optional[str] = None):
     """Function returning the specialized instrument object based on the flavour requested"""
@@ -384,14 +388,14 @@ class D11(McStasInstrumentBase):
             'dlambda = dlambda*lambda;printf("dlambda = %.2f\\n", dlambda);'
         )
 
-        sourcefluxfix = mycalculator.add_component(
-            "sourcefluxfix", "Attenuator", AT=0.1, RELATIVE=mysource
-        )
-        sourcefluxfix.set_parameters(
-            scaling=0.01,
-            xwidth=mysource.xwidth * 3,
-            yheight=mysource.yheight * 3,
-        )
+        # sourcefluxfix = mycalculator.add_component(
+        #     "sourcefluxfix", "Attenuator", AT=0.1, RELATIVE=mysource
+        # )
+        # sourcefluxfix.set_parameters(
+        #     scaling=1,
+        #     xwidth=mysource.xwidth * 3,
+        #     yheight=mysource.yheight * 3,
+        # )
         #            Detector: PSD_attenuator_I=32518.3 PSD_attenuator_ERR=339.976 PSD_attenuator_N=35962 "PSD_attenuator_1695885726.L"
 
         AlWindow1 = mycalculator.add_component(
@@ -423,7 +427,6 @@ class D11(McStasInstrumentBase):
             velocity_selector_arm = velocity_selector_mcpl_arm
 
         # attenuators
-        AttenuatorCalc = mycalculator
         attenuation_values = [
             1,  # no attenuator (attenuator out)
             8.325,  # attenuator 1
@@ -435,43 +438,43 @@ class D11(McStasInstrumentBase):
             13480,  # attenuator 1+2+3
         ]
 
-        attenuator_index = mycalculator.add_parameter(
-            "int",
-            "attenuator_index",
-            comment="select the attenuation level by combining attenuator 1,2,3",
-            value=6,
-        )
-        attenuator_index.add_interval(0, len(attenuation_values) - 1, True)
-        self.add_parameter_to_master(
-            attenuator_index.name, mycalculator, attenuator_index
-        )
+        # attenuator_index = mycalculator.add_parameter(
+        #     "int",
+        #     "attenuator_index",
+        #     comment="select the attenuation level by combining attenuator 1,2,3",
+        #     value=6,
+        # )
+        # attenuator_index.add_interval(0, len(attenuation_values) - 1, True)
+        # self.add_parameter_to_master(
+        #     attenuator_index.name, mycalculator, attenuator_index
+        # )
 
-        mycalculator.add_declare_var(
-            "double",
-            "att_factor",
-            array=len(attenuation_values),
-            value=attenuation_values,
-        )
+        # mycalculator.add_declare_var(
+        #     "double",
+        #     "att_factor",
+        #     array=len(attenuation_values),
+        #     value=attenuation_values,
+        # )
 
-        attenuator = mycalculator.add_component(
-            "attenuator", "Attenuator", AT=0.01, RELATIVE=velocity_selector_arm
-        )
+        # attenuator = mycalculator.add_component(
+        #     "attenuator", "Attenuator", AT=0.01, RELATIVE=velocity_selector_arm
+        # )
 
-        attenuator.set_parameters(
-            scaling="1.0/att_factor[attenuator_index]",
-            xwidth=0.1,
-            yheight=0.1,
-        )
+        # attenuator.set_parameters(
+        #     scaling="1.0/att_factor[attenuator_index]",
+        #     xwidth=0.1,
+        #     yheight=0.1,
+        # )
 
-        PSD_attenuator = mycalculator.add_component(
-            "PSD_attenuator", "Monitor_nD", AT=0.011, RELATIVE=attenuator
-        )
-        PSD_attenuator.set_parameters(
-            #            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
-            xwidth=1,
-            yheight=1,
-            options='"lambda"',
-        )
+        # PSD_attenuator = mycalculator.add_component(
+        #     "PSD_attenuator", "Monitor_nD", AT=0.011, RELATIVE=attenuator
+        # )
+        # PSD_attenuator.set_parameters(
+        #     #            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
+        #     xwidth=1,
+        #     yheight=1,
+        #     options='"lambda"',
+        # )
 
         if do_section is True:
             lambda1 = mycalculator.add_parameter(
@@ -607,8 +610,8 @@ class D11(McStasInstrumentBase):
             0.65,
             sg30,
         )
-        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        self.master[disk_index.name] = 1
+        # self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        # self.master[disk_index.name] = 1
 
         MovableGuideStart = mycalculator.add_component(
             "MovableGuideStart", "Arm", AT=0.66, RELATIVE=sg30
@@ -844,6 +847,43 @@ class D11(McStasInstrumentBase):
         # ------------------------------------------------------------
 
         mycalculator, center_det = self.add_new_section("DetectorCalc", Sample_Out)
+        attenuator_index = mycalculator.add_parameter(
+            "int",
+            "attenuator_index",
+            comment="select the attenuation level by combining attenuator 1,2,3",
+            value=6,
+        )
+        attenuator_index.add_interval(0, len(attenuation_values) - 1, True)
+        self.add_parameter_to_master(
+            attenuator_index.name, mycalculator, attenuator_index
+        )
+
+        mycalculator.add_declare_var(
+            "double",
+            "att_factor",
+            array=len(attenuation_values),
+            value=attenuation_values,
+        )
+
+        attenuator = mycalculator.add_component(
+            "attenuator", "Attenuator", AT=0.01, RELATIVE=center_det
+        )
+
+        attenuator.set_parameters(
+            scaling="1.0/att_factor[attenuator_index]",
+            xwidth=1,  # very large to not miss any neutron
+            yheight=1,  # very large to not miss any neutron
+        )
+
+        PSD_attenuator = mycalculator.add_component(
+            "PSD_attenuator", "Monitor_nD", AT=0.011, RELATIVE=center_det
+        )
+        PSD_attenuator.set_parameters(
+            #            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
+            xwidth=1,
+            yheight=1,
+            options='"lambda"',
+        )
 
         detpos = mycalculator.add_parameter(
             "double", "detpos", comment="Detector distance", unit="m", value=2
@@ -907,7 +947,11 @@ class D11(McStasInstrumentBase):
         det_lateral_ntubes = 32  # number of tubes of the lateral panels of the detector
         det_length_nbins = 256
         detector_central = mycalculator.add_component(
-            "detector_central", "Monitor_nD", AT=[0, 0, detpos], RELATIVE=center_det
+            "detector_central",
+            "Monitor_nD",
+            AT=[0, -0.032, detpos],
+            # -0.048 found comparing beam center of mass in test 0
+            RELATIVE=center_det,
         )
         detector_central.set_parameters(
             xwidth=tube_length,
@@ -960,13 +1004,48 @@ class D11(McStasInstrumentBase):
         else:
             DetectorCalc = OriginCalc
 
-        #        myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
-        #        myinstr.add_master_parameter("a6", {"AnalyzerCalc": "a6"}, unit="degree")
-        #        myinstr.master["a2"] = 79.10 * ureg.degree
-        #        myinstr.master["a3"] = 0 * ureg.degree
-        #        myinstr.master["a4"] = 60 * ureg.degree
-        #        myinstr.master["a6"] = 79.10 * ureg.degree
-        # ------------------------------ sample parameters
+    def set_test(self, test_number: Optional[int] = None):
+        myinstrument = self
+        myinstrument.master["lambda"] = 6 * ureg.angstrom
+        myinstrument.master["detpos"] = 2 * ureg.m
+        myinstrument.master["attenuator_index"] = 0
+        myinstrument.master["collimation"] = 8 * ureg.m
+        myinstrument.master["bs_index"] = 0
+        myinstrument.sample_holder(
+            material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+        )
+        myinstrument.sample_shape("holder")
+        if test_number == 0:  # direct attenuated beam
+            myinstrument.set_sample_by_name("None")
+            myinstrument.sample_holder(None, None)
+            myinstrument.master["attenuator_index"] = 6
+        elif test_number == 1:  # direct beam with empty sample holder
+            myinstrument.set_sample_by_name("None")
+        elif test_number == 2:  # with sample
+            myinstrument.set_sample_by_name("qSq")
+            myinstrument.master[
+                "qSq_file"
+            ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+            #                '"simul_5711.sq"'
+        elif test_number == -1:  # direct beam no beamstop
+            myinstrument.set_sample_by_name("None")
+            myinstrument.sample_holder(None, None)
+            myinstrument.master["attenuator_index"] = 6
+            myinstrument.master["bs_index"] = -1
+        else:
+            raise RuntimeError(f"Test number {test_number} out of range")
+
+    def test_datafile(self, test_number: Optional[int] = None):
+        file = ""
+        if test_number == 0 or test_number == -1:  # direct attenuated beam
+            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
+        elif test_number == 1:  # direct beam with empty sample holder
+            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
+        elif test_number == 2:
+            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs"
+        else:
+            raise RuntimeError(f"Test number {test_number} out of range")
+        return file
 
 
 # DEFINE INSTRUMENT ILL_H15_D11(Lambda=4.51, string Config="Borkron_1972", Lc=0, iLc=5,

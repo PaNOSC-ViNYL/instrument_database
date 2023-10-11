@@ -10,7 +10,7 @@ import pint
 import numpy as np
 import h5py
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from mcstasscript.interface.functions import load_metadata, load_monitor
 
 repo = API.Repository(local_repo=".")
@@ -32,12 +32,15 @@ simulation_dir = None
 if len(sys.argv) == 2:
     simulation_dir = sys.argv[1]
 
-
-myinstrument.sim_neutrons(80000000)
-myinstrument.sim_neutrons(8000000)
-myinstrument.sim_neutrons(800000)
+myinstrument.sim_neutrons(10000000000)  # 120 min
+# myinstrument.sim_neutrons(10000000000)  # 120 min
+# myinstrument.sim_neutrons(1000000000)  # 12 min
+# myinstrument.sim_neutrons(100000000)  # 1.2 min
+# myinstrument.sim_neutrons(50000000)  # 60s
+# myinstrument.sim_neutrons(100000)
 myinstrument.set_seed(654321)
-
+for calc in myinstrument.calculators:
+    myinstrument.calculators[calc].settings(mpi=8)
 
 acquisition_time = 60  # seconds
 detector_names = ["detector_central", "detector_left", "detector_right"]
@@ -57,76 +60,30 @@ def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
     return cx / nx + 1, cy / ny + 1
 
 
-def set_tests(myinstrument, test_number):
-    if test_number is not None:
-
-        myinstrument.master["lambda"] = 6 * ureg.angstrom
-        myinstrument.master["detpos"] = 2 * ureg.m
-        myinstrument.master["attenuator_index"] = 0
-        myinstrument.master["collimation"] = 8 * ureg.m
-        myinstrument.master["bs_index"] = 0
-        myinstrument.sample_holder(
-            material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
-        )
-        myinstrument.sample_shape("holder")
-        if test_number == 0:  # direct attenuated beam
-            myinstrument.set_sample_by_name("None")
-            myinstrument.sample_holder(None, None)
-            myinstrument.master["attenuator_index"] = 6
-        elif test_number == 1:  # direct beam with empty sample holder
-            myinstrument.set_sample_by_name("None")
-        elif test_number == 2:  # with sample
-            myinstrument.set_sample_by_name("qSq")
-            myinstrument.master[
-                "qSq_file"
-            ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
-            #                '"simul_5711.sq"'
-        elif test_number == -1:  # direct beam no beamstop
-            myinstrument.set_sample_by_name("None")
-            myinstrument.sample_holder(None, None)
-            myinstrument.master["attenuator_index"] = 6
-            myinstrument.master["bs_index"] = -1
-        else:
-            raise RuntimeError(f"Test number {test_number} out of range")
-
-
 def read_test(myinstrument, test_number, acquisition_time):
-    calcname = "OriginCalc"
-    calcname_data = calcname + "_data"
 
-    set_tests(myinstrument, test_number)
+    myinstrument.set_test(test_number)
     metadata_list = load_metadata(simulation_dir)
-    # print(left_detector_data.shape, central_detector_data.shape, right_detector_data.shape)
-    # print(metadata_list)
 
     detectors_simulation = {}
     detectors_trueMC = {}
     for detector in metadata_list:
-        #        if detector.name in detector_names or detector.name in ["PSD_sample"]:
-        #            detectors_data[detector.name] = detector.Intensity * acquisition_time
-        #            detectors_trueMC[detector.name] = detector.Ncount
-        #    return detectors_data, detectors_trueMC
         if detector.component_name in detector_names or detector.component_name in [
             "PSD_sample"
         ]:
             monitor = load_monitor(detector, simulation_dir)
             detectors_simulation[monitor.name] = monitor.Intensity * acquisition_time
             detectors_trueMC[monitor.name] = monitor.Ncount
-        # print("### MONITOR:")
-        # help(monitor)
 
     return detectors_simulation, detectors_trueMC
 
 
 def run_test(myinstrument, test_number, acquisition_time):
-    calcname = "OriginCalc"
-    calcname_data = calcname + "_data"
 
-    set_tests(myinstrument, test_number)
+    myinstrument.set_test(test_number)
 
     myinstrument.run()
     data = myinstrument.output
-    # detectors = data[calcname_data].get_data()["data"]
     detectors = data.get_data()["data"]
     print(detectors)
     detectors_data = {}
@@ -138,17 +95,8 @@ def run_test(myinstrument, test_number, acquisition_time):
     return detectors_data, detectors_trueMC
 
 
-def data_test(test_number):
-    file = ""
-    if test_number == 0 or test_number == -1:  # direct attenuated beam
-        file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
-    elif test_number == 1:  # direct beam with empty sample holder
-        file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
-    elif test_number == 2:
-        file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs"
-    else:
-        raise RuntimeError(f"Test number {test_number} out of range")
-
+def data_test(myinstrument, test_number):
+    file = myinstrument.test_datafile(test_number)
     # Read NeXus
     f = h5py.File(file, "r")
 
@@ -171,24 +119,84 @@ def compare(d, s, mc):
         ssum = np.sum(s[key])
         mcsum = np.sum(mc[key])
         ratio = dsum / ssum
+        strans = s[key].transpose()
+        com_s = center_of_mass(strans, 0, strans.shape[0] - 1, 0, strans.shape[1] - 1)
+        # del com_s
+        # com_s = []
+        # com_s.append(np.average(strans, 0))
+        # com_s.append(np.average(strans, 1))
+        com_d = center_of_mass(d[key], 0, d[key].shape[0] - 1, 0, d[key].shape[1] - 1)
         print(
-            "{:18}: {:10.0f} {:10.0f} | {:10.2f} | {:10.0f}".format(
-                key, dsum, ssum, ratio, mcsum
+            "{:18}: {:10.0f} {:10.0f} | {:10.2f} | {:10.0f} | {} | {}".format(
+                key, dsum, ssum, ratio, mcsum, com_d, com_s
             )
         )
 
 
 if simulation_dir is not None:
     intensity, count = read_test(myinstrument, 0, acquisition_time)
-    data = data_test(0)
+    data = data_test(myinstrument, 0)
     compare(data, intensity, count)
+    print(data["detector_central"].transpose().shape)
+    fig, axs = plt.subplots(2, 3)
+    fig.suptitle("Vertically stacked subplots")
+    axs[0][0].imshow(
+        data["detector_left"].transpose(),
+        aspect="auto",
+        cmap="seismic",
+        origin="lower",
+    )
+    axs[0][1].imshow(
+        data["detector_central"].transpose(),
+        aspect="auto",
+        cmap="seismic",
+        origin="lower",
+    )
+    axs[0][2].imshow(
+        data["detector_right"].transpose(),
+        aspect="auto",
+        cmap="seismic",
+        origin="lower",
+    )
+
+    axs[1][0].imshow(
+        intensity["detector_left"],
+        aspect="auto",
+        cmap="seismic",
+        origin="lower",
+    )
+    axs[1][1].imshow(
+        intensity["detector_central"],
+        aspect="auto",
+        cmap="seismic",
+        origin="lower",
+    )
+    axs[1][2].imshow(
+        intensity["detector_right"],
+        aspect="auto",
+        cmap="seismic",
+        origin="lower",
+    )
+    plt.show()
+
     sys.exit(0)
+
+
 darr = []
 sarr = []
 mcarr = []
-ntests = 0
-for itest in range(-1, ntests):
-    darr.append(data_test(itest))
+
+tests = [-1, 0, 1, 2]
+tests = [1]
+
+
+for itest in tests:
+    basedir = "/tmp/{}/test_{:d}".format(instrument_name, itest)
+    os.makedirs(basedir)
+    myinstrument.set_instrument_base_dir(basedir)
+    if itest > 0:
+        myinstrument.force_compile(False)
+    darr.append(data_test(myinstrument, itest))
     intensity, count = run_test(myinstrument, itest, acquisition_time)
     sarr.append(intensity)
     mcarr.append(count)
@@ -196,7 +204,7 @@ for itest in range(-1, ntests):
     # print(sarr[0]["PSD_sample"])
     # sys.exit(0)
 
-for itest in range(-1, ntests):
+for itest in tests:
     d = darr[itest]
     s = sarr[itest]
     mc = mcarr[itest]
@@ -204,30 +212,32 @@ for itest in range(-1, ntests):
 
 # print("PSD_sample: ", center_of_mass(sarr[0]["PSD_sample"], 0, 100, 0, 100))
 sys.exit(0)
-print(
-    detectors_simulation["left"].Intensity.transpose().shape,
-    detectors_simulation["central"].Intensity.transpose().shape,
-    detectors_simulation["right"].Intensity.transpose().shape,
+
+
+axs[1][0].imshow(
+    detectors_simulation["left"].Intensity,
+    aspect="auto",
+    cmap="seismic",
+    origin="lower",
 )
-ratio = {}
-ratio["left"] = (
-    detectors_simulation["left"].Intensity.transpose() + detectors_data["left"]
+axs[1][1].imshow(
+    detectors_simulation["central"].Intensity,
+    aspect="auto",
+    cmap="seismic",
+    origin="lower",
 )
-
-
-Intensities = []
-import numpy as np
-
-a = run_test(myinstrument, 0)
-print(np.sum(a))
-sys.exit(0)
-for itest in range(0, 3):
-    Intensities.append(run_test(myinstrument, itest))
-
-for itest in range(0, 3):
-    print(itest, " : ", Intensities[itest])
-
-sys.exit(0)
+axs[1][2].imshow(
+    detectors_simulation["right"].Intensity,
+    aspect="auto",
+    cmap="seismic",
+    origin="lower",
+)
+# cbar = fig.colorbar(detectors_simulation["central"])
+# cbar.set_label("ZLabel", loc="top")
+# cax = plt.axes([0.85, 0.1, 0.075, 0.8])
+# plt.colorbar(cax=cax)
+plt.show()
+f.close()
 
 calcname = "OriginCalc"
 attenuation_values = [
@@ -285,7 +295,6 @@ for energy in numpy.arange(4.98 - np * dEI, 4.98 + np * dEI, dEI):
 myinstrument.run()
 sys.exit(0)
 
-# myinstrument.calculators[myinstrument._calculator_name].settings(force_compile=False)
 myinstrument.sim_neutrons(10000000)
 myinstrument.set_instrument_base_dir(basedir + "generation/")
 

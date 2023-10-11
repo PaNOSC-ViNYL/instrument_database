@@ -794,8 +794,10 @@ class McStasInstrumentBase(Instrument):
                 mycalculator.move_component(self.sample, after=self._sample_arm)
             else:
                 mycalculator.move_component(self.sample, after=self._sample_holder)
-
-        #        self.__sample_hash = hash(frozenset(vars(self.sample)))
+            # self.__sample_hash = hash(frozenset(vars(self.sample)))
+            self.__sample_hash = hash(name)
+        else:
+            self.__sample_hash = 0
         return self.sample
 
     def set_sample_environment_by_name(self, name: str) -> None:
@@ -842,11 +844,39 @@ class McStasInstrumentBase(Instrument):
         )
         union_master_after_sample.allow_inside_start = 1
 
-    def run(self):
-        self._check_sample_shape()
-        self.custom_flags("-I mcstas/components")
+    def __update_hash(self, calc):
+        h = hash(calc)
+        if calc == self._calculator_with_sample and self._sample_hash is not None:
+            h = h + self._sample_hash + hash(self._sample_shape)
+            if self.sample_holder is not None:
+                h = h + hash(self.sample_holder.Sqw_coh)
+        return hash(h)
 
+    def run(self) -> None:
+        # self._check_sample_shape()
+        self.custom_flags("-I mcstas/components")
         return super().run()
+
+        for calculator in self.calculators.values():
+
+            self.__update_hash(calculator)
+            if hasattr(calculator, "hash"):
+                if calculator.hash != hash(calculator):
+                    print("HASH: ", calculator.name, hash(calculator))
+                    calculator.backengine()
+            else:
+                calculator.hash = hash(calculator)
+                calculator.backengine()
+            # print("HASH parameters: ", calculator.name, hash(calculator.parameters))
+            # if calculator.name == "OriginCalc":
+            #     try:
+            #         print(str(calculator.output))
+            #     except TypeError as te:
+            #         calculator.backengine()
+            # else:
+            #    calculator.backengine()
+        return
+        # return super().run()
 
     # ------------------------------ utility methods made available for the users
     def sim_neutrons(self, number) -> None:
