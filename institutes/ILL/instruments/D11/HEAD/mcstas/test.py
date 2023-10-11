@@ -61,10 +61,8 @@ def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
 
 
 def read_test(myinstrument, test_number, acquisition_time):
-
     myinstrument.set_test(test_number)
     metadata_list = load_metadata(simulation_dir)
-
     detectors_simulation = {}
     detectors_trueMC = {}
     for detector in metadata_list:
