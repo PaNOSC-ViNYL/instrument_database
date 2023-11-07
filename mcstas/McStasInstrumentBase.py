@@ -743,14 +743,15 @@ class McStasInstrumentBase(Instrument):
                 s.sigma_coh = 0
             elif name in ["qSq"]:
                 s.powder_format = {-1, 0, 0, 0, 0, 0, 1, 0, 0}
-                #sqwfile = mycalculator.add_parameter(
+                # sqwfile = mycalculator.add_parameter(
                 #    "string", "qSq_file", comment="File of the qSq in McStas convention"
-                #)
+                # )
                 sqwfile = mycalculator.add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
                 )
                 s.Sqw_coh = "qSq_file"
-                #self.add_parameter_to_master("qSq_file", mycalculator, sqwfile)
+                s.Sqw_coh = "sqw_file"
+                # self.add_parameter_to_master("qSq_file", mycalculator, sqwfile)
                 self.add_parameter_to_master("sqw_file", mycalculator, sqwfile)
 
             else:
