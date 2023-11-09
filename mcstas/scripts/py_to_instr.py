@@ -36,6 +36,7 @@ myinstrument.set_sample_environment_by_name(sample_environment_name)
 
 calc_with_sample = myinstrument._calculator_with_sample
 
+instrfiles = []
 for calcname in myinstrument.calculators:
     calc = myinstrument.calculators[calcname]
     # calc.show_components()
@@ -47,4 +48,7 @@ for calcname in myinstrument.calculators:
         calc.name = calcname + "_" + flavour
 
     if isinstance(calc, instr.McStas_instr):
+        instrfiles.append(calc.name)
         calc.write_full_instrument()
+
+print(instrfiles)
