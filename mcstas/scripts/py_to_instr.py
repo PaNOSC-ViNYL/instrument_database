@@ -47,7 +47,7 @@ calc_with_sample = myinstrument._calculator_with_sample
 instrfiles = []
 import os
 
-os.makedirs(args.outdir)
+os.makedirs(args.outdir, exist_ok=True)
 os.chdir(args.outdir)
 for calcname in myinstrument.calculators:
     calc = myinstrument.calculators[calcname]
