@@ -66,7 +66,9 @@ for calcname in myinstrument.calculators:
         calc.name = calcname + "_" + args.flavour
 
     if isinstance(calc, instr.McStas_instr):
-        instrfiles.append(calc.name)
-        calc.write_full_instrument()
 
+        calc.write_full_instrument()
+        newname = args.instrument + "_" + calc.name + ".instr"
+        os.rename(calc.name + ".instr", newname)
+        instrfiles.append(newname)
 print(instrfiles)
