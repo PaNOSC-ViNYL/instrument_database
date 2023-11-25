@@ -597,7 +597,7 @@ class McStasInstrumentBase(Instrument):
             mycalculator.move_component(s_out, after=self.sample)
 
         # ------------------------------ material
-        if material == "quartz":
+        if material in ["quartz", "QUARTZ"] :
             s_in.Sqw_coh = '"SiO2_liq.qSq"'
             s_out.Sqw_coh = s_in.Sqw_coh
 
