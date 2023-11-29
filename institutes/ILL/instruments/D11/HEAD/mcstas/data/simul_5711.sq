@@ -3,6 +3,7 @@
 # sigma_abs 0.6654  absorption scattering cross section in [barn]
 # density   1.0     in [g/cm^3]
 # weight    18   in [g/mol]
+# Temperature 273 [K]
 # Format parameters: Q  S(Q)
 # column_q  1
 # column_Sq 2
