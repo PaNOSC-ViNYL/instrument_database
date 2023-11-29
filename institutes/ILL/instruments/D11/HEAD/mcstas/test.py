@@ -13,12 +13,31 @@ import h5py
 import matplotlib.pyplot as plt
 from mcstasscript.interface.functions import load_metadata, load_monitor
 
+import argparse
+
+parser = argparse.ArgumentParser(description="")
+parser.add_argument("-t", help="test number", type=int, action="append", dest="tests")
+parser.add_argument(
+    "simulation_dir",
+    help="output directory of simulation to show",
+    default=None,
+    nargs="?",
+)
+parser.add_argument(
+    "--plot",
+    help="plot comparison for only 1 test",
+    required=False,
+    action="store_true",
+)
+args = parser.parse_args()
+
 repo = API.Repository(local_repo=".")
 instrument_name = "D11"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
 # flavour = "nosection"
+flavour = "simplefull"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 
 
@@ -28,22 +47,23 @@ ureg = pint.get_application_registry()
 basedir = "/tmp/" + instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
-simulation_dir = None
-if len(sys.argv) == 2:
-    simulation_dir = sys.argv[1]
 
-myinstrument.sim_neutrons(10000000000)  # 120 min
 # myinstrument.sim_neutrons(10000000000)  # 120 min
-# myinstrument.sim_neutrons(1000000000)  # 12 min
+# myinstrument.sim_neutrons(10000000000)  # 120 min
+myinstrument.sim_neutrons(1000000000)  # 12 min
 # myinstrument.sim_neutrons(100000000)  # 1.2 min
 # myinstrument.sim_neutrons(50000000)  # 60s
-myinstrument.sim_neutrons(100000)
+# myinstrument.sim_neutrons(100000)
 myinstrument.set_seed(654321)
 for calc in myinstrument.calculators:
     myinstrument.calculators[calc].settings(mpi=8)
 
 acquisition_time = 60  # seconds
 detector_names = ["detector_central", "detector_left", "detector_right"]
+
+
+def set_test_dir(instrument_name, itest, base="/tmp"):
+    return base + "/{}/test_{:d}".format(instrument_name, itest)
 
 
 def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
@@ -61,6 +81,8 @@ def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
 
 
 def read_test(myinstrument, test_number, acquisition_time):
+    simulation_dir = set_test_dir(myinstrument.name, test_number) + "/OriginCalc"
+    print("simulation dir: " + simulation_dir)
     myinstrument.set_test(test_number)
     metadata_list = load_metadata(simulation_dir)
     detectors_simulation = {}
@@ -131,9 +153,9 @@ def compare(d, s, mc):
         )
 
 
-if simulation_dir is not None:
-    intensity, count = read_test(myinstrument, 0, acquisition_time)
-    data = data_test(myinstrument, 0)
+if args.simulation_dir is not None or args.plot:
+    intensity, count = read_test(myinstrument, args.tests[-1], acquisition_time)
+    data = data_test(myinstrument, args.tests[-1])
     compare(data, intensity, count)
     print(data["detector_central"].transpose().shape)
     fig, axs = plt.subplots(2, 3)
@@ -184,16 +206,13 @@ darr = []
 sarr = []
 mcarr = []
 
-tests = [-1, 0, 1, 2]
-tests = [1]
 
-
-for itest in tests:
-    basedir = "/tmp/{}/test_{:d}".format(instrument_name, itest)
+for itest in args.tests:
+    basedir = set_test_dir(instrument_name, itest)
     os.makedirs(basedir)
     myinstrument.set_instrument_base_dir(basedir)
-    if itest > 0:
-        myinstrument.force_compile(False)
+    # if itest > 0:
+    #    myinstrument.force_compile(True)
     darr.append(data_test(myinstrument, itest))
     intensity, count = run_test(myinstrument, itest, acquisition_time)
     sarr.append(intensity)
@@ -202,7 +221,7 @@ for itest in tests:
     # print(sarr[0]["PSD_sample"])
     # sys.exit(0)
 
-for itest in tests:
+for itest in range(0, len(darr)):
     d = darr[itest]
     s = sarr[itest]
     mc = mcarr[itest]
