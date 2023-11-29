@@ -597,7 +597,7 @@ class McStasInstrumentBase(Instrument):
             mycalculator.move_component(s_out, after=self.sample)
 
         # ------------------------------ material
-        if material in ["quartz", "QUARTZ"] :
+        if material in ["quartz", "QUARTZ"]:
             s_in.Sqw_coh = '"SiO2_liq.qSq"'
             s_out.Sqw_coh = s_in.Sqw_coh
 
@@ -665,8 +665,8 @@ class McStasInstrumentBase(Instrument):
 
         if self.sample is not None:
             mycalculator.remove_component(self.sample)
-            if "sqw_file" in mycalculator.parameters:
-                for p in ["sqw_file", "sqw_inc"]:
+            for p in ["sqw_file", "sqw_inc"]:
+                if p in mycalculator.parameters:
                     del mycalculator.parameters[p]
                     del self.master[p]
 
@@ -743,7 +743,7 @@ class McStasInstrumentBase(Instrument):
             elif name in ["qSq"]:
                 s.powder_format = {-1, 0, 0, 0, 0, 0, 1, 0, 0}
                 # sqwfile = mycalculator.add_parameter(
-                #    "string", "qSq_file", comment="File of the qSq in McStas convention"
+                #    "string", "qSq_file", comment="File of the qSqb in McStas convention"
                 # )
                 sqwfile = mycalculator.add_parameter(
                     "string", "sqw_file", comment="File of the Sqw in McStas convention"
