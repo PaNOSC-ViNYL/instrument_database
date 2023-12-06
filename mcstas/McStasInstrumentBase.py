@@ -718,7 +718,7 @@ class McStasInstrumentBase(Instrument):
             s.thickness = "sample_thickness"  # 0  # 0.002
             s.verbose = 1
             s.p_interact = 1
-
+            s.set_SPLIT(10)
             self.set_sample_focus()
 
             if name == "H2O":
