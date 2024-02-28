@@ -506,7 +506,7 @@ class McStasInstrumentBase(Instrument):
         Only parameters related to the selected shapes are used, the others are discarded.
         """
         self._sample_shape = shape
-        if shape in ["shere", "SPHERE"]:
+        if shape in ["sphere", "SPHERE"]:
             if r is None or r <= 0:
                 raise RuntimeError("Radius of spheric sample (r) should be set > 0")
             self._set_sample_shape(r, 0, 0, 0, th)
@@ -529,7 +529,7 @@ class McStasInstrumentBase(Instrument):
             self._set_sample_shape_as_holder()
         else:
             raise RuntimeError(
-                "Sample shape not among allowed ones: shere, box, cylinder, holder"
+                "Sample shape not among allowed ones: sphere, box, cylinder, holder"
             )
 
     def sample_holder(
