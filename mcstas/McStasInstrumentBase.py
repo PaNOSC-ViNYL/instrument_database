@@ -42,7 +42,7 @@ class McStasInstrumentBase(Instrument):
         self._sample_hash = None
 
         self._add_monitors = True
-        self.samples = ["None", "vanadium", "H2O", "D2O", "sqw"]
+        self.samples = ["None", "vanadium", "H2O", "D2O", "sqw", "monitor"]
 
         self.focus_xw = None
         self.focus_yh = None
@@ -673,6 +673,24 @@ class McStasInstrumentBase(Instrument):
         if name in ["empty", "Empty", "None", "none"]:
             self.sample = None
             self._sample_shape = None
+        elif name in ["monitor"]:
+            self.sample_name = "sample_monitor"
+            self.sample = mycalculator.add_component(
+                self.sample_name,
+                "Monitor_nD",
+                AT=0,
+                RELATIVE=self._sample_arm,
+            )
+            self.sample.set_parameters(
+                xwidth=0.02,
+                yheight=0.04,
+                zdepth=0.01,
+                filename='"sample_monitor.dat"',
+                restore_neutron=1,
+                options='"box intensity per cm2, bins=1 pressure=0.001, parallel"',
+                # options='"x bins={} y bins={} file={}"'.format(1, 1, "counter.dat"
+            )
+
         elif name in ["v_sample"]:
             self.sample_name = "vanadium_old"
             self.sample = mycalculator.add_component(
