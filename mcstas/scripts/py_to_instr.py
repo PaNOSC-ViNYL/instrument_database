@@ -15,20 +15,29 @@ parser.add_argument("flavour", help="flavour of the description")
 parser.add_argument("sample_name", help="name of the sample")
 parser.add_argument("sample_environment_name", help="name of the sample environment")
 parser.add_argument("sample_holder_material", help="sample holder material")
-parser.add_argument("--dry_run", help="Do not write the instrument files", action='store_true')
+parser.add_argument(
+    "--dry_run", help="Do not write the instrument files", action="store_true"
+)
 args = parser.parse_args()
 
 
 repo = API.Repository(local_repo=os.path.dirname(__file__) + "/../..")
 
-myinstrument = repo.load(
-    args.institute,
-    args.instrument,
-    args.version,
-    args.software,
-    args.flavour,
-    dep=False,
-)
+try:
+    myinstrument = repo.load(
+        args.institute,
+        args.instrument,
+        args.version,
+        args.software,
+        args.flavour,
+        dep=False,
+    )
+except RuntimeError as e:
+    print(e)
+    print(args)
+
+    sys.exit(1)
+    #    raise RuntimeError("")
 
 myinstrument.set_sample_by_name(args.sample_name)
 if args.sample_holder_material != "None":
