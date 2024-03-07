@@ -961,6 +961,7 @@ class D11(McStasInstrumentBase):
         )  # gap between the central and lateral panels: last pixels are overlapping
         det_lateral_ntubes = 32  # number of tubes of the lateral panels of the detector
         det_length_nbins = 256
+
         detector_central = mycalculator.add_component(
             "detector_central",
             "Monitor_nD",
