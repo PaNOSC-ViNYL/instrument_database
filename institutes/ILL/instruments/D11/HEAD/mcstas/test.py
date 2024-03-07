@@ -1,9 +1,13 @@
 # #python institutes/ILL/instruments/D11/HEAD/mcstas/test.py | tail -12 >  institutes/ILL/instruments/D11/HEAD/mcstas/test/test.log; git diff institutes/ILL/instruments/D11/HEAD/mcstas/test/test.log
 
 from instrumentdatabaseapi import instrumentdatabaseapi as API
+from D11 import def_instrument
+import sys, os
 
-import sys
-import os
+
+import pytest
+import pytest_functions as pyf
+
 
 # import the units
 import pint
@@ -13,23 +17,6 @@ import h5py
 import matplotlib.pyplot as plt
 from mcstasscript.interface.functions import load_metadata, load_monitor
 
-import argparse
-
-parser = argparse.ArgumentParser(description="")
-parser.add_argument("-t", help="test number", type=int, action="append", dest="tests")
-parser.add_argument(
-    "simulation_dir",
-    help="output directory of simulation to show",
-    default=None,
-    nargs="?",
-)
-parser.add_argument(
-    "--plot",
-    help="plot comparison for only 1 test",
-    required=False,
-    action="store_true",
-)
-args = parser.parse_args()
 
 repo = API.Repository(local_repo=".")
 instrument_name = "D11"
@@ -38,8 +25,8 @@ repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
 # flavour = "nosection"
 flavour = "simplefull"
-myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
-
+# myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
+myinstrument = def_instrument(flavour)
 
 ureg = pint.get_application_registry()
 
@@ -47,18 +34,11 @@ ureg = pint.get_application_registry()
 basedir = "/tmp/" + instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
-
-# myinstrument.sim_neutrons(10000000000)  # 120 min
-# myinstrument.sim_neutrons(10000000000)  # 120 min
-myinstrument.sim_neutrons(1000000000)  # 12 min
-# myinstrument.sim_neutrons(100000000)  # 1.2 min
-# myinstrument.sim_neutrons(50000000)  # 60s
-# myinstrument.sim_neutrons(100000)
 myinstrument.set_seed(654321)
-for calc in myinstrument.calculators:
-    myinstrument.calculators[calc].settings(mpi=8)
 
-acquisition_time = 60  # seconds
+# for calc in myinstrument.calculators:
+#    myinstrument.calculators[calc].settings(mpi=8)
+
 detector_names = ["detector_central", "detector_left", "detector_right"]
 
 
@@ -66,18 +46,294 @@ def set_test_dir(instrument_name, itest, base="/tmp"):
     return base + "/{}/test_{:d}".format(instrument_name, itest)
 
 
-def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
-    cx = 0.0
-    cy = 0.0
-    nx = 0.0
-    ny = 0.0
-    for i in range(nx_min, nx_max + 1):
-        cx += np.sum(data[i, :]) * i
-        nx += np.sum(data[i, :])
-    for i in range(ny_min, ny_max + 1):
-        cy += np.sum(data[:, i]) * i
-        ny += np.sum(data[:, i])
-    return cx / nx + 1, cy / ny + 1
+def get_detector_data(file):
+    # file = myinstrument.test_datafile(test_number)
+    # Read NeXus
+    f = h5py.File(file, "r")
+
+    detectors_data = {
+        "detector_left": f["entry0"]["D11"]["Detector 2"]["data"][:, :, 0],
+        "detector_central": f["entry0"]["D11"]["Detector 1"]["data"][:, :, 0],
+        "detector_right": f["entry0"]["D11"]["Detector 3"]["data"][:, :, 0],
+    }
+    return detectors_data
+
+
+electronic_noise = pyf.get_electronic_noise(
+    file="institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs",
+    acquisition_time=60,
+    detector_names=["detector_left", "detector_right"],
+    get_detector_data_fun=get_detector_data,
+)
+
+
+def compare_data(file, acquisition_time, mc_detectors, electronic_noise):
+    # now check the compatibility with the data withing the background noise levels
+    detector_data = get_detector_data(file)
+    #
+    assert np.sum(mc_detectors["detector_central"].Intensity) == pytest.approx(
+        np.sum(detector_data["detector_central"]) / acquisition_time, rel=0.05
+    )
+    #
+    for d in ["detector_left", "detector_right"]:
+        assert np.sum(mc_detectors[d].Intensity) == pytest.approx(
+            np.sum(detector_data[d]) / acquisition_time,
+            abs=electronic_noise
+            * detector_data[d].shape[0]
+            * detector_data[d].shape[1]
+            * 2,  # 2sigma of the noise
+        ), d
+
+
+def plot_data_sim(data, sim, tmp_path):
+    fig = plt.figure(layout="constrained")
+    axs = fig.subplot_mosaic(
+        """
+        lcr
+        LCR
+        """,
+        # set the height ratios between the rows
+        # height_ratios=[1, 1],
+        # set the width ratios between the columns
+        # width_ratios=[1, 2, 1],
+    )
+    for ax in axs:
+        # print(ax)
+        axs[ax].set_aspect("equal", adjustable="box")
+    fig.suptitle("Vertically stacked subplots")
+    if data is not None:
+        axs["l"].imshow(
+            data["detector_left"].transpose(),
+            aspect="auto",
+            cmap="seismic",
+            origin="lower",
+        )
+        axs["c"].imshow(
+            data["detector_central"].transpose(),
+            aspect="auto",
+            cmap="seismic",
+            origin="lower",
+        )
+        axs["r"].imshow(
+            data["detector_right"].transpose(),
+            aspect="auto",
+            cmap="seismic",
+            origin="lower",
+        )
+    if sim is not None:
+        axs["L"].imshow(
+            sim["detector_left"].Ncount,
+            aspect="auto",
+            cmap="seismic",
+            origin="lower",
+        )
+        axs["C"].imshow(
+            sim["detector_central"].Ncount,
+            aspect="auto",
+            cmap="seismic",
+            origin="lower",
+        )
+        axs["R"].imshow(
+            sim["detector_right"].Ncount,
+            aspect="auto",
+            cmap="seismic",
+            origin="lower",
+        )
+
+    # plt.show()
+    plt.savefig(os.path.join(tmp_path, "plot.pdf"))
+    print(f"Check file: {tmp_path}/plot.pdf")
+
+
+def test_direct_beam(tmp_path):
+    """Direct attenuated beam"""
+    myinstrument.set_instrument_base_dir(str(tmp_path))
+    myinstrument.sim_neutrons(1e6)
+    myinstrument.master["lambda"] = 6 * ureg.angstrom
+    myinstrument.master["detpos"] = 2 * ureg.m
+    myinstrument.master["attenuator_index"] = 0
+    myinstrument.master["collimation"] = 8 * ureg.m
+    myinstrument.master["bs_index"] = 0
+    myinstrument.sample_holder(
+        material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+    )
+    myinstrument.sample_shape("holder")
+    myinstrument.set_sample_by_name("None")
+    myinstrument.sample_holder(None, None)
+
+    myinstrument.run()
+
+    detectors = myinstrument.output.get_data()["data"]
+    detector = {d.name: d for d in detectors if d.name in detector_names}
+
+    for d in detector_names:
+        assert np.sum(detector[d].Intensity) == 0, d
+        assert np.sum(detector[d].Ncount) == 0, d
+
+
+def test_direct_beam_noBS(tmp_path):
+    myinstrument.set_instrument_base_dir(str(tmp_path))
+    myinstrument.sim_neutrons(1e7)
+    myinstrument.master["lambda"] = 6 * ureg.angstrom
+    myinstrument.master["detpos"] = 2 * ureg.m
+    myinstrument.master["attenuator_index"] = 6
+    myinstrument.master["collimation"] = 8 * ureg.m
+    myinstrument.master["bs_index"] = -1
+    myinstrument.sample_holder(
+        material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+    )
+    myinstrument.sample_shape("holder")
+    myinstrument.set_sample_by_name("None")
+    myinstrument.sample_holder(None, None)
+
+    myinstrument.run()
+
+    detectors = myinstrument.output.get_data()["data"]
+    detector = {d.name: d for d in detectors if d.name in detector_names}
+
+    data_file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
+    plot_data_sim(get_detector_data(data_file), detector, tmp_path)
+
+    # first check impact of any change in the simulation
+    assert np.sum(detector["detector_central"].Intensity) == pytest.approx(
+        8991, rel=1e-2
+    )
+    assert np.sum(detector["detector_central"].Ncount) == pytest.approx(
+        40801, abs=1
+    )  # pytest.approx(3977, rel=1e-2)
+
+    for d in ["detector_left", "detector_right"]:
+        assert np.sum(detector[d].Intensity) == 0, d
+        assert np.sum(detector[d].Ncount) == 0, d
+
+    # now check the compatibility with the data withing the background noise levels
+    compare_data(
+        file=data_file,
+        acquisition_time=60,
+        electronic_noise=electronic_noise,
+        mc_detectors=detector,
+    )
+
+
+def assert_detector(detector, dict_vals, rel=0.05):
+    """
+    dict_vals : { "detector_name": [intensity, ncount]}
+    """
+
+    for name, value in dict_vals.items():
+        assert np.sum(detector[name].Intensity) == pytest.approx(
+            value[0], abs=np.sum(detector[name].Error)
+        ), name
+        # pytest.approx(value[0], rel), name
+        assert np.sum(detector[name].Ncount) == value[1], name
+
+
+def test_empty_holder(tmp_path):
+    myinstrument.set_instrument_base_dir(str(tmp_path))
+    myinstrument.sim_neutrons(1e8)
+    for calc in myinstrument.calculators:
+        myinstrument.calculators[calc].settings(mpi=3)
+
+    myinstrument.master["lambda"] = 6 * ureg.angstrom
+    myinstrument.master["detpos"] = 2 * ureg.m
+    myinstrument.master["attenuator_index"] = 0
+    myinstrument.master["collimation"] = 8 * ureg.m
+    myinstrument.master["bs_index"] = 0
+    myinstrument.sample_holder(
+        material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+    )
+    myinstrument.sample_shape("holder")
+    myinstrument.set_sample_by_name("None")
+
+    myinstrument.run()
+
+    detectors = myinstrument.output.get_data()["data"]
+    detector = {d.name: d for d in detectors if d.name in detector_names}
+
+    data_file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
+    plot_data_sim(get_detector_data(data_file), detector, tmp_path)
+
+    # assert np.sum(detector["detector_central"].Intensity) == pytest.approx(989, 1)
+    # assert np.sum(detector["detector_central"].Ncount) == 915  # with p_interact=1
+
+    assert_detector(
+        detector,
+        {
+            "detector_central": [1147, 915],
+            "detector_left": [117, 119],
+            "detector_right": [117, 144],
+        },
+    )
+
+    #    assert np.sum(detector["detector_left"].Intensity) ==
+    #    assert np.sum(detector["detector_left"].Ncount) == 119  # 70  # 7
+
+    #    assert np.sum(detector["detector_right"].Intensity) == pytest.approx(179, 1)
+    #    assert np.sum(detector["detector_right"].Ncount) == 144  # 10
+
+    # now check the compatibility with the data withing the background noise levels
+
+    compare_data(
+        file=data_file,
+        acquisition_time=60,
+        electronic_noise=electronic_noise,
+        mc_detectors=detector,
+    )
+
+
+def test_sample1(tmp_path):
+    myinstrument.set_instrument_base_dir(str(tmp_path))
+    myinstrument.sim_neutrons(1e7)
+    myinstrument.master["lambda"] = 6 * ureg.angstrom
+    myinstrument.master["detpos"] = 2 * ureg.m
+    myinstrument.master["attenuator_index"] = 0
+    myinstrument.master["collimation"] = 8 * ureg.m
+    myinstrument.master["bs_index"] = 0
+    myinstrument.sample_holder(
+        material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+    )
+    myinstrument.sample_shape("holder")
+
+    myinstrument.set_sample_by_name("qSq")
+    myinstrument.master["sqw_file"] = (
+        '"'
+        + str(
+            os.path.relpath(
+                os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "data/simul_5711.sq"
+                )
+            )
+        )
+        + '"'
+    )
+
+    myinstrument.run()
+
+    detectors = myinstrument.output.get_data()["data"]
+    detector = {d.name: d for d in detectors if d.name in detector_names}
+
+    assert np.sum(detector["detector_central"].Intensity) == pytest.approx(
+        38165, rel=0.05
+    )
+    assert np.sum(detector["detector_central"].Ncount) == 152909
+
+    assert np.sum(detector["detector_left"].Intensity) == pytest.approx(2036, rel=0.05)
+    assert np.sum(detector["detector_left"].Ncount) == 9062
+
+    assert np.sum(detector["detector_right"].Intensity) == pytest.approx(2036, rel=0.05)
+    assert np.sum(detector["detector_right"].Ncount) == 9004
+
+    # now check the compatibility with the data withing the background noise levels
+    compare_data(
+        file="institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs",
+        acquisition_time=60,
+        electronic_noise=electronic_noise,
+        mc_detectors=detector,
+    )
+
+
+"""
+sys.exit(0)
 
 
 def read_test(myinstrument, test_number, acquisition_time):
@@ -117,17 +373,6 @@ def run_test(myinstrument, test_number, acquisition_time):
     return detectors_data, detectors_trueMC
 
 
-def data_test(myinstrument, test_number):
-    file = myinstrument.test_datafile(test_number)
-    # Read NeXus
-    f = h5py.File(file, "r")
-
-    detectors_data = {
-        "detector_left": f["entry0"]["D11"]["Detector 2"]["data"][:, :, 0],
-        "detector_central": f["entry0"]["D11"]["Detector 1"]["data"][:, :, 0],
-        "detector_right": f["entry0"]["D11"]["Detector 3"]["data"][:, :, 0],
-    }
-    return detectors_data
 
 
 def compare(d, s, mc):
@@ -417,3 +662,4 @@ for r in [0.002, 0.005, 0.01, 0.02]:
 # cd "/tmp/ThALES_scan/4.48"
 # set xrange [4:5]
 # p  'H5.E',    'H53_D.E', 'H53_7.E','slit_mono.E',  'ThALES_mono_in.E',  'ThALES_mono_out.E'
+"""
