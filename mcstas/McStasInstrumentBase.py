@@ -434,28 +434,77 @@ class McStasInstrumentBase(Instrument):
 
     def sample_focus(self, xwidth, yheight, zdistance):
         # if xwidth is None or yheight is None or zdistance is None:
+        if not (isinstance(xwidth, int) or isinstance(xwidth, float)):
+            raise RuntimeError(
+                "sample_focus xwidth must be int or float instead of {}".format(
+                    type(xwidth)
+                )
+            )
+
+        if not (isinstance(yheight, int) or isinstance(yheight, float)):
+            raise RuntimeError(
+                "sample_focus yheight must be int or float instead of {}".format(
+                    type(yheight)
+                )
+            )
+
+        if not (
+            isinstance(zdistance, int)
+            or isinstance(zdistance, float)
+            or isinstance(zdistance, Parameter)
+        ):
+            raise RuntimeError(
+                "sample_focus zdistance must be int or float or libpyvinyl.Parameter instead of {}".format(
+                    type(zdistance)
+                )
+            )
+
         self.focus_xw = xwidth
         self.focus_yh = yheight
         self.target_z = zdistance
 
     # ------------------------------
     def set_sample_focus(self):
+        focus_angle = lambda h, z: 2 * math.atan(h / 2 / z)
+
         if self.sample is not None and self.sample.component_name == "Isotropic_Sqw":
-            if self.focus_yh is not None and self.target_z is not None:
-                self.sample.d_phi = (
-                    180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
+            dphi = self._calculator_with_sample.add_declare_var(
+                "double",
+                "sample_focus_dphi",
+                comment="focusing dphi for isotropic sample",
+            )
+            sample_split = self._calculator_with_sample.add_declare_var(
+                "double", "sample_split"
+            )
+            z = self.target_z
+            if isinstance(self.target_z, Parameter):
+                z = self.target_z.name
+
+            self._calculator_with_sample.append_initialize(
+                "sample_focus_dphi = RAD2DEG * 2 * atan(0.5*{h}/{z});".format(
+                    h=self.focus_yh, z=z
                 )
+            )
+
+            self._calculator_with_sample.append_initialize(
+                "sample_split = 2 * floor(2*PI/(0.5*{w}/{z}));".format(
+                    w=self.focus_xw, z=z
+                )
+            )
+
+            if self.focus_yh is not None and self.target_z is not None:
+                self.sample.d_phi = "sample_focus_dphi"
+                # (
+                #    180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
+                # )
 
             if self.focus_xw is not None and self.target_z is not None:
-                self.sample.set_SPLIT(
-                    2
-                    * round(
-                        2 * math.pi / self.focus_angle(self.focus_xw, self.target_z)
-                    )
-                )
+                self.sample.set_SPLIT("sample_split")
+                # 2 * round(2 * math.pi / focus_angle(self.focus_xw, self.target_z))
+                # )
 
-    def focus_angle(self, h, z):
-        return 2 * math.atan(h / 2 / z)
+    # def focus_angle(self, h, z):
+    #    return 2 * math.atan(h / 2 / z)
 
     def _set_sample_shape(
         self, radius: float, width: float, height: float, depth: float, thickness: float

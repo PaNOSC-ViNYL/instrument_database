@@ -844,7 +844,13 @@ class D11(McStasInstrumentBase):
 
         # self.sample_box_shape(0.02, 0.03, 0.0035, 0.00125)
         # default sample
-        # self.sample_focus(8, 3, 8)  # FIXME
+        detpos = mycalculator.add_parameter(
+            "double", "detpos", comment="Detector distance", unit="m", value=2
+        )
+        detpos.add_interval(1, 28, True)
+        self.add_parameter_to_master(detpos.name, mycalculator, detpos)
+
+        # self.sample_focus(8, 3, "detpos") # defined in the detector section to catch the detector size
         sample = self.set_sample_by_name("None")
 
         Sample_Out = mycalculator.add_component(
@@ -892,11 +898,13 @@ class D11(McStasInstrumentBase):
             options='"lambda"',
         )
 
-        detpos = mycalculator.add_parameter(
-            "double", "detpos", comment="Detector distance", unit="m", value=2
-        )
-        detpos.add_interval(1, 28, True)
-        self.add_parameter_to_master(detpos.name, mycalculator, detpos)
+        if not detpos.name in mycalculator.parameters:
+            print(type(mycalculator.parameters))
+            detpos = mycalculator.add_parameter(
+                "double", "detpos", comment="Detector distance", unit="m", value=2
+            )
+            detpos.add_interval(1, 28, True)
+            self.add_parameter_to_master(detpos.name, mycalculator, detpos)
 
         bs_x = mycalculator.add_parameter(
             "double", "bs_x", comment="Beamstop x position", unit="m", value=0.141
@@ -1000,6 +1008,15 @@ class D11(McStasInstrumentBase):
         )
         detector_left.options = '"parallel square x bins={} y bins={} file={}"'.format(
             det_lateral_ntubes, det_length_nbins, "detector_left.dat"
+        )
+
+        # the sample focusing will be done based on the total width of the detectors
+        # and the height of the tallest detector
+        # the distance is determined by the detpos parameter
+        self.sample_focus(
+            detector_central.xwidth + detector_left.xwidth + detector_right.xwidth,
+            max(detector_central.yheight, detector_left.yheight),
+            detpos,
         )
 
         # ------------------------------ instrument parameters
