@@ -2,19 +2,19 @@ from instrumentdatabaseapi import instrumentdatabaseapi as API
 
 import sys
 import os
+import numpy as np
 
 # print(os.getenv("MCSTAS"))
 repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
-instrument_name = "Panther"
-instrument_name = "D11"
+# instrument_name = "Panther"
+# instrument_name = "D11"
 
-repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
 flavour = "nosection"
-myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
-# myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
+flavour = "quicknosection"
 
+myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 
 # import the units
 import pint
@@ -25,20 +25,84 @@ ureg = pint.get_application_registry()
 basedir = "/tmp/" + instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
-# generation energy (monochromator)
-# myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
-# myinstrument.master["a4"] = 60 * ureg.degree
-# myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
-# print(myinstrument.get_total_SPLIT())
-# myinstrument.set_sample_by_name("vanadium")
-# myinstrument.set_sample_by_name("H2O")
-# myinstrument.sample_cylinder_shape(0.005, 0.01)
-# print(myinstrument)
 myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)
-calcname = "OriginCalc"
 
-myinstrument.calculators[calcname].show_diagram(analysis=True)
+# for calc in myinstrument.calculators:
+#    myinstrument.calculators[calc].settings(mpi=2)
+
+myinstrument.calculators["OriginCalc"].settings(force_compile=False)
+# calcname = "OriginCalc"
+
+
+# myinstrument.calculators[calcname].show_diagram(analysis=True)
+
+
+def stat(data):
+    if len(data.shape) != 2:
+        raise RuntimeError("wrong number of dimensions")
+
+    def vv(data, axis):
+        # array with the bin indexes
+        x = np.array(range(0, data.shape[axis]))
+
+        # cumulative weights along one axis
+        w = np.sum(data, axis=axis)
+
+        sumw = np.sum(w)
+        sumwx = np.sum(x * w)
+        sumwx2 = np.sum(x * x * w)
+
+        m = sumwx / sumw
+        std = sumwx2 / sumw - m * m
+        return (m, np.sqrt(std))
+
+    mx, stdx = vv(data, 0)
+    my, stdy = vv(data, 1)
+
+    return (mx, my, stdx, stdy)
+
+
+def optimize_monochromator(myinstrument):
+    # myinstrument.set_instrument_base_dir(str(tmp_path))
+    myinstrument.sim_neutrons(1e7)
+
+    myinstrument.master["a2"] = myinstrument.energy_to_angle(10 * ureg.meV)
+    myinstrument.master["a4"] = 0 * ureg.degree
+    myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+
+    myinstrument.sample_holder(None, None)
+    myinstrument.set_sample_by_name("monitor")
+    myinstrument.sample.xwidth = 0.05
+    myinstrument.sample.yheight = 0.05
+
+    myinstrument.run()
+    myinstrument.force_compile(False)
+    myinstrument.calculators["OriginCalc"].show_settings()
+    print(myinstrument.calculators)
+    values = []
+    for RH in [0, 5, 7, 8, 9, 10, 11]:
+        myinstrument.calculators["OriginCalc"].parameters["RHmono"].value = RH
+        myinstrument.run()
+
+        detectors = myinstrument.output.get_data()["data"]
+
+        dnames = ["sample_monitor", "detector_all", "counter"]
+
+        detector = {d.name: d for d in detectors if d.name in dnames}
+        I = detector["sample_monitor"].Intensity
+        stats = stat(I)
+        values.append(
+            "{:.2f}\t{:.3e}\t{:.3e}\t{:.3e}\t{:.3e}\t{:.3e}\n".format(
+                RH, np.sum(I), stats[0], stats[1], stats[2], stats[3]
+            )
+        )
+    for v in values:
+        print(v)
+
+
+optimize_monochromator(myinstrument)
+# for dir in /tmp/ThALES/*/; echo $dir;  mcplot-matplotlib  --output $dir/sample_monitor.pdf $dir/sample_monitor.dat; end
 
 sys.exit(0)
 
