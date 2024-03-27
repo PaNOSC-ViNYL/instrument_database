@@ -26,9 +26,9 @@ class McStasInstrumentBase(Instrument):
         self.__do_section = do_section
         self._temp_directory = "./"  # "/dev/shm/mcstasscript/"
         self._custom_component_dirs = [
-            os.path.join(os.path.dirname(__file__), "components")
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "components"))
         ]
-        # print(self._custom_component_dirs)
+        # print("Component dirs:", self._custom_component_dirs)
         self._single_calculator = False
         # this is specific for McStasscript instruments:
         # the components of the position for the sample and sample environment
@@ -466,8 +466,12 @@ class McStasInstrumentBase(Instrument):
     # ------------------------------
     def set_sample_focus(self):
         focus_angle = lambda h, z: 2 * math.atan(h / 2 / z)
-
-        if self.sample is not None and self.sample.component_name == "Isotropic_Sqw":
+        dphi = [
+            d
+            for d in self._calculator_with_sample.declare_list
+            if d.name == "sample_focus_dphi" or d.name == "sample_split"
+        ]
+        if len(dphi) == 0:
             dphi = self._calculator_with_sample.add_declare_var(
                 "double",
                 "sample_focus_dphi",
@@ -476,6 +480,8 @@ class McStasInstrumentBase(Instrument):
             sample_split = self._calculator_with_sample.add_declare_var(
                 "double", "sample_split"
             )
+
+        if self.sample is not None and self.sample.component_name == "Isotropic_Sqw":
             z = self.target_z
             if isinstance(self.target_z, Parameter):
                 z = self.target_z.name
@@ -935,7 +941,7 @@ class McStasInstrumentBase(Instrument):
 
     def run(self) -> None:
         # self._check_sample_shape()
-        self.custom_flags("-I mcstas/components")
+        # self.custom_flags("-I mcstas/components")
         return super().run()
 
         for calculator in self.calculators.values():
@@ -960,15 +966,20 @@ class McStasInstrumentBase(Instrument):
         # return super().run()
 
     # ------------------------------ utility methods made available for the users
+    def settings(self, **kwargs) -> None:
+        """Method to set the calculator settings"""
+        for mycalc in self.calculators.values():
+            mycalc.settings(**kwargs)
+
     def sim_neutrons(self, number) -> None:
         """Method to set the number of neutrons to be simulated"""
         for mycalc in self.calculators.values():
             mycalc.settings(ncount=number)
 
-    def set_seed(self, number) -> None:
-        """Setting the simulation seed"""
-        for mycalc in self.calculators.values():
-            mycalc.settings(seed=number)
+    # def set_seed(self, number) -> None:
+    #     """Setting the simulation seed"""
+    #     for mycalc in self.calculators.values():
+    #         mycalc.settings(seed=number)
 
     def force_compile(self, force_compile: bool) -> None:
         """Setting the force compile on all the calculators"""
