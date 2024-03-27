@@ -26,7 +26,10 @@ my_configurator = functions.Configurator()
 
 # ------------------------------ Importing sources
 from institutes.ILL.sources.HEAD.mcstas import Full as source
+
 from institutes.ILL.sources.HEAD.mcstas import Gauss as sourcesimple
+
+# from institutes.ILL.sources.HEAD.mcstas import Gauss_div as sourcesimple
 
 # from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 
@@ -64,10 +67,6 @@ def get_flavours():
         "simple",
         "simplefull",
     ]
-
-
-def def_tests(flavour: Optional[str] = None):
-    myinstrument = def_instrument(flavour)
 
 
 ############## Mandatory method
@@ -121,7 +120,10 @@ def def_instrument(flavour: Optional[str] = None):
 
 
 def H15(mycalculator, mysource, SourceTarget):
-    """Description of the H15 guide"""
+    """
+    Description of the H15 guide
+      return: calculator, lastcomponent
+    """
     gElementGap = 0.004
     PinkCarter = mycalculator.add_component(
         "pinkcarter", "Guide_gravity", AT=0, RELATIVE=SourceTarget
@@ -139,8 +141,8 @@ def H15(mycalculator, mysource, SourceTarget):
         W=1.0 / 300.0,
     )
     SourceTarget = PinkCarter
-    mysource.focus_xw = SourceTarget.w1
-    mysource.focus_yh = SourceTarget.h1
+    # mysource.focus_xw = SourceTarget.w1
+    # mysource.focus_yh = SourceTarget.h1
 
     AlWindow2 = mycalculator.add_component(
         "Alw2", "Al_window", AT=3.522 + 0.001, RELATIVE=SourceTarget
@@ -300,43 +302,6 @@ def H15(mycalculator, mysource, SourceTarget):
     return mycalculator, AlWindow10
 
 
-class D11simple(McStasInstrumentBase):
-    """:class: Instrument class definito the D11 instrument at ILL after the velocity selector"""
-
-    # ------------------------------ The instrument definition goes in the __init__
-    def __init__(self, movable_guide_config, do_section=True, remove_H15=False):
-        """Here the real definition of the instrument is performed"""
-
-        super().__init__("IN5", do_section)
-
-        # ------------------------------------------------------------
-        # Start with a first section and declaring its parameters
-        mycalculator, Origin = self.add_new_section("OriginCalc")
-
-        # ================ Distances
-
-        mysource = sourcesimple.VCS_source(mycalculator)
-        mysource.set_parameters(
-            xwidth=0.10,
-            zdepth=0.1,
-            flux=5e12,
-        )
-
-        lambda0 = mycalculator.parameters["lambda"]
-        self.add_parameter_to_master("lambda", mycalculator, lambda0)
-        self.master["lambda"] = 6 * ureg.angstrom
-        self.master["lambda"].add_interval(0.12, 12, True)
-
-        # mycalculator.add_declare_var("double", "lambda")
-        # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
-
-        mycalculator.add_declare_var("double", "neutron_velocity")
-        mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
-        mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
-
-        mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
-
-
 class D11(McStasInstrumentBase):
     """:class: Instrument class defining the D11 instrument at ILL"""
 
@@ -344,6 +309,34 @@ class D11(McStasInstrumentBase):
 
     # ------------------------------ Internal methods (not available to users)
     gElementGap = 0.004
+    # attenuators
+    attenuation_values = [
+        1,  # no attenuator (attenuator out)
+        8.325,  # attenuator 1
+        26.21,  # attenuator 2
+        72.23,  # attenuator 3
+        216.5,  # attenuator 1+2
+        594.6,  # attenuator 1+3
+        1702,  # attenuator 2+3
+        13480,  # attenuator 1+2+3
+    ]
+    collimation_options = [
+        40.5,
+        # 37,
+        34,
+        # 31,
+        28,
+        # 24,
+        20.5,
+        16.5,
+        13.5,
+        10.5,
+        8,
+        5.5,
+        4,
+        2.5,
+        1.5,  # non presente in Nomad
+    ]
 
     # ------------------------------ The instrument definition goes in the __init__
     def __init__(self, movable_guide_config, do_section=True, remove_H15=False):
@@ -361,12 +354,13 @@ class D11(McStasInstrumentBase):
         if remove_H15:
             mysource = sourcesimple.VCS_source(mycalculator)
             mysource.set_parameters(
-                xwidth=0.02,
-                yheight=0.04,
+                xwidth=0.03,
+                yheight=0.05,
                 # zdepth=0.1,
                 focus_xw=0.03,
                 focus_yh=0.05,
-                flux=2.89e12,
+                dist=2.3,
+                flux=2.22e12,
             )
         else:
             mysource = source.VCS_source(mycalculator)
@@ -377,20 +371,13 @@ class D11(McStasInstrumentBase):
 
         lambda0 = mycalculator.parameters["lambda"]
         lambda0.value = 6 * ureg.angstrom
-        # lambda0.add_interval(0.12, 12, True)
         self.add_parameter_to_master("lambda", mycalculator, lambda0)
-        #        self.master["lambda"] = 6 * ureg.angstrom
         self.master["lambda"].add_interval(0.12, 12, True)
 
-        # lambda0.value = 6
-
-        # Ei = mycalculator.parameters["Ei"]
-        # Ei.value = 15 * ureg.meV
-        # Ei.add_interval(7.5, 130, True)
         # del mycalculator.parameters["Ei"]
         # del mycalculator.parameters["dE"]
         # del mycalculator.parameters["lambda"]
-        mycalculator.parameters["dlambda"].value = 0.10
+        mycalculator.parameters["dlambda"].value = 0.05
 
         # mycalculator.add_declare_var("double", "lambda")
         # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
@@ -412,7 +399,7 @@ class D11(McStasInstrumentBase):
         SourceTarget = mycalculator.add_component(
             "SourceTarget", "Arm", AT=AlWindow1.thickness, RELATIVE=AlWindow1
         )
-        mysource.dist = AlWindow1.AT_data[2]
+        # mysource.dist = AlWindow1.AT_data[2]
 
         if remove_H15 is False:
             mycalculator, lastcomponent = H15(mycalculator, mysource, SourceTarget)
@@ -431,56 +418,6 @@ class D11(McStasInstrumentBase):
             )
         else:
             velocity_selector_arm = velocity_selector_mcpl_arm
-
-        # attenuators
-        attenuation_values = [
-            1,  # no attenuator (attenuator out)
-            8.325,  # attenuator 1
-            26.21,  # attenuator 2
-            72.23,  # attenuator 3
-            216.5,  # attenuator 1+2
-            594.6,  # attenuator 1+3
-            1702,  # attenuator 2+3
-            13480,  # attenuator 1+2+3
-        ]
-
-        # attenuator_index = mycalculator.add_parameter(
-        #     "int",
-        #     "attenuator_index",
-        #     comment="select the attenuation level by combining attenuator 1,2,3",
-        #     value=6,
-        # )
-        # attenuator_index.add_interval(0, len(attenuation_values) - 1, True)
-        # self.add_parameter_to_master(
-        #     attenuator_index.name, mycalculator, attenuator_index
-        # )
-
-        # mycalculator.add_declare_var(
-        #     "double",
-        #     "att_factor",
-        #     array=len(attenuation_values),
-        #     value=attenuation_values,
-        # )
-
-        # attenuator = mycalculator.add_component(
-        #     "attenuator", "Attenuator", AT=0.01, RELATIVE=velocity_selector_arm
-        # )
-
-        # attenuator.set_parameters(
-        #     scaling="1.0/att_factor[attenuator_index]",
-        #     xwidth=0.1,
-        #     yheight=0.1,
-        # )
-
-        # PSD_attenuator = mycalculator.add_component(
-        #     "PSD_attenuator", "Monitor_nD", AT=0.011, RELATIVE=attenuator
-        # )
-        # PSD_attenuator.set_parameters(
-        #     #            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
-        #     xwidth=1,
-        #     yheight=1,
-        #     options='"lambda"',
-        # )
 
         if do_section is True and remove_H15 is False:
             lambda1 = mycalculator.add_parameter(
@@ -518,10 +455,13 @@ class D11(McStasInstrumentBase):
         mycalculator.append_initialize(
             'printf("VS rpm = %.2f\\n", {});'.format(Vrpm.name)
         )
-        if remove_H15:
-            #            mysource.dist = Dolores.AT_data[2]
-            mysource.focus_xw = Dolores.xwidth
-            mysource.focus_yh = Dolores.yheight
+        # if remove_H15:
+        # mysource.dist = (
+        #    61.97  # calculated as the distance with H15 between Dolores and source
+        # )
+        #            mysource.dist = Dolores.AT_data[2]
+        # mysource.focus_xw = Dolores.xwidth
+        # mysource.focus_yh = Dolores.yheight
 
         AlWindow11 = mycalculator.add_component(
             "Alw11", "Al_window", AT=0.15 + 0.01, RELATIVE=Dolores
@@ -561,31 +501,13 @@ class D11(McStasInstrumentBase):
             value=1.5,
         )
         self.add_parameter_to_master(collimation.name, mycalculator, collimation)
-
-        collimation_options = [
-            40.5,
-            # 37,
-            34,
-            # 31,
-            28,
-            # 24,
-            20.5,
-            16.5,
-            13.5,
-            10.5,
-            8,
-            5.5,
-            4,
-            2.5,
-            1.5,  # non presente in Nomad
-        ]
-        collimation.add_option(collimation_options, True)
+        collimation.add_option(self.collimation_options, True)
 
         mycalculator.add_declare_var(
             "double",
             "collimation_options",
-            array=len(collimation_options),
-            value=collimation_options,
+            array=len(self.collimation_options),
+            value=self.collimation_options,
             comment="accepted values for collimation",
         )
 
@@ -645,7 +567,7 @@ class D11(McStasInstrumentBase):
                 + " : 0"
             )
 
-        collimation_length = collimation_options[0]
+        collimation_length = self.collimation_options[0]
         mg0 = mycalculator.copy_component("mg0", sg30, AT=0, RELATIVE=MovableGuideStart)
         mg0.set_parameters(
             l=movable_guide_config["l"][0],
@@ -825,10 +747,6 @@ class D11(McStasInstrumentBase):
             AT=movable_guide_config["l"][15] + 2.5 - 0.05,
             RELATIVE="mg15",
         )
-        PSD_sample = mycalculator.add_component(
-            "PSD_sample", "Monitor_nD", AT=0, RELATIVE=sample_mcpl_arm
-        )
-        PSD_sample.set_parameters(xwidth=0.1, yheight=0.1, options='"xy"')
 
         # ------------------------------------------------------------
         # this new section contains the sample and the sample environment
@@ -868,7 +786,7 @@ class D11(McStasInstrumentBase):
             comment="select the attenuation level by combining attenuator 1,2,3",
             value=6,
         )
-        attenuator_index.add_interval(0, len(attenuation_values) - 1, True)
+        attenuator_index.add_interval(0, len(self.attenuation_values) - 1, True)
         self.add_parameter_to_master(
             attenuator_index.name, mycalculator, attenuator_index
         )
@@ -876,8 +794,8 @@ class D11(McStasInstrumentBase):
         mycalculator.add_declare_var(
             "double",
             "att_factor",
-            array=len(attenuation_values),
-            value=attenuation_values,
+            array=len(self.attenuation_values),
+            value=self.attenuation_values,
         )
 
         attenuator = mycalculator.add_component(
@@ -888,16 +806,6 @@ class D11(McStasInstrumentBase):
             scaling="1.0/att_factor[attenuator_index]",
             xwidth=1,  # very large to not miss any neutron
             yheight=1,  # very large to not miss any neutron
-        )
-
-        PSD_attenuator = mycalculator.add_component(
-            "PSD_attenuator", "Monitor_nD", AT=0.011, RELATIVE=center_det
-        )
-        PSD_attenuator.set_parameters(
-            #            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
-            xwidth=1,
-            yheight=1,
-            options='"lambda"',
         )
 
         if not detpos.name in mycalculator.parameters:
@@ -1023,13 +931,6 @@ class D11(McStasInstrumentBase):
         )
 
         # ------------------------------ instrument parameters
-
-        OriginCalc = self.calculators["OriginCalc"]
-        DetectorCalc = None
-        if do_section:
-            DetectorCalc = self.calculators["DetectorCalc"]
-        else:
-            DetectorCalc = OriginCalc
 
     def set_test(self, test_number: Optional[int] = None):
         myinstrument = self

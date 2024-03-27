@@ -50,6 +50,21 @@ class McStasInstrumentBase(Instrument):
 
         self.sample_environments = ["None"]
 
+    def get_distance(self, a, b, instr):
+        a = instr.get_component(a)
+        b = instr.get_component(b)
+        ia = instr.component_list.index(a)
+        ib = instr.component_list.index(b)
+        d = None
+        z = 0
+        for c in reversed(instr.component_list[ia:ib]):
+            if d is not None and d != "PREVIOUS" and c.name != d:
+                continue
+            # print(c)
+            z = z + float(c.AT_data[2])
+            d = c.AT_reference
+        return z
+
     def calcLtof(self, fcomp: Component, lcomp: Component):
         L = 0
         for calc in self.calculators:
@@ -971,10 +986,10 @@ class McStasInstrumentBase(Instrument):
         for mycalc in self.calculators.values():
             mycalc.settings(**kwargs)
 
-    def sim_neutrons(self, number) -> None:
-        """Method to set the number of neutrons to be simulated"""
-        for mycalc in self.calculators.values():
-            mycalc.settings(ncount=number)
+    # def sim_neutrons(self, number) -> None:
+    #     """Method to set the number of neutrons to be simulated"""
+    #     for mycalc in self.calculators.values():
+    #         mycalc.settings(ncount=number)
 
     # def set_seed(self, number) -> None:
     #     """Setting the simulation seed"""
