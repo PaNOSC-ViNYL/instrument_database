@@ -32,6 +32,7 @@
 * filename: [string]    Name of file in which to store the detector image
 * restore_neutron: [1]  If set, the monitor does not influence the neutron state
 * nowritefile: [1]      If set, monitor will skip writing to disk
+* tshift: [s]           Shift the time of the neutron, effectively repositioning the 0. Done before defining the time bin.
 *
 * OUTPUT PARAMETERS:
 *
@@ -44,7 +45,7 @@
 
 DEFINE COMPONENT Cyl_TOF
 DEFINITION PARAMETERS ()
-  SETTING PARAMETERS (nt=128, nphi=90, ny=1, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, phimax=180, tmin=0, tmax=1, restore_neutron=0)
+  SETTING PARAMETERS (nt=128, nphi=90, ny=1, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, phimax=180, tmin=0, tmax=1, restore_neutron=0, tshift=0)
 OUTPUT PARAMETERS ()
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
 
@@ -88,7 +89,7 @@ INITIALIZE
 TRACE
 %{
   int iphi,iy,it;
-  double cyl_t0,cyl_t1,dt,phi,yh;
+  double cyl_t0,cyl_t1,tshifted,phi,yh;
   
   if(!cylinder_intersect(&cyl_t0, &cyl_t1, x,y,z,vx,vy,vz, radius, yheight))
    /* No hit */
@@ -97,20 +98,20 @@ TRACE
     ABSORB;
 
   /* propagate the neutron to the cylinder surface */
-  dt=cyl_t1;
-  PROP_DT(dt);
+  PROP_DT(cyl_t1);
   yh = yheight/2;
     
   if(y >= yh || y <= -yh)
     ABSORB;  /* Neutron hits cylinder ends; no detectors here */
   
   /* Calculate pixel */
+  tshifted = t + tshift;
   phi=atan2(x,z)*RAD2DEG;
   if (phi >= phimin && phi <= phimax) {
-    if (t >= tmin && t <= tmax) {
+    if (tshifted >= tmin && tshifted <= tmax) {
       iphi = floor( (phi-phimin)/phibinwidth );
       iy   = floor( (y+yh)/ybinwidth );
-      it   = floor( (t-tmin)/tbinwidth );
+      it   = floor( (tshifted-tmin)/tbinwidth );
       double p2 = p*p;
       
 #pragma acc atomic
