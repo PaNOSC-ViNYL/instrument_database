@@ -859,6 +859,8 @@ class D11(McStasInstrumentBase):
 
         # ------------------------------------------------------------
 
+        # things might be improved putting a slit at the minimum distance of the detector
+        # such that the mcpl saves only neutrons that have a chance to be detected
         mycalculator, center_det = self.add_new_section("DetectorCalc", Sample_Out)
         attenuator_index = mycalculator.add_parameter(
             "int",
