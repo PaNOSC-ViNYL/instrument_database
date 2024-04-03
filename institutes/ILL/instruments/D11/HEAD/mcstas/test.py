@@ -18,7 +18,7 @@ instrument_name = "D11"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
-flavour = "nosection"
+# flavour = "nosection"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 
 
@@ -56,9 +56,11 @@ def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
         ny += np.sum(data[:, i])
     return cx / nx + 1, cy / ny + 1
 
+
 def set_tests(myinstrument, test_number):
     if test_number is not None:
 
+        myinstrument.master["lambda"] = 6 * ureg.angstrom
         myinstrument.master["detpos"] = 2 * ureg.m
         myinstrument.master["attenuator_index"] = 0
         myinstrument.master["collimation"] = 8 * ureg.m
@@ -79,8 +81,13 @@ def set_tests(myinstrument, test_number):
                 "qSq_file"
             ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
             #                '"simul_5711.sq"'
+        elif test_number == -1:  # direct beam no beamstop
+            myinstrument.set_sample_by_name("None")
+            myinstrument.sample_holder(None, None)
+            myinstrument.master["attenuator_index"] = 6
+            myinstrument.master["bs_index"] = -1
         else:
-            raise RuntimeError("Test number out of range")
+            raise RuntimeError(f"Test number {test_number} out of range")
 
 
 def read_test(myinstrument, test_number, acquisition_time):
@@ -89,17 +96,19 @@ def read_test(myinstrument, test_number, acquisition_time):
 
     set_tests(myinstrument, test_number)
     metadata_list = load_metadata(simulation_dir)
-    #print(left_detector_data.shape, central_detector_data.shape, right_detector_data.shape)
+    # print(left_detector_data.shape, central_detector_data.shape, right_detector_data.shape)
     # print(metadata_list)
 
     detectors_simulation = {}
     detectors_trueMC = {}
     for detector in metadata_list:
-#        if detector.name in detector_names or detector.name in ["PSD_sample"]:
-#            detectors_data[detector.name] = detector.Intensity * acquisition_time
-#            detectors_trueMC[detector.name] = detector.Ncount
-#    return detectors_data, detectors_trueMC
-        if detector.component_name in detector_names or detector.component_name in ["PSD_sample"]:
+        #        if detector.name in detector_names or detector.name in ["PSD_sample"]:
+        #            detectors_data[detector.name] = detector.Intensity * acquisition_time
+        #            detectors_trueMC[detector.name] = detector.Ncount
+        #    return detectors_data, detectors_trueMC
+        if detector.component_name in detector_names or detector.component_name in [
+            "PSD_sample"
+        ]:
             monitor = load_monitor(detector, simulation_dir)
             detectors_simulation[monitor.name] = monitor.Intensity * acquisition_time
             detectors_trueMC[monitor.name] = monitor.Ncount
@@ -107,7 +116,8 @@ def read_test(myinstrument, test_number, acquisition_time):
         # help(monitor)
 
     return detectors_simulation, detectors_trueMC
-    
+
+
 def run_test(myinstrument, test_number, acquisition_time):
     calcname = "OriginCalc"
     calcname_data = calcname + "_data"
@@ -116,7 +126,9 @@ def run_test(myinstrument, test_number, acquisition_time):
 
     myinstrument.run()
     data = myinstrument.output
-    detectors = data[calcname_data].get_data()["data"]
+    # detectors = data[calcname_data].get_data()["data"]
+    detectors = data.get_data()["data"]
+    print(detectors)
     detectors_data = {}
     detectors_trueMC = {}
     for detector in detectors:
@@ -128,14 +140,14 @@ def run_test(myinstrument, test_number, acquisition_time):
 
 def data_test(test_number):
     file = ""
-    if test_number == 0:  # direct attenuated beam
+    if test_number == 0 or test_number == -1:  # direct attenuated beam
         file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
     elif test_number == 1:  # direct beam with empty sample holder
         file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
     elif test_number == 2:
         file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs"
     else:
-        raise RuntimeError("Test number out of range")
+        raise RuntimeError(f"Test number {test_number} out of range")
 
     # Read NeXus
     f = h5py.File(file, "r")
@@ -174,23 +186,23 @@ if simulation_dir is not None:
 darr = []
 sarr = []
 mcarr = []
-ntests = 1
-for itest in range(0, ntests):
+ntests = 0
+for itest in range(-1, ntests):
     darr.append(data_test(itest))
     intensity, count = run_test(myinstrument, itest, acquisition_time)
     sarr.append(intensity)
     mcarr.append(count)
 
-    print(sarr[0]["PSD_sample"])
-    sys.exit(0)
-    
-for itest in range(0, ntests):
+    # print(sarr[0]["PSD_sample"])
+    # sys.exit(0)
+
+for itest in range(-1, ntests):
     d = darr[itest]
     s = sarr[itest]
     mc = mcarr[itest]
     compare(d, s, mc)
 
-#print("PSD_sample: ", center_of_mass(sarr[0]["PSD_sample"], 0, 100, 0, 100))
+# print("PSD_sample: ", center_of_mass(sarr[0]["PSD_sample"], 0, 100, 0, 100))
 sys.exit(0)
 print(
     detectors_simulation["left"].Intensity.transpose().shape,
