@@ -62,6 +62,7 @@ def get_flavours():
         "Borkron_2003",
         "Borofloat_2001",
         "simple",
+        "simplefull",
     ]
 
 
@@ -109,7 +110,11 @@ def def_instrument(flavour: Optional[str] = None):
         return D11(movable_guide_config["Borofloat_2001"], False)
     if flavour == "simple":
         return D11(
-            movable_guide_config["Borkron_1972"], do_section=True, remove_H15=True
+            movable_guide_config["Borofloat_2001"], do_section=True, remove_H15=True
+        )
+    if flavour == "simplefull":
+        return D11(
+            movable_guide_config["Borofloat_2001"], do_section=False, remove_H15=True
         )
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
@@ -314,6 +319,7 @@ class D11simple(McStasInstrumentBase):
         mysource.set_parameters(
             xwidth=0.10,
             zdepth=0.1,
+            flux=5e12,
         )
 
         lambda0 = mycalculator.parameters["lambda"]
@@ -352,12 +358,22 @@ class D11(McStasInstrumentBase):
         mycalculator, Origin = self.add_new_section("OriginCalc")
 
         # ================ Distances
-
-        mysource = source.VCS_source(mycalculator)
-        mysource.set_parameters(
-            xwidth=0.10,
-            zdepth=0.1,
-        )
+        if remove_H15:
+            mysource = sourcesimple.VCS_source(mycalculator)
+            mysource.set_parameters(
+                xwidth=0.02,
+                yheight=0.04,
+                # zdepth=0.1,
+                focus_xw=0.03,
+                focus_yh=0.05,
+                flux=2.89e12,
+            )
+        else:
+            mysource = source.VCS_source(mycalculator)
+            mysource.set_parameters(
+                xwidth=0.10,
+                zdepth=0.1,
+            )
 
         lambda0 = mycalculator.parameters["lambda"]
         lambda0.value = 6 * ureg.angstrom
@@ -387,16 +403,6 @@ class D11(McStasInstrumentBase):
         mycalculator.append_initialize(
             'dlambda = dlambda*lambda;printf("dlambda = %.2f\\n", dlambda);'
         )
-
-        # sourcefluxfix = mycalculator.add_component(
-        #     "sourcefluxfix", "Attenuator", AT=0.1, RELATIVE=mysource
-        # )
-        # sourcefluxfix.set_parameters(
-        #     scaling=1,
-        #     xwidth=mysource.xwidth * 3,
-        #     yheight=mysource.yheight * 3,
-        # )
-        #            Detector: PSD_attenuator_I=32518.3 PSD_attenuator_ERR=339.976 PSD_attenuator_N=35962 "PSD_attenuator_1695885726.L"
 
         AlWindow1 = mycalculator.add_component(
             "Alw1", "Al_window", AT=2.33, RELATIVE=mysource
@@ -513,7 +519,7 @@ class D11(McStasInstrumentBase):
             'printf("VS rpm = %.2f\\n", {});'.format(Vrpm.name)
         )
         if remove_H15:
-            mysource.dist = Dolores.AT_data[2]
+            #            mysource.dist = Dolores.AT_data[2]
             mysource.focus_xw = Dolores.xwidth
             mysource.focus_yh = Dolores.yheight
 
@@ -610,6 +616,7 @@ class D11(McStasInstrumentBase):
             0.65,
             sg30,
         )
+        disk_index.value = 1
         # self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
         # self.master[disk_index.name] = 1
 
@@ -1019,6 +1026,7 @@ class D11(McStasInstrumentBase):
             myinstrument.set_sample_by_name("None")
             myinstrument.sample_holder(None, None)
             myinstrument.master["attenuator_index"] = 6
+            myinstrument.master["bs_index"] = -1
         elif test_number == 1:  # direct beam with empty sample holder
             myinstrument.set_sample_by_name("None")
         elif test_number == 2:  # with sample
@@ -1026,7 +1034,6 @@ class D11(McStasInstrumentBase):
             myinstrument.master[
                 "sqw_file"
             ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
-            #                '"simul_5711.sq"'
         elif test_number == -1:  # direct beam no beamstop
             myinstrument.set_sample_by_name("None")
             myinstrument.sample_holder(None, None)
@@ -1041,181 +1048,8 @@ class D11(McStasInstrumentBase):
             file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
         elif test_number == 1:  # direct beam with empty sample holder
             file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
-        elif test_number == 2:
+        elif test_number >= 2:
             file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs"
         else:
             raise RuntimeError(f"Test number {test_number} out of range")
         return file
-
-
-# DEFINE INSTRUMENT ILL_H15_D11(Lambda=4.51, string Config="Borkron_1972", Lc=0, iLc=5,
-#   Chamfers=0.0002, Waviness=2.5e-5)
-
-# /* H15_D11@ILL simulation for McStas. E. Farhi <farhi@ill.fr> August 2003
-
-#   Lambda  : wavelength [Angs]
-#   Lc      : collimation length [m] among 40.5, 34, 28, 20.5, 16.5 13.5 10.5, 8, 5.5, 4, 2.5 1.5
-#   Config  : Borkron_1972   Borkron_2003    Borofloat_2001  Borofloat_2003
-#             0.2            0.2             0.8             0.2                 Chamfers [mm]
-#             2.5e-5         1e-4            8e-4            2e-4                Waviness [rad]
-#   Chamfers: chamfers width (input/output movable guide section+longitudinal top/bottom sides) [m]
-#   Waviness: movable guide Waviness [rad]
-
-#   setenv MCSTAS_FORMAT "Matlab binary"
-#   setenv MCSTAS_CFLAGS ""
-
-
-#   mcrun h15_d11.instr --ncount=1e6 --dir=t1_5 Lambda=4.51 Config=Borkron_1972 iLc=5 Lc=0 Chamfers=0.0002 Waviness=2.5e-5
-
-#  */
-
-
-# DECLARE
-# %{
-
-#   #define VERSION "H15_D11@ILL Farhi 10/08/2003"
-
-#   /* all variables defined here can be used, and modified, in the whole instrument */
-#   /* variables used in instrument definition and for user computations */
-
-
-#   double gToSampleLength    = 1.5;
-
-#   double gElmtLength1;
-#   double gElmtLength2;
-#   double gElmtLength3;
-#   double gElmtRot1;
-
-#   /* Guide coatings specifications */
-#   double mInPile            = 1;
-#   double mGuide1            = 1;
-#   double mGuide2            = 0.65; /* 0.953075 */
-
-
-#   double Vrpm;
-#   double Config_l[20];
-#   double Config_n[20];
-#   double Config_g[20];
-
-#   /* geometry configurations */
-#   double Borkron_1972_l[] = {20, 0,0,0,  0,4,3,3,2.5,0,  2.5,0,  1.5,0,1.5,0,0};  /* length 17 */
-#   double Borkron_2003_l[] = {6.5,0,6,7.5,0,4,3,3,2.5,0,  2.5,0,  1.5,0,1.5,0,1};
-#   double Borofloat_2001_l[]={0.5,6,6,0.5,7,4,3,3,2,  0.5,2,  0.5,0.5,1,0.5,1,1};
-
-#   double Borkron_1972_n[] = {40,0,0, 0, 0,8,6,6,5,0,5,0,3,0,3,0,0};
-#   double Borkron_2003_n[] = {13,0,12,15,0,8,6,6,5,0,5,0,3,0,3,0,2};
-#   double Borofloat_2001_n[]={1, 6,6, 1, 7,4,3,3,2,1,2,1,1,1,1,1,1};
-
-#   double Borkron_1972_g[] = {0   ,0   };
-#   double Borkron_2003_g[] = {0.002,0.002};
-#   double Borofloat_2001_g[]={0.002,0.002};
-
-#   double Length_Lc[]       ={1.5,2.5,4,5.5,8,10.5,13.5,16.5,20.5,28,34,40.5};
-
-#   double
-
-#   char xlmonopts[128];
-# %}
-# /* end of DECLARE */
-
-# INITIALIZE
-# %{
-#   double PhiC, GammaC, ThetaC, LambdaC, LStar, Zc;
-#   double Ki;
-#   int    i=0;
-#   double sum_length=0;
-#   double n_elements=0;
-
-
-# /* INFO ******************************************************************* */
-#   printf("Simulation : %s on %s [pid %i]\n",VERSION,getenv("HOSTNAME"), getpid());
-
-
-#   /* First guide Phase-Space parameters */
-#   PhiC    = sqrt(2*fabs(gGuideWidth/gCurvatureRadius));
-#   GammaC  = mGuide1*mQc/4/PI;
-#   ThetaC  = sLambda*GammaC;
-#   LambdaC = PhiC/GammaC;
-#   LStar   = sqrt(8*fabs(gGuideWidth*gCurvatureRadius));
-#   Zc      = gGuideWidth*(0.5-ThetaC*ThetaC/PhiC/PhiC);
-
-#   printf("Guide: L =%.4f m, rho=%.4f m, m=%.2f\n", gLength1, gCurvatureRadius, mGuide1);
-#   printf("Guide: L*=%.2f m, Phi_c = %.2f deg, Gamma_c = %.2f deg/Angs\n", LStar, PhiC*RAD2DEG, GammaC*RAD2DEG);
-#   printf("Guide: Zc = %.4f m, Lambda_c = %.2f Angs\n", Zc, LambdaC);
-#   if (sLambda < LambdaC)
-#     printf("Guide: Garland reflections only\n");
-#   else
-#     printf("Guide: Garland and Zig-Zag reflections\n");
-#   if (gLength1 < LStar)
-#     printf("Guide: Guide is too short\n");
-
-
-#   Ki   = 2*PI/Lambda;
-#   Vrpm = 124270/(Lambda-0.11832);
-#   printf("D11:   Ki = %.4g [Angs-1], Lambda = %.4g [Angs], V_Dolores=%.4g [rpm]\n", Ki, Lambda, Vrpm);
-
-
-#   if (strstr(Config, "Borkron_1972")) {
-#     for (i=0; i<17; i++) {
-#       Config_l[i] = Borkron_1972_l[i];
-#       Config_n[i] = Borkron_1972_n[i];
-#       if (i<2) Config_g[i] = Borkron_1972_g[i];
-#     }
-#   }
-#   if (strstr(Config, "Borkron_2003")) {
-#     for (i=0; i<17; i++) {
-#       Config_l[i] = Borkron_2003_l[i];
-#       Config_n[i] = Borkron_2003_n[i];
-#       if (i<2) Config_g[i] = Borkron_2003_g[i];
-#     }
-#   }
-#   if (strstr(Config, "Borofloat_2001")) {
-#     for (i=0; i<17; i++) {
-#       Config_l[i] = Borofloat_2001_l[i];
-#       Config_n[i] = Borofloat_2001_n[i];
-#       if (i<2) Config_g[i] = Borofloat_2001_g[i];
-#     }
-#   }
-#   if (strstr(Config, "Borofloat_2003")) {
-#     for (i=0; i<17; i++) {
-#       Config_l[i] = Borofloat_2001_l[i];
-#       Config_n[i] = Borofloat_2001_n[i];
-#       if (i<2) Config_g[i] = Borofloat_2001_g[i];
-#     }
-#   }
-#   if (!i) exit(printf("** D11 Error: No movable guide configuration selected for D11\n"));
-#   if (strstr(Config,"nogap")) for (i=0; i<2; Config_g[i++]=0);
-
-#   if (Lc == 0)
-#     if (iLc >= 0 && iLc < 12)
-#       Lc = Length_Lc[(int)iLc];
-#     else exit(printf("** D11 Error: invalid collimator length specification for D11\n"));
-
-#   for (i=0; i< 17; i++) {
-#     if (40.5 - Lc <= sum_length) Config_n[i]=0;
-#     else {
-#       sum_length += Config_l[i];
-#       n_elements += Config_n[i];
-#     }
-#   }
-#   printf("D11:   Coll.  L_c=%8.3g [m], Configuration='%s', \n", Lc, Config);
-#   printf("D11:   Length L_g=%8.3g [m], n_elements=%8.2g\n", sum_length, n_elements);
-#   printf("D11:   Chamfers  =%8.3g [m], Waviness  =%8.3g [rad] (%.3g [deg])\n", Chamfers, Waviness, Waviness*RAD2DEG);
-#   Waviness *= RAD2DEG;
-
-#   sprintf(xlmonopts,"x bins=100 lambda limits=[%g %g] bins=100",sLambda-sDeltaLambda,sLambda+sDeltaLambda);
-
-# %}
-# /* end of INITIALIZE */
-
-
-# /* Sample is 1.5 m ahead */
-# COMPONENT SampleF = Monitor_nD(xwidth=gGuideWidth, yheight=gGuideHeight2,
-#   options="x y, per cm2")
-# AT (0,0,(Config_l[15]+2.5)) RELATIVE mg15
-
-# COMPONENT SampleC = Monitor_nD(xwidth=gGuideWidth, yheight=gGuideHeight2,
-#   options="x y, capture, per cm2")
-# AT (0,0,0.001) RELATIVE SampleF
-
-# END
