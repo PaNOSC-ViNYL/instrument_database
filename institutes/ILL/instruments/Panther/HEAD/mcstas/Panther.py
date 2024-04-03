@@ -245,8 +245,9 @@ class Panther(McStasInstrumentBase):
         # )  # put a warning if A2 does not match
         a2_interval = a2.get_intervals()[0]
         mycalculator.add_declare_var("double", "mono_d")
-        mycalculator.append_initialize(
-            "if(mono_index<0){\n"
+        mycalculator.append_initialize('printf("%d\\n", mono_index);')
+        mycalculator.append_initialize( # TODO: remove the cast to int (int) in the comparison. Now only needed for McStas3.3 because mono_index is long and the compiler treats it as unsigned
+            "if((int)mono_index<0){\n"
             + '  printf("Selecting monochromator...");\n'
             + "  for(mono_index=0; mono_index < "
             + str(len(monochromators))
