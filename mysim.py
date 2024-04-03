@@ -29,23 +29,88 @@ myinstrument.set_instrument_base_dir(basedir)
 # myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
 # myinstrument.master["a4"] = 60 * ureg.degree
 # myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
-print(myinstrument.get_total_SPLIT())
+# print(myinstrument.get_total_SPLIT())
 # myinstrument.set_sample_by_name("vanadium")
 # myinstrument.set_sample_by_name("H2O")
 # myinstrument.sample_cylinder_shape(0.005, 0.01)
-print(myinstrument)
-myinstrument.sim_neutrons(5000)
+# print(myinstrument)
+myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)
 
-myinstrument.run()
-myinstrument.force_compile(False)
 
+test_number = 0  # None 1 or 2
+
+
+def set_tests(myinstrument, test_number):
+    instrument_name = myinstrument.name
+
+    if instrument_name == "ThALES":
+        myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
+        myinstrument.master["a4"] = 60 * ureg.degree
+        myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+    if instrument_name == "Panther":
+        myinstrument.master["energy"] = 19 * ureg.meV
+    if instrument_name == "D11":
+        if test_number is not None:
+
+            myinstrument.master["detpos"] = 2 * ureg.m
+            myinstrument.master["attenuator_index"] = 0
+            myinstrument.master["collimation"] = 8 * ureg.m
+            myinstrument.sample_holder(
+                material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+            )
+            myinstrument.sample_shape("holder")
+            if test_number == 0:
+                myinstrument.set_sample_by_name("None")
+                myinstrument.sample_holder(None, None)
+                myinstrument.master["attenuator_index"] = 6
+            elif test_number == 1:
+                myinstrument.set_sample_by_name("None")
+            elif test_number == 2:
+                myinstrument.set_sample_by_name("qSq")
+                myinstrument.master[
+                    "qSq_file"
+                ] = '"/users/nourbakhsh/digitaltwin/instrument_database/institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+
+
+def run_test(myinstrument, test_number):
+    calcname = "OriginCalc"
+    calcname_data = calcname + "_data"
+
+    set_tests(myinstrument, test_number)
+
+    myinstrument.run()
+    data = myinstrument.output
+    detectors = data[calcname_data].get_data()["data"]
+    for detector in detectors:
+        if detector.name == "detector_central":
+            return detector.Intensity
+
+
+Intensities = []
+
+
+for itest in range(2, 3):
+    Intensities.append(run_test(myinstrument, itest))
+
+for itest in range(2, 3):
+    print(itest, " : ", Intensities[itest][1])
+
+sys.exit(0)
 
 calcname = "OriginCalc"
-Intensities = []
-for att in range(0, 8):
+attenuation_values = [
+    8.325,  # attenuator 1
+    26.21,  # attenuator 2
+    72.23,  # attenuator 3
+    216.5,  # attenuator 1+2
+    594.6,  # attenuator 1+3
+    1702,  # attenuator 2+3
+    13480,  # attenuator 1+2+3
+]
+for att in range(0, len(attenuation_values)):
     myinstrument.calculators["OriginCalc"].parameters["attenuator_index"] = att
-    myinstrument.run()
+    #    myinstrument.run()
     data = myinstrument.output
     calcname_data = calcname + "_data"
     detectors = data[calcname_data].get_data()["data"]
@@ -55,8 +120,10 @@ for att in range(0, 8):
             Intensities.append(detector.Intensity)
         # print(detector, "\n\t I = ",detector.Intensity, "\n\t E =", detector.Error, "\n\t N =", detector.Ncount)
 
-for att in range(0, 1):
-    print(att, " : ", Intensities[att])
+for att in range(0, len(attenuation_values)):
+    print(
+        att, " : ", Intensities[att][1], Intensities[att][1] * attenuation_values[att]
+    )
 # print("Ltof: "+str(myinstrument.calcLtof(myinstrument.calculators["OriginCalc"], "Chopper0", "Chopper1", True)))
 # sys.exit(0)
 # diagnostics
@@ -66,6 +133,13 @@ for att in range(0, 1):
 # mycalc.show_diagram(analysis=True)
 import mcstasscript as ms
 
+for att in range(0, len(attenuation_values)):
+    myinstrument.calculators["OriginCalc"].parameters["attenuator_index"] = att
+    print(
+        att,
+        attenuation_values[att],
+        myinstrument.calculators["OriginCalc"].parameters["attenuator_index"],
+    )
 # myinstrument.run()
 sys.exit(0)
 np = 21
