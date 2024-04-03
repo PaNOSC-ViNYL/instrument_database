@@ -11,7 +11,7 @@ import numpy as np
 import h5py
 
 # import matplotlib.pyplot as plt
-# from mcstasscript.interface.functions import load_metadata, load_monitor
+from mcstasscript.interface.functions import load_metadata, load_monitor
 
 repo = API.Repository(local_repo=".")
 instrument_name = "D11"
@@ -28,12 +28,33 @@ ureg = pint.get_application_registry()
 basedir = "/tmp/" + instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
+simulation_dir = None
+if len(sys.argv) == 2:
+    simulation_dir = sys.argv[1]
+
+
 myinstrument.sim_neutrons(80000000)
+myinstrument.sim_neutrons(8000000)
+myinstrument.sim_neutrons(800000)
 myinstrument.set_seed(654321)
 
 
 acquisition_time = 60  # seconds
+detector_names = ["detector_central", "detector_left", "detector_right"]
 
+
+def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
+    cx = 0.0
+    cy = 0.0
+    nx = 0.0
+    ny = 0.0
+    for i in range(nx_min, nx_max + 1):
+        cx += np.sum(data[i, :]) * i
+        nx += np.sum(data[i, :])
+    for i in range(ny_min, ny_max + 1):
+        cy += np.sum(data[:, i]) * i
+        ny += np.sum(data[:, i])
+    return cx / nx + 1, cy / ny + 1
 
 def set_tests(myinstrument, test_number):
     if test_number is not None:
@@ -41,6 +62,7 @@ def set_tests(myinstrument, test_number):
         myinstrument.master["detpos"] = 2 * ureg.m
         myinstrument.master["attenuator_index"] = 0
         myinstrument.master["collimation"] = 8 * ureg.m
+        myinstrument.master["bs_index"] = 0
         myinstrument.sample_holder(
             material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
         )
@@ -61,6 +83,31 @@ def set_tests(myinstrument, test_number):
             raise RuntimeError("Test number out of range")
 
 
+def read_test(myinstrument, test_number, acquisition_time):
+    calcname = "OriginCalc"
+    calcname_data = calcname + "_data"
+
+    set_tests(myinstrument, test_number)
+    metadata_list = load_metadata(simulation_dir)
+    #print(left_detector_data.shape, central_detector_data.shape, right_detector_data.shape)
+    # print(metadata_list)
+
+    detectors_simulation = {}
+    detectors_trueMC = {}
+    for detector in metadata_list:
+#        if detector.name in detector_names or detector.name in ["PSD_sample"]:
+#            detectors_data[detector.name] = detector.Intensity * acquisition_time
+#            detectors_trueMC[detector.name] = detector.Ncount
+#    return detectors_data, detectors_trueMC
+        if detector.component_name in detector_names or detector.component_name in ["PSD_sample"]:
+            monitor = load_monitor(detector, simulation_dir)
+            detectors_simulation[monitor.name] = monitor.Intensity * acquisition_time
+            detectors_trueMC[monitor.name] = monitor.Ncount
+        # print("### MONITOR:")
+        # help(monitor)
+
+    return detectors_simulation, detectors_trueMC
+    
 def run_test(myinstrument, test_number, acquisition_time):
     calcname = "OriginCalc"
     calcname_data = calcname + "_data"
@@ -73,7 +120,7 @@ def run_test(myinstrument, test_number, acquisition_time):
     detectors_data = {}
     detectors_trueMC = {}
     for detector in detectors:
-        if detector.name in ["detector_central", "detector_left", "detector_right"]:
+        if detector.name in detector_names or detector.name in ["PSD_sample"]:
             detectors_data[detector.name] = detector.Intensity * acquisition_time
             detectors_trueMC[detector.name] = detector.Ncount
     return detectors_data, detectors_trueMC
@@ -107,7 +154,7 @@ def compare(d, s, mc):
             "", "data", "sim", "data/sim", "MC count"
         )
     )
-    for key in d.keys():
+    for key in detector_names:
         dsum = np.sum(d[key])
         ssum = np.sum(s[key])
         mcsum = np.sum(mc[key])
@@ -119,6 +166,11 @@ def compare(d, s, mc):
         )
 
 
+if simulation_dir is not None:
+    intensity, count = read_test(myinstrument, 0, acquisition_time)
+    data = data_test(0)
+    compare(data, intensity, count)
+    sys.exit(0)
 darr = []
 sarr = []
 mcarr = []
@@ -129,12 +181,16 @@ for itest in range(0, ntests):
     sarr.append(intensity)
     mcarr.append(count)
 
+    print(sarr[0]["PSD_sample"])
+    sys.exit(0)
+    
 for itest in range(0, ntests):
     d = darr[itest]
     s = sarr[itest]
     mc = mcarr[itest]
     compare(d, s, mc)
 
+#print("PSD_sample: ", center_of_mass(sarr[0]["PSD_sample"], 0, 100, 0, 100))
 sys.exit(0)
 print(
     detectors_simulation["left"].Intensity.transpose().shape,
