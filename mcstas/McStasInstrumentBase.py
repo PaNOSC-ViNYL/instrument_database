@@ -480,6 +480,11 @@ class McStasInstrumentBase(Instrument):
         for mycalc in self.calculators.values():
             mycalc.settings(force_compile=force_compile)
 
+    def custom_flags(self, flags: str) -> None:
+        """Additional custom flags for McRun"""
+        for mycalc in self.calculators.values():
+            mycalc.settings(custom_flags=flags)
+
     def get_total_SPLIT(self):
         split = 1
         for mycalc in self.calculators.values():
