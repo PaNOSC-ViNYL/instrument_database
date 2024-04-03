@@ -37,7 +37,7 @@ myinstrument.sim_neutrons(10000000000)  # 120 min
 # myinstrument.sim_neutrons(1000000000)  # 12 min
 # myinstrument.sim_neutrons(100000000)  # 1.2 min
 # myinstrument.sim_neutrons(50000000)  # 60s
-# myinstrument.sim_neutrons(100000)
+myinstrument.sim_neutrons(100000)
 myinstrument.set_seed(654321)
 for calc in myinstrument.calculators:
     myinstrument.calculators[calc].settings(mpi=8)

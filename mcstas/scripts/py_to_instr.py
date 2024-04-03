@@ -15,6 +15,7 @@ parser.add_argument("flavour", help="flavour of the description")
 parser.add_argument("sample_name", help="name of the sample")
 parser.add_argument("sample_environment_name", help="name of the sample environment")
 parser.add_argument("sample_holder_material", help="sample holder material")
+parser.add_argument("--dry_run", help="Do not write the instrument files", action='store_true')
 args = parser.parse_args()
 
 
@@ -60,15 +61,18 @@ for calcname in myinstrument.calculators:
             + "_"
             + args.sample_name
             + "_"
+            + args.sample_holder_material
+            + "_"
             + args.sample_environment_name
         )
     else:
         calc.name = calcname + "_" + args.flavour
 
     if isinstance(calc, instr.McStas_instr):
-
-        calc.write_full_instrument()
         newname = args.instrument + "_" + calc.name + ".instr"
-        os.rename(calc.name + ".instr", newname)
         instrfiles.append(newname)
+        if args.dry_run is False:
+            calc.write_full_instrument()
+            os.rename(calc.name + ".instr", newname)
+
 print(instrfiles)
