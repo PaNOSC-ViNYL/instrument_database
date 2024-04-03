@@ -449,6 +449,48 @@ class D11(McStasInstrumentBase):
         else:
             velocity_selector_arm = velocity_selector_mcpl_arm
 
+        # attenuators
+        attenuation_values = [
+            8.325,  # attenuator 1
+            26.21,  # attenuator 2
+            72.23,  # attenuator 3
+            216.5,  # attenuator 1+2
+            594.6,  # attenuator 1+3
+            1702,  # attenuator 2+3
+            13480,  # attenuator 1+2+3
+        ]
+
+        attenuator_index = mycalculator.add_parameter(
+            "int",
+            "attenuator_index",
+            comment="select the attenuation level by combining attenuator 1,2,3",
+            value=0,
+        )
+        attenuator_index.add_interval(0, 7, True)
+        mycalculator.add_declare_var(
+            "double",
+            "att_factor",
+            array=len(attenuation_values),
+            value=attenuation_values,
+        )
+
+        attenuator = mycalculator.add_component(
+            "attenuator", "Filter_gen", AT=0, RELATIVE=velocity_selector_arm
+        )
+        attenuator.set_parameters(
+            filename='"institutes/ILL/instruments/D11/HEAD/mcstas/data/attenuator1.trm"',
+            scaling="1.0/att_factor[attenuator_index]",
+            xwidth=0.1,
+            yheight=0.1,
+        )
+
+        PSD_attenuator = mycalculator.add_component(
+            "PSD_attenuator", "Monitor_nD", AT=0.001, RELATIVE=attenuator
+        )
+        PSD_attenuator.set_parameters(
+            xwidth=attenuator.xwidth, yheight=attenuator.yheight, options='"lambda"'
+        )
+
         Vrpm = mycalculator.add_parameter(
             "double", "Vrpm", comment="velocity selector RPM", value=4000
         )
