@@ -163,6 +163,7 @@ class IN5(McStasInstrumentBase):
 
         lambda0 = mycalculator.parameters["lambda"]
         lambda0.value = 4.5
+
         # Ei = mycalculator.parameters["Ei"]
         # Ei.value = 15 * ureg.meV
         # Ei.add_interval(7.5, 130, True)
@@ -172,10 +173,14 @@ class IN5(McStasInstrumentBase):
         # del mycalculator.parameters["dlambda"]
         # mycalculator.add_declare_var("double", "lambda")
         # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
+
         mycalculator.add_declare_var("double", "neutron_velocity")
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
         mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
+        mycalculator.append_initialize(
+            'dlambda = 0.1*lambda;printf("dlambda = %.2f\\n", dlambda);'
+        )
 
         def tofdelay(fcomp, lcomp, delay=0):
             if fcomp.name != "Chopper0":
@@ -204,6 +209,7 @@ class IN5(McStasInstrumentBase):
         SourceTarget = mycalculator.add_component(
             "sourcetarget", "Arm", AT=2.55, RELATIVE="PREVIOUS"
         )
+        mysource.dist = SourceTarget.AT_data[2]
 
         ## CHOPPER TIME-RESET##########################/
         Chopper0 = mycalculator.add_component(
