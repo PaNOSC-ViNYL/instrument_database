@@ -11,7 +11,7 @@ instrument_name = "IN5"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
-flavour = "nosection"
+# flavour = "nosection"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 # myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
 
@@ -22,23 +22,23 @@ import pint
 ureg = pint.get_application_registry()
 
 # setting the base directory for the simulation output
-basedir = "/tmp/"+instrument_name
+basedir = "/tmp/" + instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
 # generation energy (monochromator)
-#myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
-#myinstrument.master["a4"] = 60 * ureg.degree
-#myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+# myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
+# myinstrument.master["a4"] = 60 * ureg.degree
+# myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 print(myinstrument.get_total_SPLIT())
 myinstrument.set_sample_by_name("vanadium")
 # myinstrument.set_sample_by_name("H2O")
 myinstrument.sample_cylinder_shape(0.005, 0.01)
 print(myinstrument)
-myinstrument.sim_neutrons(500000)
+myinstrument.sim_neutrons(500000000)
 myinstrument.set_seed(654321)
 
-#print("Ltof: "+str(myinstrument.calcLtof(myinstrument.calculators["OriginCalc"], "Chopper0", "Chopper1", True)))
-#sys.exit(0)
+# print("Ltof: "+str(myinstrument.calcLtof(myinstrument.calculators["OriginCalc"], "Chopper0", "Chopper1", True)))
+# sys.exit(0)
 # diagnostics
 # for calc in myinstrument.calculators.values():
 #    calc.show_diagram(analysis=True)

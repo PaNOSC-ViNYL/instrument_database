@@ -15,9 +15,10 @@ from mcstasscript.interface import instr
 my_configurator = functions.Configurator()
 
 # ------------------------------ Importing sources
-# from institutes.ILL.sources.HEAD.mcstas import Full as source
+from institutes.ILL.sources.HEAD.mcstas import Full as source
+
 # from institutes.ILL.sources.HEAD.mcstas import Gauss as source
-from institutes.ILL.sources.HEAD.mcstas import Gauss as source
+# from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 
 # from institutes.ILL.samples.vanadium import set_vanadium_sample
 
@@ -43,7 +44,7 @@ ureg = pint.get_application_registry()
 
 ############## Mandatory method
 def get_flavours():
-    return ["None", "nosection"]
+    return ["None", "full", "nosection"]
 
 
 ############## Mandatory method
@@ -74,7 +75,6 @@ class IN5(McStasInstrumentBase):
         super().__init__("IN5", do_section)
 
         # ------------------------------ some local variables
-        myinstr = self
 
         # ------------------------------------------------------------
         # Start with a first section and declaring its parameters
@@ -82,16 +82,15 @@ class IN5(McStasInstrumentBase):
 
         nu = mycalculator.add_parameter(
             "int",
-            "nu",
-            comment="Rotation frequency of disk choppers",
-            value=int(8500 / 60),
-            unit="Hz",
+            "speed",
+            comment="Rotation frequency of disk choppers RPM",
+            value=8500,
+            unit="",
         )
-        nu.add_interval(2000.0 / 60, 17000.0 / 60, True)  # must be positive
+        nu.add_interval(2000, 17000, True)  # must be positive
+
         ratio = mycalculator.add_parameter("double", "ratio", comment="", value=0.5)
-        housing = mycalculator.add_parameter(
-            "string", "housing", comment="", value='"Fe.laz"'
-        )
+
         # coh = mycalculator.add_parameter(
         #    "string", "coh", comment="", value="Y3Fe5O12_YIG.laz"
         # )
@@ -157,35 +156,54 @@ class IN5(McStasInstrumentBase):
         #
         det_angle = abs(ang_fin - ang_ini) / 2.0 + ang_ini
 
-        HCS = source.HCS_source(mycalculator)
-        HCS.E0 = 0
-        HCS.dE = 0
+        mysource = source.VCS_source(mycalculator)
 
-        HCS.lambda0 = "lambda"
-        HCS.dlambda = "dlambda"
-        HCS.target_index = 2
-        HCS.flux = 2.5e10
-        HCS.radius = 0.100 / 2
+        # mysource.target_index = 2
+        #        HCS.flux = 2.5e10
 
         lambda0 = mycalculator.parameters["lambda"]
         lambda0.value = 4.5
         # Ei = mycalculator.parameters["Ei"]
         # Ei.value = 15 * ureg.meV
         # Ei.add_interval(7.5, 130, True)
-        del mycalculator.parameters["Ei"]
-        del mycalculator.parameters["dE"]
+        # del mycalculator.parameters["Ei"]
+        # del mycalculator.parameters["dE"]
         # del mycalculator.parameters["lambda"]
         # del mycalculator.parameters["dlambda"]
         # mycalculator.add_declare_var("double", "lambda")
         # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
         mycalculator.add_declare_var("double", "neutron_velocity")
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
+        mycalculator.append_initialize('printf("nv = .%2f\\n", neutron_velocity);')
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
 
         def tofdelay(fcomp, lcomp, delay=0):
-            L = self.calcLtof(mycalculator, fcomp.name, lcomp.name)
-            print(f"L = {L}")
+            if fcomp.name != "Chopper0":
+                raise RuntimeError(
+                    "First component should be Chopper 0 for detay calculation"
+                )
+            if lcomp.name == "Chopper1":
+                L = 5.3083
+            elif lcomp.name == "Chopper2":
+                L = 5.4583
+            elif lcomp.name == "Chopper3":
+                L = 12.4289
+            elif lcomp.name == "Chopper4":
+                L = 12.4839
+            elif lcomp.name == "Chopper5":
+                L = 13.2539
+            elif lcomp.name == "Chopper6":
+                L = 13.3089
+            else:
+                RuntimeError("Last component should be one of the choppers")
+
+            # L = self.calcLtof(mycalculator, fcomp.name, lcomp.name, debug=True)
+            print(f"{fcomp.name} -> {lcomp.name} : L = {L}")
             return str(L) + "/neutron_velocity + " + str(delay)
+
+        SourceTarget = mycalculator.add_component(
+            "sourcetarget", "Arm", AT=2.55, RELATIVE="PREVIOUS"
+        )
 
         ## CHOPPER TIME-RESET##########################/
         Chopper0 = mycalculator.add_component(
@@ -195,7 +213,7 @@ class IN5(McStasInstrumentBase):
             theta_0=20.222,
             radius=0.285,
             yheight=0.2,
-            nu=nu,
+            nu="(speed/60)",
             nslit=2,
             delay=0.01,
             isfirst=1,
@@ -229,6 +247,7 @@ class IN5(McStasInstrumentBase):
             l=L_Guide21,
         )
 
+        # P1
         Chopper1 = mycalculator.add_component(
             "Chopper1", "DiskChopper", AT=L_Guide21 + disk_gap / 2, RELATIVE=Guide21
         )
@@ -236,7 +255,7 @@ class IN5(McStasInstrumentBase):
             theta_0=0.17,
             radius=0.285,
             yheight=0.17,
-            nu=nu,
+            nu="(speed/60)",
             nslit=2,
             delay=tofdelay(Chopper0, Chopper1, Chopper0.delay),  # Ch_phase[1]
         )
@@ -247,6 +266,7 @@ class IN5(McStasInstrumentBase):
         )
         Guide22.set_parameters(h1=Guide21.h2, h2=0.16813, l=L_Guide22)
 
+        # P2
         Chopper2 = mycalculator.add_component(
             "Chopper2", "DiskChopper", AT=L_Guide22 + disk_gap / 2, RELATIVE=Guide22
         )
@@ -254,7 +274,7 @@ class IN5(McStasInstrumentBase):
             theta_0=9.0,
             radius=0.285,
             yheight=0.16813,
-            nu=nu,
+            nu="(speed/60)",
             nslit=2,
             delay=tofdelay(Chopper0, Chopper2, Chopper0.delay),  # Ch_phase[2]
         )
@@ -291,7 +311,7 @@ class IN5(McStasInstrumentBase):
             theta_0=9.5,
             radius=0.299,
             yheight=0.081,
-            nu="nu * ratio",
+            nu="(speed/60.0 * ratio)",
             nslit=2,
             delay=tofdelay(Chopper0, Chopper3, Chopper0.delay),  # Ch_phase[3]
         )
@@ -310,7 +330,7 @@ class IN5(McStasInstrumentBase):
             theta_0=9.5,
             radius=0.299,
             yheight=0.08031,
-            nu=nu,
+            nu="(speed/60.0)",
             nslit=2,
             delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
         )
@@ -333,7 +353,7 @@ class IN5(McStasInstrumentBase):
             theta_0=3.25,
             radius=0.304,
             yheight=0.07069,
-            nu=nu,
+            nu="(speed/60.0)",
             nslit=2,
             delay=tofdelay(Chopper0, Chopper5, Chopper0.delay),  # Ch_phase[5]
         )
@@ -356,7 +376,7 @@ class IN5(McStasInstrumentBase):
             theta_0=3.25,
             radius=0.304,
             yheight=0.0700,
-            nu=nu,
+            nu="(speed/60.0)",
             nslit=2,
             delay=tofdelay(Chopper0, Chopper6, Chopper0.delay),  # Ch_phase[6]
         )
@@ -419,7 +439,7 @@ class IN5(McStasInstrumentBase):
             "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
         )
 
-        arm2 = self._sample_arm
+        # arm2 = self._sample_arm
 
         # COMPONENT SAMPLE = Isotropic_Sqw(
         #  radius = radius, thickness=thickness, yheight = height,
@@ -432,7 +452,22 @@ class IN5(McStasInstrumentBase):
         #   if(!SCATTERED) ABSORB;
         #%}
 
-        center_det = Sample_Out
+        mycalculator, center_det = self.add_new_section("DetectorCalc", Sample_Out)
+        mycalculator.add_parameter(
+            "int", "nt", comment="Number of time channels", value=512
+        )
+        mycalculator.add_parameter(
+            "int", "ny", comment="Number of vertical position channels", value=256
+        )
+        mycalculator.add_parameter(
+            "int",
+            "epchannel",
+            comment="Elastic peak position in number of channels",
+            value=295,
+        )
+        housing = mycalculator.add_parameter(
+            "string", "housing", comment="", value='"Fe.laz"'
+        )
 
         # --------------- DETECTOR IDEAL ----------------------------------------
 
@@ -459,6 +494,16 @@ class IN5(McStasInstrumentBase):
         )
 
         # ------------ PSD Detector ---------------------------------------------
+        detector = mycalculator.add_component(
+            "detector", "Cyl_TOF", AT=[0, 0, 0], RELATIVE=center_det
+        )
+        detector.set_parameters(
+            nphi=384,
+            ny=128,
+            nt=128,
+            yheight=3.0,
+            radius=4.0,
+        )
 
         Det_PSD = mycalculator.add_component(
             "Det_PSD", "PSD_Detector", AT=[0, 0, 0], RELATIVE=center_det
@@ -491,21 +536,47 @@ class IN5(McStasInstrumentBase):
 
         # ------------------------------ instrument parameters
 
-        OriginCalc = myinstr.calculators["OriginCalc"]
+        OriginCalc = self.calculators["OriginCalc"]
+        DetectorCalc = None
+        if do_section:
+            DetectorCalc = self.calculators["DetectorCalc"]
+        else:
+            DetectorCalc = OriginCalc
 
-        # myinstr.add_master_parameter(
-        #     "mono_index",
-        #     {OriginCalc.name: "mono_index"},
-        #     unit=OriginCalc.parameters["mono_index"].unit,
-        #     comment=OriginCalc.parameters["mono_index"].comment,
-        # )
+        self.add_master_parameter(
+            "speed",
+            {OriginCalc.name: "speed"},
+            unit=OriginCalc.parameters["speed"].unit,
+            comment=OriginCalc.parameters["speed"].comment,
+        )
 
-        #        myinstr.add_master_parameter(
-        #            "energy",
-        #            {OriginCalc.name: "Ei"},
-        #            unit=OriginCalc.parameters["Ei"].unit,
-        #            comment=OriginCalc.parameters["Ei"].comment,
-        #        )
+        self.add_master_parameter(
+            "ratio",
+            {OriginCalc.name: "ratio"},
+            unit=OriginCalc.parameters["ratio"].unit,
+            comment=OriginCalc.parameters["ratio"].comment,
+        )
+
+        self.add_master_parameter(
+            "lambda",
+            {OriginCalc.name: "lambda"},
+            unit=OriginCalc.parameters["lambda"].unit,
+            comment=OriginCalc.parameters["lambda"].comment,
+        )
+
+        self.add_master_parameter(
+            "nt",
+            {DetectorCalc.name: "nt"},
+            unit=DetectorCalc.parameters["nt"].unit,
+            comment=DetectorCalc.parameters["nt"].comment,
+        )
+
+        self.add_master_parameter(
+            "epchannel",
+            {DetectorCalc.name: "epchannel"},
+            unit=DetectorCalc.parameters["epchannel"].unit,
+            comment=DetectorCalc.parameters["epchannel"].comment,
+        )
 
         for c in [
             "Chopper0",
@@ -518,9 +589,11 @@ class IN5(McStasInstrumentBase):
         ]:
             print(c + " L=" + str(self.calcLtof(mycalculator, "Chopper0", c)))
 
-        #        myinstr.add_master_parameter(
-        #            "a3", {"SampleCalc": "sample_rotation"}, unit="degree"
-        #        )
+        self.master["ratio"] = 0.5
+        self.master["speed"] = 8500
+        self.master["lambda"] = 4.5
+        self.master["nt"] = 512
+        self.master["epchannel"] = 295
         #        myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
         #        myinstr.add_master_parameter("a6", {"AnalyzerCalc": "a6"}, unit="degree")
         #        myinstr.master["a2"] = 79.10 * ureg.degree
