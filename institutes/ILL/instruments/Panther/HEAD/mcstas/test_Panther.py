@@ -16,22 +16,6 @@ import matplotlib.pyplot as plt
 from Panther import def_instrument
 
 
-def get_distance(a, b, instr):
-    a = instr.get_component(a)
-    b = instr.get_component(b)
-    ia = instr.component_list.index(a)
-    ib = instr.component_list.index(b)
-    d = None
-    z = 0
-    for c in reversed(instr.component_list[ia:ib]):
-        if d is not None and c.name != d:
-            continue
-        print(c)
-        z = z + float(c.AT_data[2])
-        d = c.AT_reference
-    return z
-
-
 # ------------------------------ helper functions
 def get_parameters_from_NX(file):
     """Read the instrument parameters from the Nexus file"""
@@ -434,7 +418,7 @@ def test_direct_beam(config0, plot_settings, data_vanadium, detector_names):
 
 def test_vanadium(config_vanadium, plot_settings, data_vanadium, detector_names):
     myinstrument = config_vanadium
-    myinstrument.sim_neutrons(1e5)
+    myinstrument.settings(ncount=1e5)
 
     myinstrument.run()
 
