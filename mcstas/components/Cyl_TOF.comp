@@ -137,7 +137,7 @@ if (!nowritefile) {
   for(iphi=0; iphi < nphi; iphi++){
     char ff[256];
     char tt[256];
-    sprintf(ff, "%s_%i",filename,iphi);
+    sprintf(ff, "%s_%03i",filename,iphi);
     sprintf(tt, "PSD TOF monitor: tube %i ",iphi);
     DETECTOR_OUT_2D(
       tt,
