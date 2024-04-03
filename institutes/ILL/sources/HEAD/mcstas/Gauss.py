@@ -44,6 +44,12 @@ def HCS_source(mcstas_instrument: McCode_instr) -> Component:
 
     HCS.gauss = 1
     HCS.set_AT(["0", " 0", " 0"], RELATIVE=last_component)
+    # mcstas_instrument.add_declare_var(
+    #    "double", "time_frame", value=0, comment="width of the time frame"
+    # )
+    # HCS.append_EXTEND(
+    #    "t = rand0max(time_frame);"
+    # )  # set time from 0 to 1 ms for TOF instruments.
 
     # mcstas_instrument.add_parameter("lambda", comment="wavelength in angstroms")
     return HCS
