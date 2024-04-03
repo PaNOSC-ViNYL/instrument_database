@@ -625,7 +625,6 @@ class McStasInstrumentBase(Instrument):
             s_in.thickness = "sample_holder_thickness"
             s_in.verbose = 1
             s_in.concentric = 1
-            s_in.p_interact = 1
 
             s_out = mycalculator.copy_component(
                 "sample_holder_out",
@@ -641,9 +640,13 @@ class McStasInstrumentBase(Instrument):
         if self.sample is None:
             mycalculator.move_component(s_in, after=self._sample_arm)
             mycalculator.move_component(s_out, after=s_in)
+            s_in.p_interact = 1
+            s_out.p_interact = 1
         else:
             mycalculator.move_component(s_in, before=self.sample)
             mycalculator.move_component(s_out, after=self.sample)
+            s_in.p_interact = 0.3
+            s_out.p_interact = 0.3
 
         # ------------------------------ material
         if material in ["quartz", "QUARTZ"]:
@@ -722,6 +725,11 @@ class McStasInstrumentBase(Instrument):
         if name in ["empty", "Empty", "None", "none"]:
             self.sample = None
             self._sample_shape = None
+            if self._sample_holder is not None:
+                s_out = mycalculator.get_component("sample_holder_out")
+                s_in = mycalculator.get_component("sample_holder_in")
+                s_in.p_interact = 1
+                s_out.p_interact = 1
         elif name in ["monitor"]:
             self.sample_name = "sample_monitor"
             self.sample = mycalculator.add_component(
