@@ -133,7 +133,6 @@ def H15(mycalculator, mysource, SourceTarget):
     mysource.focus_xw = SourceTarget.w1
     mysource.focus_yh = SourceTarget.h1
 
-
     AlWindow2 = mycalculator.add_component(
         "Alw2", "Al_window", AT=3.522 + 0.001, RELATIVE=SourceTarget
     )
@@ -314,8 +313,9 @@ class D11simple(McStasInstrumentBase):
         )
 
         lambda0 = mycalculator.parameters["lambda"]
-        lambda0.value = 6
-        lambda0.add_interval(0.12, 12, True)
+        self.add_parameter_to_master("lambda", mycalculator, lambda0)
+        self.master["lambda"] = 6 * ureg.angstrom
+        self.master["lambda"].add_interval(0.12, 12, True)
 
         # mycalculator.add_declare_var("double", "lambda")
         # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
@@ -356,8 +356,14 @@ class D11(McStasInstrumentBase):
         )
 
         lambda0 = mycalculator.parameters["lambda"]
-        lambda0.value = 6
-        lambda0.add_interval(0.12, 12, True)
+        lambda0.value = 6 * ureg.angstrom
+        # lambda0.add_interval(0.12, 12, True)
+        self.add_parameter_to_master("lambda", mycalculator, lambda0)
+        #        self.master["lambda"] = 6 * ureg.angstrom
+        self.master["lambda"].add_interval(0.12, 12, True)
+
+        # lambda0.value = 6
+
         # Ei = mycalculator.parameters["Ei"]
         # Ei.value = 15 * ureg.meV
         # Ei.add_interval(7.5, 130, True)
@@ -379,16 +385,14 @@ class D11(McStasInstrumentBase):
         )
 
         sourcefluxfix = mycalculator.add_component(
-            "sourcefluxfix", "Filter_gen", AT=0.1, RELATIVE=mysource
+            "sourcefluxfix", "Attenuator", AT=0.1, RELATIVE=mysource
         )
         sourcefluxfix.set_parameters(
-            filename='"institutes/ILL/instruments/D11/HEAD/mcstas/data/attenuator1.trm"',
-            # filename='"HOPG.trm"',
             scaling=0.01,
             xwidth=mysource.xwidth * 3,
             yheight=mysource.yheight * 3,
-            verbose=0,
         )
+        #            Detector: PSD_attenuator_I=32518.3 PSD_attenuator_ERR=339.976 PSD_attenuator_N=35962 "PSD_attenuator_1695885726.L"
 
         AlWindow1 = mycalculator.add_component(
             "Alw1", "Al_window", AT=2.33, RELATIVE=mysource
@@ -450,15 +454,13 @@ class D11(McStasInstrumentBase):
         )
 
         attenuator = mycalculator.add_component(
-            "attenuator", "Filter_gen", AT=0.01, RELATIVE=velocity_selector_arm
+            "attenuator", "Attenuator", AT=0.01, RELATIVE=velocity_selector_arm
         )
+
         attenuator.set_parameters(
-            filename='"institutes/ILL/instruments/D11/HEAD/mcstas/data/attenuator1.trm"',
-            # filename='"HOPG.trm"',
             scaling="1.0/att_factor[attenuator_index]",
             xwidth=0.1,
             yheight=0.1,
-            verbose=0,
         )
 
         PSD_attenuator = mycalculator.add_component(
@@ -471,9 +473,16 @@ class D11(McStasInstrumentBase):
             options='"lambda"',
         )
 
+        if do_section is True:
+            lambda1 = mycalculator.add_parameter(
+                "double", lambda0.name, unit=lambda0.unit, comment=lambda0.comment
+            )
+            self.add_parameter_to_master(lambda0.name, mycalculator, lambda1)
+
         Vrpm = mycalculator.add_parameter(
-            "double", "Vrpm", comment="velocity selector RPM", value=4000
+            "double", "rpm", comment="velocity selector RPM", value=0
         )
+        Vrpm.add_option(0, True)
         Vrpm.add_interval(None, 3100, False)
         Vrpm.add_interval(28300, None, False)
         Vrpm.add_interval(9000, 11900, False)  # resonance speed for D11
@@ -489,17 +498,17 @@ class D11(McStasInstrumentBase):
             alpha=48.298,
             length=0.250,
             d=0.0004,
-            nu=Vrpm.name + str("/60"),
+            nu="{:s}/60".format(Vrpm.name),
             nslit=72,
         )
         mycalculator.append_initialize(
-            "Vrpm = 60*3956*"
-            + str(Dolores.alpha)
-            + "*DEG2RAD/2/PI/lambda/"
-            + str(Dolores.length)
-            + ";"
+            "if({}==0) {} = 60*3956*{:.6f}*DEG2RAD/2/PI/{}/{:.6f};".format(
+                Vrpm.name, Vrpm.name, Dolores.alpha, lambda0.name, Dolores.length
+            )
         )
-        mycalculator.append_initialize('printf("Vrpm = %.2f\\n", Vrpm);')
+        mycalculator.append_initialize(
+            'printf("VS rpm = %.2f\\n", {});'.format(Vrpm.name)
+        )
         if remove_H15:
             mysource.dist = Dolores.AT_data[2]
             mysource.focus_xw = Dolores.xwidth
@@ -587,6 +596,19 @@ class D11(McStasInstrumentBase):
             'printf("[ERROR] chosen collimation not within accepted values\\n");}'
         )
         # ----------------------------------------
+
+        disk_index = self.add_multislit(
+            mycalculator,
+            "disk6",
+            [
+                {"x": None, "y": None, "r": 0.010},  # 0°
+                {"x": 0.035, "y": 0.055, "r": None},  # 45°
+            ],
+            0.65,
+            sg30,
+        )
+        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        self.master[disk_index.name] = 1
 
         MovableGuideStart = mycalculator.add_component(
             "MovableGuideStart", "Arm", AT=0.66, RELATIVE=sg30
@@ -681,9 +703,31 @@ class D11(McStasInstrumentBase):
             collimation_length = collimation_length - movable_guide_config["l"][i]
 
         # /* Gap 17 mm at 20.5 m collimation */
-        gap=0.001
+        gap = 0.001
+        # ------------------------------ Disk 5
+        disk_index = self.add_multislit(
+            mycalculator,
+            "disk5",
+            [
+                {"x": 0.045, "y": 0.082, "r": None},  # 0°
+                {"x": 0.050, "y": 0.055, "r": None},  # 45°
+                {"x": None, "y": None, "r": 0.030},  # 90°
+                {"x": None, "y": None, "r": 0.020},  # 135°
+                {"x": None, "y": None, "r": 0.010},  # 180°
+                {"x": None, "y": None, "r": 0.000},  # 225°
+                {"x": 0.0385, "y": 0.055, "r": None},  # 270°
+                {"x": None, "y": None, "r": 0.000},  # 315°
+            ],
+            movable_guide_config["l"][5] + gap,
+            "mg5",
+            align="b",
+            after="mg5",
+        )
+        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        self.master[disk_index.name] = 1
+
         # ------------------------------ Disk 4
-        self.add_multislit(
+        disk_index = self.add_multislit(
             mycalculator,
             "disk4",
             [
@@ -696,13 +740,15 @@ class D11(McStasInstrumentBase):
                 {"x": 0.0395, "y": 0.055, "r": None},  # 270°
                 {"x": None, "y": None, "r": 0.000},  # 315°
             ],
-            movable_guide_config["l"][8]+gap,
+            movable_guide_config["l"][8] + gap,
             "mg8",
             align="b",
             after="mg8",
         )
+        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        self.master[disk_index.name] = 1
         # ------------------------------ Disk 3
-        self.add_multislit(
+        disk_index = self.add_multislit(
             mycalculator,
             "disk3",
             [
@@ -715,14 +761,15 @@ class D11(McStasInstrumentBase):
                 {"x": 0.038, "y": 0.055, "r": None},  # 270°
                 {"x": None, "y": None, "r": 0.000},  # 315°
             ],
-            movable_guide_config["l"][12]+gap,
+            movable_guide_config["l"][12] + gap,
             "mg12",
             align="b",
             after="mg12",
         )
-
+        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        self.master[disk_index.name] = 6
         # ------------------------------ Disk 2
-        self.add_multislit(
+        disk_index = self.add_multislit(
             mycalculator,
             "disk2",
             [
@@ -739,8 +786,10 @@ class D11(McStasInstrumentBase):
             "mg15",
             align="b",
         )
+        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        self.master[disk_index.name] = 6
         # ------------------------------ Disk 1
-        self.add_multislit(
+        disk_index = self.add_multislit(
             mycalculator,
             "disk1",
             [
@@ -755,9 +804,10 @@ class D11(McStasInstrumentBase):
             ],
             movable_guide_config["l"][15] + 2.5 - 0.5,
             "mg15",
-                        align="b",
-            
+            align="b",
         )
+        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
+        self.master[disk_index.name] = 2
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
@@ -802,11 +852,13 @@ class D11(McStasInstrumentBase):
         self.add_parameter_to_master(detpos.name, mycalculator, detpos)
 
         bs_x = mycalculator.add_parameter(
-            "double", "bs_x", comment="Beamstop x position", unit="m", value=141
+            "double", "bs_x", comment="Beamstop x position", unit="m", value=0.141
         )
         bs_y = mycalculator.add_parameter(
-            "double", "bs_y", comment="Beamstop y position", unit="m", value=650
+            "double", "bs_y", comment="Beamstop y position", unit="m", value=0.650
         )
+        self.add_parameter_to_master(bs_x.name, mycalculator, bs_x)
+        self.add_parameter_to_master(bs_y.name, mycalculator, bs_y)
 
         bs_index = mycalculator.add_parameter(
             "int",
@@ -814,10 +866,8 @@ class D11(McStasInstrumentBase):
             comment="Index to select the beamspot: 0-> beamstop width = 65mm, height=70mm; 1-> beamstop width = 75mm, height=80mm; 2-> beamstop width = 85mm, height=90mm; 3-> beamstop width = 95mm, height=100mm",
             value=1,
         )
-        bs_index.add_option([0, 1, 2, 3], True)
-        self.add_parameter_to_master(
-            bs_index.name, mycalculator, bs_index
-        )
+        bs_index.add_option([-1, 0, 1, 2, 3], True)
+        self.add_parameter_to_master(bs_index.name, mycalculator, bs_index)
 
         mycalculator.add_declare_var(
             "double", "bs_w", comment="beam stop width", unit="m", value=0
@@ -835,18 +885,18 @@ class D11(McStasInstrumentBase):
             + "  bs_w = 0.085; bs_h = 0.090;\n"
             + "} else if (bs_index == 3){\n"
             + "  bs_w = 0.095; bs_h = 0.100;\n"
-            + '} else printf("ERROR: bs_index out of range [0-3]\\n");'
+            + "} else if ((int)bs_index == -1){\n"
+            + "  bs_w = 0.001; bs_h =0.001; bs_x=0; bs_y=0;\n"
+            + '} else printf("ERROR: bs_index out of range [-1:-3]\\n");'
         )
+
         beamstop = mycalculator.add_component(
             "beamstop",
             "Beamstop",
-            AT=["bs_x - 141",
-                "bs_y - 650",
-                "{} - 0.08".format(detpos.name)],
+            AT=["bs_x - 0.141", "bs_y - 0.650", "{} - 0.08".format(detpos.name)],
             RELATIVE=center_det,
         )
         beamstop.set_parameters(xwidth="bs_w", yheight="bs_h")
-
         det_central_ntubes = 192  # number of tubes of the central panel of the detector
         tube_width = 0.008  # width of the tubes
         tube_length = 1.024  # tube length
@@ -862,30 +912,21 @@ class D11(McStasInstrumentBase):
         detector_central.set_parameters(
             xwidth=tube_length,
             yheight=det_central_ntubes * tube_width,
-            options='"parallel square '
-            + "x bins="
-            + str(det_length_nbins)
-            + " y bins="
-            + str(det_central_ntubes)
-            + '"',
+            options='"parallel square x bins={} y bins={} file={}"'.format(
+                det_length_nbins, det_central_ntubes, "detector_central.dat"
+            ),
         )
 
         # right looking from the source
         detector_right = mycalculator.add_component(
-            "detector_right",
-            "Monitor_nD",
-            AT=0,
-            RELATIVE=center_det,
+            "detector_right", "Monitor_nD", AT=0, RELATIVE=center_det
         )
         detector_right.set_parameters(
             xwidth=det_lateral_ntubes * tube_width,
             yheight=tube_length,
-            options='"parallel square '
-            + "x bins="
-            + str(det_lateral_ntubes)
-            + " y bins="
-            + str(det_length_nbins)
-            + '"',
+            options='"parallel square x bins={} y bins={} file={}"'.format(
+                det_lateral_ntubes, det_length_nbins, "detector_right.dat"
+            ),
         )
         detector_right.set_AT(
             [
@@ -905,6 +946,9 @@ class D11(McStasInstrumentBase):
                 detector_right.AT_data[2],
             ],
             RELATIVE=center_det,
+        )
+        detector_left.options = '"parallel square x bins={} y bins={} file={}"'.format(
+            det_lateral_ntubes, det_length_nbins, "detector_left.dat"
         )
 
         # ------------------------------ instrument parameters

@@ -311,23 +311,39 @@ class McStasInstrumentBase(Instrument):
 
         return psd
 
-    def add_multislit(self, mycalculator, name: str, forms, at=0, relative="PREVIOUS", after=None,align=None):
+    def add_multislit(
+        self,
+        mycalculator: BaseCalculator,
+        name: str,
+        forms,
+        at=0,
+        relative="PREVIOUS",
+        after=None,
+        align=None,
+    ):
         """
         Function that simplifies the addition of multiform/multisize collimation holes
-        forms : is a list dictionaries { x, y, r}
-        e.g.
+
+        :param mycalculator: the current calculator
+        :param name:         base name of the new components, an index will be appended to each
+        :param forms:        list of dict with 'x', 'y', and 'r' values for the slits
+        :param at:           position according to McStasScript AT convention
+        :param relative:     position according to McStasScript RELATIVE convention
+        :param after:        as in McstasScript
+        :param align:        None or 'b'. 'b' indicates that the rectangular openings are all aligned at the bottom
+
+        Example:
         forms = [
-        {"x": 0.035, "y": 0.035, "r": None},  # 0°
-        {"x": 0.020, "y": 0.020, "r": None},  # 45°
-        {"x": 0.015, "y": 0.015, "r": None},  # 90°
-        {"x": None, "y": None, "r": 0.020},  # 135°
-        {"x": None, "y": None, "r": 0.015},  # 180°
-        {"x": None, "y": None, "r": 0.010},  # 225°
-        {"x": 0.025, "y": 0.040, "r": None},  # 270°
-        {"x": 0.030, "y": 0.030, "r": None},  # 315°
+            {"x": 0.035, "y": 0.035, "r": None},
+            {"x": 0.020, "y": 0.020, "r": None},
+            {"x": 0.015, "y": 0.015, "r": None},
+            {"x": None, "y": None, "r": 0.020},
+            {"x": None, "y": None, "r": 0.015},
+            {"x": None, "y": None, "r": 0.010},
+            {"x": 0.025, "y": 0.040, "r": None},
+            {"x": 0.030, "y": 0.030, "r": None},
         ]
 
-        param align : None or 'b'
         """
 
         disk_index = mycalculator.add_parameter(
@@ -340,19 +356,19 @@ class McStasInstrumentBase(Instrument):
         allowed_values.extend(range(0, len(forms)))
         disk_index.add_option(allowed_values, True)
 
-
-        ywidthmin=None
+        ywidthmin = None
         if align is not None:
             if align != "b":
-                raise RuntimeError("parameter 'align' for add_multislit function not allowed: only None or 'b'")
-            
+                raise RuntimeError(
+                    "parameter 'align' for add_multislit function not allowed: only None or 'b'"
+                )
+
             for i in range(0, len(forms)):
                 size = forms[i]
                 if size["r"] is not None:
                     if ywidthmin is None or size["y"] < ywidthmin:
                         ywidthmin = size["y"]
 
-        
         for i in range(0, len(forms)):
             size = forms[i]
             diaph = mycalculator.add_component(
@@ -364,17 +380,35 @@ class McStasInstrumentBase(Instrument):
                 WHEN="{}=={:d}".format(disk_index.name, i),
             )
 
-            if size["y"] is not None and ywidthmin is not None and size["y"]> ywidthmin:
-                ymin = -size["y"] /2+ywidthmin
-                ymax = -size["y"] /2+ywidthmin
-                diaph.set_parameters(xwidth=size["x"], ymin=ymin, ymax=ymax, radius=size["r"])                       
+            if (
+                size["y"] is not None
+                and ywidthmin is not None
+                and size["y"] > ywidthmin
+            ):
+                ymin = -size["y"] / 2 + ywidthmin
+                ymax = -size["y"] / 2 + ywidthmin
+                diaph.set_parameters(
+                    xwidth=size["x"], ymin=ymin, ymax=ymax, radius=size["r"]
+                )
             else:
-                diaph.set_parameters(xwidth=size["x"], yheight=size["y"], radius=size["r"])
+                diaph.set_parameters(
+                    xwidth=size["x"], yheight=size["y"], radius=size["r"]
+                )
+
+        return disk_index
 
     def add_parameter_to_master(
         self, mastername: str, calc: BaseCalculator, par: Parameter
     ) -> None:
-        """Simplify the addition of a parameter to the master parameters"""
+        """
+        Simplify the addition of a parameter to the master parameters
+
+        :param mastername: name of the master parameter
+        :param calc:       current calculator containing the parameter
+        :param par:        parameter object defined in the current calculator
+
+        TODO: move to libpyvinyl library. It seems to me general enough and handy
+        """
 
         if mastername not in self.master:
             self.add_master_parameter(
@@ -383,6 +417,7 @@ class McStasInstrumentBase(Instrument):
                 unit=par.unit,
                 comment=par.comment,
             )
+            self.master[mastername] = par.value
         else:
             links = self.master[mastername].links
             if calc.name in links:
@@ -395,6 +430,7 @@ class McStasInstrumentBase(Instrument):
                 return
             links[calc.name] = par.name
             self.master[mastername].add_links(links)
+        self.master[mastername] = self.master[mastername].value
 
     def sample_focus(self, xwidth, yheight, zdistance):
         # if xwidth is None or yheight is None or zdistance is None:
@@ -433,6 +469,11 @@ class McStasInstrumentBase(Instrument):
         mycalculator.parameters["sample_thickness"].value = thickness
 
     def _set_sample_shape_as_holder(self) -> None:
+        """
+        Helper method to set the sample parameter values to match the shape of the sample holder.
+
+        This is meant to be used in case of liquids and gases.
+        """
         mycalculator = self._calculator_with_sample
         mycalculator.parameters["sample_radius"].value = mycalculator.parameters[
             "sample_holder_radius"
@@ -450,6 +491,21 @@ class McStasInstrumentBase(Instrument):
         mycalculator.parameters["sample_thickness"].value = 0
 
     def sample_shape(self, shape: str, r=None, w=None, h=None, d=None, th=0) -> None:
+        """
+        Sets the sample's shape parameters
+
+         :param shape: accepted values are shere, cylinder, box, holder
+         :param r:     None or float value of the radius for shere or cylinder shapes
+         :param w:     None or width of box shape
+         :param h:     None or height of cylinder and box shapes
+         :param d:     None or depth of box shape
+         :param th:    thickness of hollow shapes
+
+        Exceptions:
+           RuntimeError in case given values are not defined for the selected shape.
+
+        Only parameters related to the selected shapes are used, the others are discarded.
+        """
         self._sample_shape = shape
         if shape in ["shere", "SPHERE"]:
             if r is None or r <= 0:
@@ -597,46 +653,6 @@ class McStasInstrumentBase(Instrument):
 
             #        print(s_in)
             #        print(s_out)
-
-    def sample_sphere_shape(self, radius: float, thickness: float = 0) -> None:
-        if radius <= 0:
-            raise RuntimeError("Radius of spheric sample should be >0")
-        self._set_sample_shape(radius, 0, 0, 0, thickness)
-
-    def sample_cylinder_shape(
-        self, radius: float, height: float, thickness: float = 0
-    ) -> None:
-        if radius <= 0:
-            raise RuntimeError("Radius of cylindric sample should be >0")
-        if height <= 0:
-            raise RuntimeError("Height of cylindric sample should be >0")
-        self._set_sample_shape(radius, 0, height, 0, thickness)
-
-    def sample_box_shape(
-        self, width: float, height: float, depth: float, thickness: float = 0
-    ) -> None:
-        if width <= 0:
-            raise RuntimeError("Width of box sample should be >0")
-        if height <= 0:
-            raise RuntimeError("Height of box sample should be >0")
-        if depth <= 0:
-            raise RuntimeError("Depth of box sample should be >0")
-
-        self._set_sample_shape(0, width, height, depth, thickness)
-
-    def _check_sample_shape(self):
-        mycalculator = self._calculator_with_sample
-
-        r = mycalculator.parameters["sample_radius"].value
-        w = mycalculator.parameters["sample_width"].value
-        # h = mycalculator.parameters["sample_height"].value
-        # d = mycalculator.parameters["sample_depth"].value
-        # t = mycalculator.parameters["sample_thickness"].value
-
-        if r <= 0 and w <= 0:
-            raise RuntimeError(
-                "Sample shape should be defined by: sample_sphere_shape or sample_cylinder_shape or sample_box_shape methods"
-            )
 
     # ------------------------------
 
