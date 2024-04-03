@@ -422,11 +422,11 @@ class McStasInstrumentBase(Instrument):
 
         s_out = None
         s_in = None
+
         if self._sample_holder is None:
             self._sample_holder = mycalculator.add_component(
                 "sample_holder_in",
                 "Isotropic_Sqw",
-                before=self.sample,
                 AT=[0, 0, 0],
                 # ROTATED=[0, "a4", 0],
                 RELATIVE=self._sample_arm,
@@ -442,14 +442,13 @@ class McStasInstrumentBase(Instrument):
             s_in.yheight = "sample_holder_height"
             s_in.zdepth = "sample_holder_depth"
             s_in.thickness = "sample_holder_thickness"
-            s_in.verbose = 2
+            s_in.verbose = 1
             s_in.concentric = 1
             s_in.p_interact = 1
 
             s_out = mycalculator.copy_component(
                 "sample_holder_out",
                 self._sample_holder,
-                after=self.sample,
                 AT=0,
                 RELATIVE=self._sample_arm,
             )
@@ -458,12 +457,17 @@ class McStasInstrumentBase(Instrument):
             s_out = mycalculator.get_component("sample_holder_out")
             s_in = mycalculator.get_component("sample_holder_in")
 
+        if self.sample is None:
+            mycalculator.move_component(s_in, after=self._sample_arm)
+            mycalculator.move_component(s_out, after=s_in)
+        else:
+            mycalculator.move_component(s_in, before=self.sample)
+            mycalculator.move_component(s_out, after=self.sample)
+
         # ------------------------------ material
         if material == "quartz":
-            s_in.Sqw_coh = '"SiO2_quartza.laz"'
-            s_out.Sqw_coh = '"SiO2_quartza.laz"'
-            # s_in.Sqw_coh = '"Al.laz"'
-            # s_out.Sqw_coh = '"Al.laz"'
+            s_in.Sqw_coh = '"SiO2_liq.qSq"'
+            s_out.Sqw_coh = s_in.Sqw_coh
 
         else:
             raise RuntimeError(
@@ -567,14 +571,6 @@ class McStasInstrumentBase(Instrument):
         mycalculator = self._calculator_with_sample
 
         if self.sample is not None:
-            # add an Arm in order to keep the position
-            mycalculator.add_component(
-                self.sample_name,
-                "Arm",
-                before=self.sample,
-                AT=0,
-                RELATIVE=self._sample_arm,
-            )
             mycalculator.remove_component(self.sample)
             if "sqw_file" in mycalculator.parameters:
                 for p in ["sqw_file", "sqw_inc"]:
@@ -592,7 +588,6 @@ class McStasInstrumentBase(Instrument):
                 AT=[0, 0, 0],
                 # ROTATED=[0, "a4", 0],
                 RELATIVE=self._sample_arm,
-                after=self._sample_arm,
             )
             sample = self.sample
             # sample_radius, sample_height and sample_thickness added to the
@@ -613,7 +608,6 @@ class McStasInstrumentBase(Instrument):
             self.sample = mycalculator.add_component(
                 self.sample_name,
                 "Isotropic_Sqw",
-                after=self._sample_arm,
                 AT=[0, 0, 0],
                 # ROTATED=[0, "a4", 0],
                 RELATIVE=self._sample_arm,
@@ -629,7 +623,7 @@ class McStasInstrumentBase(Instrument):
             s.yheight = "sample_height"
             s.zdepth = "sample_depth"
             s.thickness = "sample_thickness"  # 0  # 0.002
-            s.verbose = 2
+            s.verbose = 1
             s.p_interact = 1
             s.d_phi = 180 / math.pi * self.focus_angle(self.focus_yh, self.target_z)
 
@@ -657,7 +651,7 @@ class McStasInstrumentBase(Instrument):
                 s.sigma_inc = 4.935
                 s.sigma_coh = 0
             elif name in ["qSq"]:
-                s.powder_format = '"qSq"'
+                s.powder_format = {-1, 0, 0, 0, 0, 0, 1, 0, 0}
                 sqwfile = mycalculator.add_parameter(
                     "string", "qSq_file", comment="File of the qSq in McStas convention"
                 )
@@ -703,6 +697,12 @@ class McStasInstrumentBase(Instrument):
 
         else:
             raise NameError(f"Sample with name {name} not implemented")
+
+        if self.sample is not None:
+            if self._sample_holder is None:
+                mycalculator.move_component(self.sample, after=self._sample_arm)
+            else:
+                mycalculator.move_component(self.sample, after=self._sample_holder)
 
         #        self.__sample_hash = hash(frozenset(vars(self.sample)))
         return self.sample
