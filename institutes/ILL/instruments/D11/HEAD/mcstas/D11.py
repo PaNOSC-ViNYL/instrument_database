@@ -108,7 +108,7 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour == "nosection":
         return D11(movable_guide_config["Borofloat_2001"], False)
     if flavour == "simple":
-        return D11simple(
+        return D11(
             movable_guide_config["Borkron_1972"], do_section=True, remove_H15=True
         )
     else:
@@ -476,7 +476,7 @@ class D11(McStasInstrumentBase):
         #     options='"lambda"',
         # )
 
-        if do_section is True:
+        if do_section is True and remove_H15 is False:
             lambda1 = mycalculator.add_parameter(
                 "double", lambda0.name, unit=lambda0.unit, comment=lambda0.comment
             )
