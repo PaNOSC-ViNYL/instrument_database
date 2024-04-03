@@ -253,7 +253,7 @@ class ThALES(McStasInstrumentBase):
         HCS.flux = 16e10
 
         mycalculator.parameters["dlambda"] = 0.08  # imported from HCS
-
+        mycalculator.parameters["dlambda"] = 0.02  # imported from HCS
         # ------------------------------------------------------------
         if not _start_from_virtual_source:
             HCS.dist = 2.155

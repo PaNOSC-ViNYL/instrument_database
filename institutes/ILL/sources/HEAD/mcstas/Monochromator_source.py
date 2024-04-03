@@ -58,9 +58,9 @@ def HCS_source(mcstas_instrument: McCode_instr) -> Component:
     )
     mcstas_instrument.append_initialize("dlambda = dlambda * lambda;")
     # the following python string is an alternative way of doing:
-    mcstas_instrument.add_declare_var("double", "energy")
+    # mcstas_instrument.add_declare_var("double", "energy")
     mcstas_instrument.append_initialize("Ei = 81.80421/(lambda*lambda);")
-    mcstas_instrument.add_declare_var("double", "denergy")
+    # mcstas_instrument.add_declare_var("double", "denergy")
     mcstas_instrument.append_initialize("dE = 2*Ei*dlambda/lambda;")
     mcstas_instrument.append_initialize(
         'printf("lambda: %.2f +/- %.2f\\n", lambda, dlambda);'
