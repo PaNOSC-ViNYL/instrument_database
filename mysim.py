@@ -6,10 +6,11 @@ import os
 # print(os.getenv("MCSTAS"))
 repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
+instrument_name = "Panther"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
-# flavour = "nosection"
+flavour = "nosection"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 # myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
 
@@ -20,13 +21,13 @@ import pint
 ureg = pint.get_application_registry()
 
 # setting the base directory for the simulation output
-basedir = "/tmp/ThALES_scan/"
+basedir = "/tmp/"+instrument_name
 myinstrument.set_instrument_base_dir(basedir)
 
 # generation energy (monochromator)
-myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
-myinstrument.master["a4"] = 60 * ureg.degree
-myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+#myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
+#myinstrument.master["a4"] = 60 * ureg.degree
+#myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 print(myinstrument.get_total_SPLIT())
 myinstrument.set_sample_by_name("vanadium")
 # myinstrument.set_sample_by_name("H2O")
@@ -42,6 +43,8 @@ myinstrument.set_seed(654321)
 # mycalc.show_diagram(analysis=True)
 import mcstasscript as ms
 
+myinstrument.run()
+sys.exit(0)
 np = 21
 np = (np - 1) / 2
 dEI = 0.05
