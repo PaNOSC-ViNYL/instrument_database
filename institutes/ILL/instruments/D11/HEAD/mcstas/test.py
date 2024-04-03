@@ -81,7 +81,9 @@ def center_of_mass(data, nx_min, nx_max, ny_min, ny_max):
 
 
 def read_test(myinstrument, test_number, acquisition_time):
-    simulation_dir = set_test_dir(myinstrument.name, test_number) + "/OriginCalc"
+    simulation_dir = args.simulation_dir
+    if simulation_dir is None:
+        simulation_dir = set_test_dir(myinstrument.name, test_number) + "/OriginCalc"
     print("simulation dir: " + simulation_dir)
     myinstrument.set_test(test_number)
     metadata_list = load_metadata(simulation_dir)
