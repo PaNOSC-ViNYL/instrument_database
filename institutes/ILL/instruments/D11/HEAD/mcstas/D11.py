@@ -26,8 +26,7 @@ my_configurator = functions.Configurator()
 
 # ------------------------------ Importing sources
 from institutes.ILL.sources.HEAD.mcstas import Full as source
-
-# from institutes.ILL.sources.HEAD.mcstas import Gauss as source
+ from institutes.ILL.sources.HEAD.mcstas import Gauss as sourcesimple
 # from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 
 # from institutes.ILL.samples.vanadium import set_vanadium_sample
@@ -104,19 +103,57 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour == "nosection":
         return D11(movable_guide_config["Borkron_1972"], False)
     if flavour == "simple":
-        return D11(
+        return D11simple(
             movable_guide_config["Borkron_1972"], do_section=True, remove_H15=True
         )
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
 
 
+class D11simple(McStasInstrumentBase):
+    """:class: Instrument class definito the D11 instrument at ILL after the velocity selector"""
+
+    # ------------------------------ The instrument definition goes in the __init__
+    def __init__(self, movable_guide_config, do_section=True, remove_H15=False):
+        """Here the real definition of the instrument is performed"""
+
+        super().__init__("IN5", do_section)
+
+                # ------------------------------------------------------------
+        # Start with a first section and declaring its parameters
+        mycalculator, Origin = self.add_new_section("OriginCalc")
+
+        # ================ Distances
+
+        mysource = sourcesimple.VCS_source(mycalculator)
+        mysource.set_parameters(
+            xwidth=0.10,
+            zdepth=0.1,
+        )
+
+        lambda0 = mycalculator.parameters["lambda"]
+        lambda0.value = 6
+        lambda0.add_interval(0.12, 12, True)
+
+        # mycalculator.add_declare_var("double", "lambda")
+        # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
+
+        mycalculator.add_declare_var("double", "neutron_velocity")
+        mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
+        mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
+
+        mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
+
+
+        
 class D11(McStasInstrumentBase):
     """:class: Instrument class defining the D11 instrument at ILL"""
 
     # ------------------------------ utility methods made available for the users
 
     # ------------------------------ Internal methods (not available to users)
+    gElementGap = 0.004
+
     def __H15(self, mycalculator, mysource, SourceTarget):
         """Description of the H15 guide"""
         PinkCarter = mycalculator.add_component(
@@ -215,7 +252,6 @@ class D11(McStasInstrumentBase):
 
         gLength3 = 5.4  # 5 pieces
         gElmtLength3 = gLength3 / 5
-        gElementGap = 0.004
 
         # /* Ni guide -> IN6: 22.284 m long at 27.588, 22 elements */
         sg1 = mycalculator.copy_component(
@@ -436,6 +472,14 @@ class D11(McStasInstrumentBase):
             nu=Vrpm.name + str("/60"),
             nslit=72,
         )
+        mycalculator.append_initialize(
+            "Vrpm = 60*3956*"
+            + str(Dolores.alpha)
+            + "*DEG2RAD/2/PI/lambda/"
+            + str(Dolores.length)
+            + ";"
+        )
+        mycalculator.append_initialize('printf("Vrpm = %.2f\\n", Vrpm);')
         if remove_H15:
             mysource.dist = Dolores.AT_data[2]
             mysource.focus_xw = Dolores.xwidth
@@ -451,7 +495,9 @@ class D11(McStasInstrumentBase):
         sg30 = mycalculator.add_component(
             "sg30", "Guide_gravity", AT=0.15 + 0.02, RELATIVE=Dolores
         )
-        # sg30.set_parameters(sg29.component_parameters)
+        sg30.set_parameters(
+            w1=0.03, w2=0.03, h1=0.05, h2=0.05, l=0.5 - self.gElementGap, m=0.65
+        )
 
         # /* Gap 16 cm, start of movable guide */
         AlWindow12 = mycalculator.copy_component(
