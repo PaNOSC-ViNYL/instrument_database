@@ -7,6 +7,7 @@ import os
 repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
 instrument_name = "Panther"
+instrument_name = "IN5"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
