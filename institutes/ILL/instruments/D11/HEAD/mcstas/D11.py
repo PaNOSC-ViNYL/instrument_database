@@ -996,7 +996,7 @@ class D11(McStasInstrumentBase):
                 + det_lateral_gap
                 + detector_right.xwidth / 2,
                 0,
-                "{} - 0.04".format(detpos.name),
+                "{} - 0.10".format(detpos.name),
             ]
         )
         detector_left = mycalculator.copy_component(
