@@ -26,7 +26,8 @@ my_configurator = functions.Configurator()
 
 # ------------------------------ Importing sources
 from institutes.ILL.sources.HEAD.mcstas import Full as source
- from institutes.ILL.sources.HEAD.mcstas import Gauss as sourcesimple
+from institutes.ILL.sources.HEAD.mcstas import Gauss as sourcesimple
+
 # from institutes.ILL.sources.HEAD.mcstas import Gauss as source
 
 # from institutes.ILL.samples.vanadium import set_vanadium_sample
@@ -101,13 +102,194 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour in movable_guide_config:
         return D11(movable_guide_config[flavour], do_section=True)
     if flavour == "nosection":
-        return D11(movable_guide_config["Borkron_1972"], False)
+        return D11(movable_guide_config["Borofloat_2001"], False)
     if flavour == "simple":
         return D11simple(
             movable_guide_config["Borkron_1972"], do_section=True, remove_H15=True
         )
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
+
+
+def H15(mycalculator, mysource, SourceTarget):
+    """Description of the H15 guide"""
+    gElementGap = 0.004
+    PinkCarter = mycalculator.add_component(
+        "pinkcarter", "Guide_gravity", AT=0, RELATIVE=SourceTarget
+    )
+    PinkCarter.set_parameters(
+        w1=0.038,
+        h1=0.2,
+        w2=0.032,
+        h2=0.2,
+        l=3.170,
+        R0=0.995,
+        Qc=0.0218,
+        alpha=4.07,
+        m=1,
+        W=1.0 / 300.0,
+    )
+    SourceTarget = PinkCarter
+    mysource.focus_xw = SourceTarget.w1
+    mysource.focus_yh = SourceTarget.h1
+    mysource.dist = SourceTarget.AT_data[2]
+
+    AlWindow2 = mycalculator.add_component(
+        "Alw2", "Al_window", AT=3.522 + 0.001, RELATIVE=SourceTarget
+    )
+    AlWindow2.set_parameters(thickness=0.002)
+
+    # /* Followed by a 228 mm guide (for H1) in Obturator, after at 10 mm gap, ends at 5.952 m from source after 80 mm gap */
+
+    LeadShutter = mycalculator.copy_component(
+        "LeadShutter", PinkCarter, AT=3.522 + 0.01, RELATIVE=SourceTarget
+    )
+
+    LeadShutter.set_parameters(w1=PinkCarter.w2, l=0.228)
+
+    AlWindow3 = mycalculator.copy_component(
+        "Alw3", AlWindow2, AT=0.228 + 0.005, RELATIVE=LeadShutter
+    )  # TODO: controllare lo spessore
+
+    # /*-------------------------*/
+    # /*  Curved Guide  ("MAN")  */
+    # /*-------------------------*/
+
+    # /* curvature radius is 2700 m , start at XR=5.913 m from source */
+
+    CurvedGuideStart = mycalculator.add_component(
+        "CurvedGuideStart", "Arm", AT=0.228 + 0.08, RELATIVE=LeadShutter
+    )
+
+    # /* curved part 1, 25 elements : should be 25.5 m long, rho=2700 */
+    #  double gGuideWidth        = 0.03;
+    gLength1 = 25.5  # 25 pieces
+    gElmtLength1 = gLength1 / 25
+    gCurvatureRadius = 2700.0
+    gElmtRot1 = gElmtLength1 / gCurvatureRadius * 180 / math.pi
+
+    cg1 = mycalculator.copy_component(
+        "cg1",
+        PinkCarter,
+        AT=[0, 0, 0],
+        RELATIVE=CurvedGuideStart,
+        ROTATED=[0, gElmtRot1, 0],
+    )
+    cg1.set_parameters(w1=0.03, w2=0.03, l=gElmtLength1 - 0.004, m=1)
+
+    for i in range(2, 26):
+        cg_next = mycalculator.copy_component(
+            "cg" + str(i),
+            cg1,
+            AT=[0, 0, gElmtLength1],
+            RELATIVE="PREVIOUS",
+            ROTATED=[0, gElmtRot1, 0],
+        )
+
+    # /* gap V.T.E. 0.260 at 27408 */
+
+    AlWindow4 = mycalculator.copy_component(
+        "Alw4", AlWindow3, AT=gElmtLength1 + 0.001, RELATIVE="PREVIOUS"
+    )
+
+    PSD_VTE = mycalculator.add_component(
+        "PSD_VTE", "Monitor_nD", AT=0.13, RELATIVE=AlWindow4
+    )
+    PSD_VTE.set_parameters(xwidth=cg1.w1, yheight=cg1.h1, options='"xy"')
+
+    AlWindow5 = mycalculator.copy_component(
+        "Alw5", AlWindow4, AT=0.26 - 0.003, RELATIVE=AlWindow4
+    )
+
+    VTEtoIN6GuideStart = mycalculator.add_component(
+        "VTEtoIN6GuideStart", "Arm", AT=0.003, RELATIVE=AlWindow5
+    )
+
+    gLength2 = 22.284  # 22 pieces
+    gElmtLength2 = gLength2 / 22
+
+    gLength3 = 5.4  # 5 pieces
+    gElmtLength3 = gLength3 / 5
+
+    # /* Ni guide -> IN6: 22.284 m long at 27.588, 22 elements */
+    sg1 = mycalculator.copy_component(
+        "sg1", cg1, AT=[0, 0, 0], RELATIVE=VTEtoIN6GuideStart
+    )
+    sg1.set_parameters(
+        l=gElmtLength2 - gElementGap,
+    )
+    for i in range(2, 23):
+        sg_next = mycalculator.copy_component(
+            "sg" + str(i), sg1, AT=gElmtLength2, RELATIVE="PREVIOUS"
+        )
+
+    # /* gap 0.3 m  OT, OS IN6 H15 */
+
+    AlWindow6 = mycalculator.copy_component(
+        "Alw6", AlWindow2, AT=gElmtLength2 + 0.001, RELATIVE="PREVIOUS"
+    )
+
+    PSD_IN6 = mycalculator.copy_component(
+        "PSD_IN6", PSD_VTE, AT=0.15, RELATIVE=AlWindow6
+    )
+
+    AlWindow7 = mycalculator.copy_component(
+        "Alw7", AlWindow2, AT=0.29, RELATIVE=AlWindow6
+    )
+
+    IN6toD7GuideStart = mycalculator.add_component(
+        "IN6toD7GuideStart", "Arm", AT=0.30, RELATIVE=AlWindow6
+    )
+
+    # /* Ni guide -> D7 Carter Man 2 L=5.4 */
+
+    sg23 = mycalculator.copy_component(
+        "sg23", sg1, AT=[0, 0, 0], RELATIVE=IN6toD7GuideStart
+    )
+
+    sg23.l = gElmtLength3 - gElementGap
+
+    for i in range(24, 28):
+        sg_next = mycalculator.copy_component(
+            "sg" + str(i), sg1, AT=gElmtLength3, RELATIVE="PREVIOUS"
+        )
+
+    # /* gap 0.3 m OS D7/D11 at 55572 */
+
+    AlWindow8 = mycalculator.copy_component(
+        "Alw8", AlWindow2, AT=gElmtLength3 + 0.001, RELATIVE="PREVIOUS"
+    )
+
+    PSD_D7 = mycalculator.copy_component("PSD_D7", PSD_VTE, AT=0.15, RELATIVE=AlWindow8)
+
+    AlWindow9 = mycalculator.copy_component(
+        "Alw9", AlWindow2, AT=0.29, RELATIVE=AlWindow8
+    )
+
+    D7toD11GuideStart = mycalculator.add_component(
+        "D7toD11GuideStart", "Arm", AT=[0, -0.065, 0.30], RELATIVE=AlWindow8
+    )
+
+    # /* Glass guide SPRI 1.25 m h=0.05 AT (0,-0.065,0.3) */
+
+    sg28 = mycalculator.copy_component(
+        "sg28", sg1, AT=[0, 0, 0], RELATIVE=D7toD11GuideStart
+    )
+
+    sg28.set_parameters(h1=0.05, h2=0.05, l=1.25 - gElementGap, m=0.65)
+    # /* Glass guide  0.68 h=0.05 */
+
+    sg29 = mycalculator.copy_component("sg29", sg28, AT=1.25, RELATIVE=sg28)
+    sg29.l = 0.5 - gElementGap
+
+    # /* Velocity selector 0.3. Path in atm is 7 cm */
+
+    AlWindow10 = mycalculator.copy_component(
+        "Alw10", AlWindow2, AT=0.5 + 0.001, RELATIVE=sg29
+    )
+    AlWindow10.thickness = 0.004
+
+    return mycalculator, AlWindow10
 
 
 class D11simple(McStasInstrumentBase):
@@ -119,7 +301,7 @@ class D11simple(McStasInstrumentBase):
 
         super().__init__("IN5", do_section)
 
-                # ------------------------------------------------------------
+        # ------------------------------------------------------------
         # Start with a first section and declaring its parameters
         mycalculator, Origin = self.add_new_section("OriginCalc")
 
@@ -145,7 +327,6 @@ class D11simple(McStasInstrumentBase):
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
 
 
-        
 class D11(McStasInstrumentBase):
     """:class: Instrument class defining the D11 instrument at ILL"""
 
@@ -153,187 +334,6 @@ class D11(McStasInstrumentBase):
 
     # ------------------------------ Internal methods (not available to users)
     gElementGap = 0.004
-
-    def __H15(self, mycalculator, mysource, SourceTarget):
-        """Description of the H15 guide"""
-        PinkCarter = mycalculator.add_component(
-            "pinkcarter", "Guide_gravity", AT=SourceTarget, RELATIVE=SourceTarget
-        )
-        PinkCarter.set_parameters(
-            w1=0.038,
-            h1=0.2,
-            w2=0.032,
-            h2=0.2,
-            l=3.170,
-            R0=0.995,
-            Qc=0.0218,
-            alpha=4.07,
-            m=1,
-            W=1.0 / 300.0,
-        )
-        SourceTarget = PinkCarter
-        mysource.focus_xw = SourceTarget.w1
-        mysource.focus_yh = SourceTarget.h1
-        mysource.dist = SourceTarget.AT_data[2]
-
-        AlWindow2 = mycalculator.add_component(
-            "Alw2", "Al_window", AT=3.522 + 0.001, RELATIVE=SourceTarget
-        )
-        AlWindow2.set_parameters(thickness=0.002)
-
-        # /* Followed by a 228 mm guide (for H1) in Obturator, after at 10 mm gap, ends at 5.952 m from source after 80 mm gap */
-
-        LeadShutter = mycalculator.copy_component(
-            "LeadShutter", PinkCarter, AT=3.522 + 0.01, RELATIVE=SourceTarget
-        )
-
-        LeadShutter.set_parameters(w1=PinkCarter.w2, l=0.228)
-
-        AlWindow3 = mycalculator.copy_component(
-            "Alw3", AlWindow1, AT=0.228 + 0.005, RELATIVE=LeadShutter
-        )
-
-        # /*-------------------------*/
-        # /*  Curved Guide  ("MAN")  */
-        # /*-------------------------*/
-
-        # /* curvature radius is 2700 m , start at XR=5.913 m from source */
-
-        CurvedGuideStart = mycalculator.add_component(
-            "CurvedGuideStart", "Arm", AT=0.228 + 0.08, RELATIVE=LeadShutter
-        )
-
-        # /* curved part 1, 25 elements : should be 25.5 m long, rho=2700 */
-        #  double gGuideWidth        = 0.03;
-        gLength1 = 25.5  # 25 pieces
-        gElmtLength1 = gLength1 / 25
-        gCurvatureRadius = 2700.0
-        gElmtRot1 = gElmtLength1 / gCurvatureRadius * 180 / math.pi
-
-        cg1 = mycalculator.copy_component(
-            "cg1",
-            PinkCarter,
-            AT=[0, 0, 0],
-            RELATIVE=CurvedGuideStart,
-            ROTATED=[0, gElmtRot1, 0],
-        )
-        cg1.set_parameters(w1=0.03, w2=0.03, l=gElmtLength1 - 0.004, m=1)
-
-        for i in range(2, 26):
-            cg_next = mycalculator.copy_component(
-                "cg" + str(i),
-                cg1,
-                AT=[0, 0, gElmtLength1],
-                RELATIVE="PREVIOUS",
-                ROTATED=[0, gElmtRot1, 0],
-            )
-
-        # /* gap V.T.E. 0.260 at 27408 */
-
-        AlWindow4 = mycalculator.copy_component(
-            "Alw4", AlWindow3, AT=gElmtLength1 + 0.001, RELATIVE="PREVIOUS"
-        )
-
-        PSD_VTE = mycalculator.add_component(
-            "PSD_VTE", "Monitor_nD", AT=0.13, RELATIVE=AlWindow4
-        )
-        PSD_VTE.set_parameters(xwidth=cg1.w1, yheight=cg1.h1, options='"xy"')
-
-        AlWindow5 = mycalculator.copy_component(
-            "Alw5", AlWindow4, AT=0.26 - 0.003, RELATIVE=AlWindow4
-        )
-
-        VTEtoIN6GuideStart = mycalculator.add_component(
-            "VTEtoIN6GuideStart", "Arm", AT=0.003, RELATIVE=AlWindow5
-        )
-
-        gLength2 = 22.284  # 22 pieces
-        gElmtLength2 = gLength2 / 22
-
-        gLength3 = 5.4  # 5 pieces
-        gElmtLength3 = gLength3 / 5
-
-        # /* Ni guide -> IN6: 22.284 m long at 27.588, 22 elements */
-        sg1 = mycalculator.copy_component(
-            "sg1", cg1, AT=[0, 0, 0], RELATIVE=VTEtoIN6GuideStart
-        )
-        sg1.set_parameters(
-            l=gElmtLength2 - gElementGap,
-        )
-        for i in range(2, 23):
-            sg_next = mycalculator.copy_component(
-                "sg" + str(i), sg1, AT=gElmtLength2, RELATIVE="PREVIOUS"
-            )
-
-        # /* gap 0.3 m  OT, OS IN6 H15 */
-
-        AlWindow6 = mycalculator.copy_component(
-            "Alw6", AlWindow1, AT=gElmtLength2 + 0.001, RELATIVE="PREVIOUS"
-        )
-
-        PSD_IN6 = mycalculator.copy_component(
-            "PSD_IN6", PSD_VTE, AT=0.15, RELATIVE=AlWindow6
-        )
-
-        AlWindow7 = mycalculator.copy_component(
-            "Alw7", AlWindow1, AT=0.29, RELATIVE=AlWindow6
-        )
-
-        IN6toD7GuideStart = mycalculator.add_component(
-            "IN6toD7GuideStart", "Arm", AT=0.30, RELATIVE=AlWindow6
-        )
-
-        # /* Ni guide -> D7 Carter Man 2 L=5.4 */
-
-        sg23 = mycalculator.copy_component(
-            "sg23", sg1, AT=[0, 0, 0], RELATIVE=IN6toD7GuideStart
-        )
-
-        sg23.l = gElmtLength3 - gElementGap
-
-        for i in range(24, 28):
-            sg_next = mycalculator.copy_component(
-                "sg" + str(i), sg1, AT=gElmtLength3, RELATIVE="PREVIOUS"
-            )
-
-        # /* gap 0.3 m OS D7/D11 at 55572 */
-
-        AlWindow8 = mycalculator.copy_component(
-            "Alw8", AlWindow1, AT=gElmtLength3 + 0.001, RELATIVE="PREVIOUS"
-        )
-
-        PSD_D7 = mycalculator.copy_component(
-            "PSD_D7", PSD_VTE, AT=0.15, RELATIVE=AlWindow8
-        )
-
-        AlWindow9 = mycalculator.copy_component(
-            "Alw9", AlWindow1, AT=0.29, RELATIVE=AlWindow8
-        )
-
-        D7toD11GuideStart = mycalculator.add_component(
-            "D7toD11GuideStart", "Arm", AT=[0, -0.065, 0.30], RELATIVE=AlWindow8
-        )
-
-        # /* Glass guide SPRI 1.25 m h=0.05 AT (0,-0.065,0.3) */
-
-        sg28 = mycalculator.copy_component(
-            "sg28", sg1, AT=[0, 0, 0], RELATIVE=D7toD11GuideStart
-        )
-
-        sg28.set_parameters(h1=0.05, h2=0.05, l=1.25 - gElementGap, m=0.65)
-        # /* Glass guide  0.68 h=0.05 */
-
-        sg29 = mycalculator.copy_component("sg29", sg28, AT=1.25, RELATIVE=sg28)
-        sg29.l = 0.5 - gElementGap
-
-        # /* Velocity selector 0.3. Path in atm is 7 cm */
-
-        AlWindow10 = mycalculator.copy_component(
-            "Alw10", AlWindow1, AT=0.5 + 0.001, RELATIVE=sg29
-        )
-        AlWindow10.thickness = 0.004
-
-        return mycalculator, AlWindow10
 
     # ------------------------------ The instrument definition goes in the __init__
     def __init__(self, movable_guide_config, do_section=True, remove_H15=False):
@@ -432,9 +432,7 @@ class D11(McStasInstrumentBase):
         )
 
         if remove_H15 is False:
-            mycalculator, lastcomponent = self.__H15(
-                mycalculator, mysource, SourceTarget
-            )
+            mycalculator, lastcomponent = H15(mycalculator, mysource, SourceTarget)
         # ------------------------------
         velocity_selector_mcpl_arm = mycalculator.add_component(
             "velocity_selector_mcpl_arm",
@@ -513,6 +511,55 @@ class D11(McStasInstrumentBase):
             "Alw13", AlWindow12, AT=0.5 + 0.03 - 0.003, RELATIVE=sg30
         )
 
+        # ----------------------------------------
+        collimation = mycalculator.add_parameter(
+            "double",
+            "collimation",
+            comment="Collimation length: free path between end of the guide and sample",
+            unit="m",
+            value=1.5,
+        )
+        collimation_options = [
+            40.5,
+            34,
+            28,
+            20.5,
+            16.5,
+            13.5,
+            10.5,
+            8,
+            5.5,
+            4,
+            2.5,
+            1.5,
+        ]
+        collimation.add_option(collimation_options, True)
+
+        mycalculator.add_declare_var(
+            "double",
+            "collimation_options",
+            array=len(collimation_options),
+            value=collimation_options,
+            comment="accepted values for collimation",
+        )
+
+        icollimation = mycalculator.add_declare_var(
+            "int",
+            "icollimation",
+            comment="index of the chosen collimation within the array of accepted values",
+            value=0,
+        )
+        mycalculator.append_initialize(
+            "while(collimation_options[icollimation]>collimation)icollimation++;"
+        )
+        mycalculator.append_initialize(
+            "if(collimation!=collimation_options[icollimation]){"
+        )
+        mycalculator.append_initialize(
+            'printf("[ERROR] chosen collimation not within accepted values\\n");}'
+        )
+        # ----------------------------------------
+
         MovableGuideStart = mycalculator.add_component(
             "MovableGuideStart", "Arm", AT=0.66, RELATIVE=sg30
         )
@@ -520,21 +567,43 @@ class D11(McStasInstrumentBase):
         # /* D11 Movable guide start */
         microGap = 0.0001
 
+        def inactive_coll(i, collimation_length, movable_guide_config):
+            print(
+                i,
+                "("
+                + str(collimation_length)
+                + " - collimation)>0 ? "
+                + str(movable_guide_config["n"][i])
+                + " : 0",
+            )
+
+            return (
+                "("
+                + str(collimation_length)
+                + " - collimation)>0 ? "
+                + str(movable_guide_config["n"][i])
+                + " : 0"
+            )
+
+        collimation_length = collimation_options[0]
         mg0 = mycalculator.copy_component("mg0", sg30, AT=0, RELATIVE=MovableGuideStart)
         mg0.set_parameters(
             l=movable_guide_config["l"][0],
             chamfers_tb=movable_guide_config["chamfers"],
             chamfers_z=movable_guide_config["chamfers"],
-            nelements=movable_guide_config["n"][0],
+            nelements=inactive_coll(0, collimation_length, movable_guide_config),
             wavy=movable_guide_config["waviness"],
         )
+        collimation_length = collimation_length - movable_guide_config["l"][0]
 
         mg1 = mycalculator.copy_component(
             "mg1", mg0, AT=microGap + movable_guide_config["l"][0], RELATIVE="PREVIOUS"
         )
         mg1.set_parameters(
-            l=movable_guide_config["l"][1], nelements=movable_guide_config["n"][1]
+            l=movable_guide_config["l"][1],
+            nelements=inactive_coll(1, collimation_length, movable_guide_config),
         )
+        collimation_length = collimation_length - movable_guide_config["l"][1]
 
         for i in range(2, 4):
             mg_next = mycalculator.copy_component(
@@ -546,8 +615,10 @@ class D11(McStasInstrumentBase):
                 RELATIVE="PREVIOUS",
             )
             mg_next.set_parameters(
-                l=movable_guide_config["l"][i], nelements=movable_guide_config["n"][i]
+                l=movable_guide_config["l"][i],
+                nelements=inactive_coll(i, collimation_length, movable_guide_config),
             )
+            collimation_length = collimation_length - movable_guide_config["l"][i]
 
         dist = [
             0,
@@ -576,8 +647,10 @@ class D11(McStasInstrumentBase):
                 RELATIVE="PREVIOUS",
             )
             mg_next.set_parameters(
-                l=movable_guide_config["l"][i], nelements=movable_guide_config["n"][i]
+                l=movable_guide_config["l"][i],
+                nelements=inactive_coll(i, collimation_length, movable_guide_config),
             )
+            collimation_length = collimation_length - movable_guide_config["l"][i]
 
         # /* Gap 17 mm at 20.5 m collimation */
         # ------------------------------
@@ -630,7 +703,7 @@ class D11(McStasInstrumentBase):
         beamstop = mycalculator.add_component(
             "beamstop", "Beamstop", AT=[bs_x, bs_y, detpos], RELATIVE=center_det
         )
-        beamstop.set_parameters(xwidth=0.1, yheight=0.1)
+        beamstop.set_parameters(xwidth=0.01, yheight=0.01)
 
         det_central_ntubes = 192  # number of tubes of the central panel of the detector
         tube_width = 0.008  # width of the tubes
@@ -645,10 +718,11 @@ class D11(McStasInstrumentBase):
         detector_central.set_parameters(
             xwidth=tube_length,
             yheight=det_central_ntubes * tube_width,
-            options='"xy, y bins='
-            + str(det_central_ntubes)
-            + ", x bins="
+            options='"parallel square '
+            + "x bins="
             + str(det_length_nbins)
+            + " y bins="
+            + str(det_central_ntubes)
             + '"',
         )
 
@@ -662,9 +736,10 @@ class D11(McStasInstrumentBase):
         detector_right.set_parameters(
             xwidth=det_lateral_ntubes * tube_width,
             yheight=tube_length,
-            options='"xy, x bins='
+            options='"parallel square '
+            + "x bins="
             + str(det_lateral_ntubes)
-            + ", y bins="
+            + " y bins="
             + str(det_length_nbins)
             + '"',
         )
