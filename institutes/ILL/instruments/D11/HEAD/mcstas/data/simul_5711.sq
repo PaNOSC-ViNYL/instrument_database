@@ -1,5 +1,5 @@
-# sigma_coh 7.751   coherent scattering cross section in [barn]
-# sigma_inc 160.521 incoherent scattering cross section in [barn]
+# sigma_coh 21.751   coherent scattering cross section in [barn]
+# sigma_inc 1.60521 incoherent scattering cross section in [barn]
 # sigma_abs 0.6654  absorption scattering cross section in [barn]
 # density   1.0     in [g/cm^3]
 # weight    18   in [g/mol]
