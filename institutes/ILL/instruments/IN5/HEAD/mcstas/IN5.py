@@ -81,7 +81,7 @@ class IN5(McStasInstrumentBase):
         mycalculator, Origin = self.add_new_section("OriginCalc")
 
         nu = mycalculator.add_parameter(
-            "int",
+            "double",  # "int"
             "speed",
             comment="Rotation frequency of disk choppers RPM",
             value=8500,
@@ -174,7 +174,7 @@ class IN5(McStasInstrumentBase):
         # mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
         mycalculator.add_declare_var("double", "neutron_velocity")
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
-        mycalculator.append_initialize('printf("nv = .%2f\\n", neutron_velocity);')
+        mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
 
         def tofdelay(fcomp, lcomp, delay=0):
