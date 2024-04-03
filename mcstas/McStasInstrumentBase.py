@@ -475,19 +475,18 @@ class McStasInstrumentBase(Instrument):
         This is meant to be used in case of liquids and gases.
         """
         mycalculator = self._calculator_with_sample
-        mycalculator.parameters["sample_radius"].value = mycalculator.parameters[
-            "sample_holder_radius"
-        ].value
-        mycalculator.parameters["sample_width"].value = mycalculator.parameters[
-            "sample_holder_width"
-        ].value
-        mycalculator.parameters["sample_height"].value = mycalculator.parameters[
-            "sample_holder_height"
-        ].value
-        mycalculator.parameters["sample_depth"].value = (
-            mycalculator.parameters["sample_holder_depth"].value
-            - 2 * mycalculator.parameters["sample_holder_thickness"].value
-        )
+        if mycalculator.parameters["sample_holder_thickness"].value > 0:
+            for v in ["radius", "height", "depth", "width"]:
+                if mycalculator.parameters[f"sample_holder_{v}"].value > 0:
+                    mycalculator.parameters[f"sample_{v}"].value = (
+                        mycalculator.parameters[f"sample_holder_{v}"].value
+                        - 2 * mycalculator.parameters["sample_holder_thickness"].value
+                    )
+                else:
+                    mycalculator.parameters[
+                        f"sample_{v}"
+                    ].value = mycalculator.parameters[f"sample_holder_{v}"].value
+
         mycalculator.parameters["sample_thickness"].value = 0
 
     def sample_shape(self, shape: str, r=None, w=None, h=None, d=None, th=0) -> None:
