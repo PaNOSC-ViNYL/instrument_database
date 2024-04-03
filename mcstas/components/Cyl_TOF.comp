@@ -5,7 +5,7 @@
 *         Risoe National Laboratory, Roskilde, Denmark
 *         Institut Laue Langevin, Grenoble, France
 *
-* Component: TOF_cylPSDxy_monitor
+* Component: Cyl_TOF
 *
 * %I
 * Written by:  Shervin Nourbakhsh
@@ -44,7 +44,7 @@
 
 DEFINE COMPONENT Cyl_TOF
 DEFINITION PARAMETERS ()
-  SETTING PARAMETERS (nt=128, nphi=90, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, phimax=180, tmin=0, tmax=1, restore_neutron=0)
+  SETTING PARAMETERS (nt=128, nphi=90, ny=1, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, phimax=180, tmin=0, tmax=1, restore_neutron=0)
 OUTPUT PARAMETERS ()
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
 
@@ -53,7 +53,9 @@ DECLARE
   DArray3d TOF_N;
   DArray3d TOF_p;
   DArray3d TOF_p2;
-  double phibinwidth, ybinwidth, tbinwidth;
+  double phibinwidth;
+  double ybinwidth;
+  double tbinwidth;
 %}
 
 INITIALIZE
@@ -64,7 +66,7 @@ INITIALIZE
   TOF_p  = create_darr3d(nphi, ny, nt);
   TOF_p2 = create_darr3d(nphi, ny, nt);
 
-  for (iphi=0; i<nphi; iphi++) {
+  for (iphi=0; iphi<nphi; iphi++) {
     for (iy=0; iy<ny; iy++)
       for(it=0; it<nt; it++){
 	{
@@ -76,10 +78,10 @@ INITIALIZE
   }
 
   phibinwidth = (phimax-phimin)/(double)nphi;
-  ybinwidyh   = (yheight)      /(double)ny;
+  ybinwidth   = (yheight)      /(double)ny;
   tbinwidth   = (tmax-tmin)    /(double)nt;
   // Use instance name for monitor output if no input was given
-  if (!strcmp(filename,"\0")) sprintf(filename,NAME_CURRENT_COMP);
+  if (!strcmp(filename,"\0")) sprintf(filename,"Cyl_TOF");
 %}
 
 TRACE
@@ -106,7 +108,7 @@ TRACE
   if (phi >= phimin && phi <= phimax) {
     if (t >= tmin && t <= tmax) {
       iphi = floor( (phi-phimin)/phibinwidth );
-      iy   = floor( (y+yh)/ybinwidth )
+      iy   = floor( (y+yh)/ybinwidth );
       it   = floor( (t-tmin)/tbinwidth );
       double p2 = p*p;
       
@@ -130,6 +132,7 @@ TRACE
 SAVE
 %{
 if (!nowritefile) {
+  int iphi;
   for(iphi=0; iphi < nphi; iphi++){
     char ff[256];
     char tt[256];
@@ -139,9 +142,9 @@ if (!nowritefile) {
       tt,
       "Y position [m]",
       "time [s]",
-      ymin, ymax, tmin, tmax,
+      -yheight*0.5, yheight*0.5, tmin, tmax,
       ny, nt,
-      &PSD_N[iphi][0][0],&PSD_p[iphi][0][0],&PSD_p2[iphi][0][0],
+      &TOF_N[iphi][0][0],&TOF_p[iphi][0][0],&TOF_p2[iphi][0][0],
       ff);
   }
 }

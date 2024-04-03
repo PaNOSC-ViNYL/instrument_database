@@ -24,7 +24,6 @@ class McStasInstrumentBase(Instrument):
 
         self.__do_section = do_section
         self._temp_directory = "./"  # "/dev/shm/mcstasscript/"
-
         self._single_calculator = False
         # this is specific for McStasscript instruments:
         # the components of the position for the sample and sample environment
