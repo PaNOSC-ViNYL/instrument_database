@@ -744,8 +744,10 @@ class McStasInstrumentBase(Instrument):
                 zdepth=0.01,
                 filename='"sample_monitor.dat"',
                 restore_neutron=1,
-                options='"box intensity per cm2, bins=1 pressure=0.001, parallel"',
-                # options='"x bins={} y bins={} file={}"'.format(1, 1, "counter.dat"
+                # options='"box intensity per cm2, bins=1 pressure=0.001, parallel"',
+                options='"x bins={} y bins={}, pressure=0.001, parallel"'.format(
+                    100, 100
+                ),
             )
 
         elif name in ["v_sample"]:
