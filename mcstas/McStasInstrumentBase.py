@@ -454,6 +454,11 @@ class McStasInstrumentBase(Instrument):
         mycalculator.parameters["sample_thickness"].value = thickness
 
     def _set_sample_shape_as_holder(self) -> None:
+        """
+        Helper method to set the sample parameter values to match the shape of the sample holder.
+
+        This is meant to be used in case of liquids and gases.
+        """
         mycalculator = self._calculator_with_sample
         mycalculator.parameters["sample_radius"].value = mycalculator.parameters[
             "sample_holder_radius"
