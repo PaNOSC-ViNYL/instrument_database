@@ -93,7 +93,7 @@ INITIALIZE
 
 TRACE
 %{
-  int iphi,iy,it;
+  int iy,it;
   double cyl_t0,cyl_t1,tshifted,phi,yh;
   
   if(!cylinder_intersect(&cyl_t0, &cyl_t1, x,y,z,vx,vy,vz, radius, yheight))
@@ -121,14 +121,26 @@ TRACE
       double total_groupwidth =  nphi_pergroup*phi_binwidth+phi_groupgap;
       double igroup=0;
       deltaphi= modf(deltaphi/total_groupwidth,&igroup);
-      if(deltaphi>(1-phi_groupgap/total_groupwidth)) ABSORB;
-      iphi = igroup*nphi_groups+floor(deltaphi/phi_binwidth);
+      if(deltaphi> 1 - phi_groupgap/total_groupwidth)	ABSORB;
       
+      int iphi = floor((deltaphi*total_groupwidth)/phi_binwidth +igroup*nphi_pergroup);
+      if(iphi>nphi-1){
+	printf("iphi = %d, phi = %f\n", iphi, phi);
+	ABSORB;
+      }
       iy   = floor( (y+yh)/ybinwidth );
       if (iy>=ny) ABSORB;
       it   = floor( (tshifted-tmin)/tbinwidth );
       double p2 = p*p;
       /* printf("iphi = %d\niy = %d\nit = %d\nt = %.2e\ntmin = %.2e\ny = %.2e\nyh = %.2f", iphi, iy, it, tshifted, tmin, y, yh); */
+
+      /* ATTENTION! the pixel at the lower left side has high phi because x is positive toward left
+       * but we want that pixel to be the origin of the axis in the plot, so (0,0) with x positive toward the right and y positive going up
+       * This requires inverting the bins in phi.
+       */
+      //iphi=nphi-iphi;
+
+
 #pragma acc atomic
       TOF_N[iphi][iy][it] = TOF_N[iphi][iy][it]+1;
       
@@ -137,8 +149,8 @@ TRACE
       
 #pragma acc atomic
       TOF_p2[iphi][iy][it] = TOF_p2[iphi][iy][it]+p2;
-    }
-  }
+    }//else{printf("Out of t: %f\t%f\n", tshifted, t);}
+  }//else{printf("Out of phi: %f\n", phi);}
 
   
   if (restore_neutron) {

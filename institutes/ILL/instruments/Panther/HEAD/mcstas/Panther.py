@@ -13,6 +13,8 @@
  - [ ] verify the formulat for the RV RH of the monochromator in case the parameter value is 0
  - [ ] Add the phase for the chopper
  - [ ] check what happens if chopper_rpm==0 and Efoc==0
+ - [ ] How is determined the tmin for the detector acquisition?
+ - [ ] fix the time_frame
 """
 
 # ------------------------------ For McStasscript instruments
@@ -174,11 +176,13 @@ class Panther(McStasInstrumentBase):
         )
         chopper_rpm.add_option(0, True)  # default value for automatic setting
         chopper_rpm.add_interval(6000, 30000, True)
+        self.add_parameter_to_master(chopper_rpm.name, mycalculator, chopper_rpm)
 
         chopper_ratio = mycalculator.add_parameter(
             "double", "chopper_ratio", comment="", unit="", value=1
         )
-        chopper_ratio.add_option([1, 2], True)
+        chopper_ratio.add_option([1, 2, 3], True)
+        self.add_parameter_to_master(chopper_ratio.name, mycalculator, chopper_ratio)
 
         if not _start_from_Fermi:
             mono_rv = mycalculator.add_parameter(
@@ -201,13 +205,18 @@ class Panther(McStasInstrumentBase):
         # - Ei
         # - dE
         mycalculator.append_initialize("dE = dE * Ei;")
+        mycalculator.add_declare_var(
+            "double",
+            "HCS_focus_xw",
+            comment="focusing of the source based on rotation of monochromator",
+        )  # append initialize after monochromator definition
         HCS = source.HCS_source(mycalculator)
 
         HCS.E0 = "Ei"
         # HCS.target_index = 2
-        HCS.dist = 4.6975 + 1.4199 + 0.8 + 0.8 + 0.8
-        HCS.focus_xw = 0.3
-        HCS.focus_yh = 0.3
+        HCS.dist = 12.1485  # 4.6975 + 1.4199 + 0.8 + 0.8 + 0.8
+        HCS.focus_xw = "HCS_focus_xw"  # 0.07  # optimized @ 110 meV
+        HCS.focus_yh = 0.05
 
         HCS.flux = 2.5e10
         HCS.radius = 0.100 / 2
@@ -247,7 +256,7 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize('printf("%ld\\n", mono_index);')
         mycalculator.append_initialize(  # TODO: remove the cast to int (int) in the comparison. Now only needed for McStas3.3 because mono_index is long and the compiler treats it as unsigned
             "if((int)mono_index<0){\n"
-            + '  printf("Selecting monochromator...");\n'
+            + '  printf("Selecting monochromator...\\n");\n'
             + "  for(mono_index=0; mono_index < {nindex} && !(a2 > {amin!s} && a2 < {amax!s} ); ++mono_index)".format(
                 nindex=len(monochromators),
                 amin=a2_interval[0].m,
@@ -256,8 +265,8 @@ class Panther(McStasInstrumentBase):
             + "{\n"
             + "    mono_d = mono_ds[mono_index];\n"
             + "    a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
-            + 'printf("mono_d = %.4f\\n",mono_d);\n'
-            + 'printf("a2 = %.2f\\n",a2);\n'
+            + '//printf("selecting mono_d = %.4f\\n",mono_d);\n'
+            + '//printf("selecting a2 = %.2f\\n",a2);\n'
             + "  }\n"
             + "}else{\n"
             + "  mono_d = mono_ds[mono_index];\n"
@@ -332,7 +341,7 @@ class Panther(McStasInstrumentBase):
             BC4.delay = tofdelay(BC1, BC4)
             BC5 = mycalculator.copy_component("BC5", BC2, AT=0.800, RELATIVE=BC4)
             BC5.delay = tofdelay(BC1, BC5)
-            BC1.verbose = 1
+            BC1.verbose = 0
 
             L_bc5_fermi = (
                 BC2.AT_data[2] + BC3.AT_data[2] + BC4.AT_data[2] + BC5.AT_data[2]
@@ -387,7 +396,6 @@ class Panther(McStasInstrumentBase):
             Monochromator.RV = mono_rv
             Monochromator.RH = mono_rh
             Monochromator.DM = "mono_d"
-            Monochromator.verbose = 1
             # Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
             Monochromator.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
             Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
@@ -425,6 +433,15 @@ class Panther(McStasInstrumentBase):
             Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
             Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
 
+            mycalculator.append_initialize(
+                "HCS_focus_xw = {}*sin(a2/2*DEG2RAD)/3;".format(
+                    Monochromator.zwidth * Monochromator.NH
+                )
+            )
+            mycalculator.append_initialize(
+                'printf("HCS focus xw = %.4f\\n", HCS_focus_xw);'
+            )
+            HCS.focus_yh = Monochromator.NV * Monochromator.yheight
             # AT=13.8485, RELATIVE=HCS)
 
             beamstop = mycalculator.add_component(
@@ -452,7 +469,7 @@ class Panther(McStasInstrumentBase):
             w=0.0006,
             yheight=0.113,
             nu="chopper_rpm/60",  # 1/60 to convert RPM into Hz
-            verbose=2,
+            verbose=0,
             eff=0.86 * 0.8,
             m=0,
             R0=0,  # no super mirror
@@ -478,9 +495,12 @@ class Panther(McStasInstrumentBase):
             HCS.dist = 2
 
             HCS.flux = 2e9
-        mycalculator.add_parameter(
+
+        Efoc = mycalculator.add_parameter(
             "double", "Efoc", comment="Focusing energy", unit="meV", value=0
         )
+        self.add_parameter_to_master("Efoc", mycalculator, Efoc)
+
         #        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
         mycalculator.append_initialize(
             "if(chopper_rpm==0) chopper_rpm = 60*neutron_velocity * fabs(tan(DEG2RAD*a2 / 2)) / PI / (({Lcs} + {Lsd}*pow((1 - Efoc / Ei),(-3/2))) * (1 - {Lms} / {Lhm}));".format(
@@ -568,7 +588,7 @@ class Panther(McStasInstrumentBase):
         the is the possibility to simulate the transmission exactly or by approximation depending if nblades is given or not
         """
         detector_arm = mycalculator.add_component(
-            "detector_arm", "Arm", AT=[0, -0.4, 0], RELATIVE=Sample_Out
+            "detector_arm", "Arm", AT=[0, 0.4, 0], RELATIVE=Sample_Out
         )
 
         collimator = mycalculator.add_component(
@@ -584,7 +604,7 @@ class Panther(McStasInstrumentBase):
             theta_max=136,
             nslit=1,
             roc=0.02,
-            verbose=1,
+            verbose=0,
         )
 
         # ------------------------------------------------------------
@@ -614,17 +634,22 @@ class Panther(McStasInstrumentBase):
             RELATIVE=detector_arm,
         )
 
-        chopper_rpm = mycalculator.add_parameter(
-            "double",
-            "chopper_rpm",
-            comment="Fermi chopper speed",
-            unit="",
-            value=0,
-        )
+        if not chopper_rpm.name in mycalculator.parameters:
+            chopper_rpm = mycalculator.add_parameter(
+                "double",
+                "chopper_rpm",
+                comment="Fermi chopper speed",
+                unit="",
+                value=0,
+            )
+            self.add_parameter_to_master(chopper_rpm.name, mycalculator, chopper_rpm)
 
-        chopper_ratio = mycalculator.add_parameter(
-            "double", "chopper_ratio", comment="", unit="", value=1
-        )
+            chopper_ratio = mycalculator.add_parameter(
+                "double", "chopper_ratio", comment="", unit="", value=1
+            )
+            self.add_parameter_to_master(
+                chopper_ratio.name, mycalculator, chopper_ratio
+            )
 
         time_frame = mycalculator.add_declare_var("double", "time_frame")
 
@@ -638,8 +663,8 @@ class Panther(McStasInstrumentBase):
             radius=Lsd,
             phimin=-17.328,
             # phimax=136,
-            tmin=1e-3,
-            tmax=time_frame,
+            tmin=0,  # "({Lcs}+{Lsd})/neutron_velocity".format(Lcs=Lcs, Lsd=Lsd),
+            tmax=0.002,  # time_frame,
             nphi_groups=9,
             nphi_pergroup=32,
             phi_groupgap=0.518,
