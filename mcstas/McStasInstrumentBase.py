@@ -1,13 +1,14 @@
 # ------------------------------ For McStasscript instruments
 import mcstasscript as ms
 from mcstasscript.interface import instr
+from mcstasscript.helper.mcstas_objects import Component
 
 # ------------------------------ Mandatory classes to use
 from libpyvinyl.Instrument import Instrument, BaseCalculator
 from libpyvinyl.Parameters import Parameter
 
 # ------------------------------ Extras
-# import os  # to add the path of custom mcstas components
+import os  # to add the path of custom mcstas components
 
 import math
 
@@ -24,6 +25,10 @@ class McStasInstrumentBase(Instrument):
 
         self.__do_section = do_section
         self._temp_directory = "./"  # "/dev/shm/mcstasscript/"
+        self._custom_component_dirs = [
+            os.path.join(os.path.dirname(__file__), "components")
+        ]
+        # print(self._custom_component_dirs)
         self._single_calculator = False
         # this is specific for McStasscript instruments:
         # the components of the position for the sample and sample environment
@@ -43,7 +48,7 @@ class McStasInstrumentBase(Instrument):
 
         self.sample_environments = ["None"]
 
-    def calcLtof(self, fcomp: BaseCalculator, lcomp: BaseCalculator):
+    def calcLtof(self, fcomp: Component, lcomp: Component):
         L = 0
         for calc in self.calculators:
             L = L + calcLtof(calc, fcomp.name, lcomp.name)
@@ -185,6 +190,9 @@ class McStasInstrumentBase(Instrument):
             mycalculator = instr.McStas_instr(
                 new_calcname, input_path=self._temp_directory
             )
+            for d in self._custom_component_dirs:
+                mycalculator.add_component_dir(d)
+
             self.add_calculator(mycalculator)
 
             Origin = mycalculator.add_component("Origin", "Progress_bar")
@@ -461,6 +469,8 @@ class McStasInstrumentBase(Instrument):
 
     def run(self):
         self._check_sample_shape()
+        self.custom_flags("-I mcstas/components")
+
         return super().run()
 
     # ------------------------------ utility methods made available for the users
