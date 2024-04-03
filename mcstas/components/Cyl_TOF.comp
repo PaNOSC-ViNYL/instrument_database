@@ -45,28 +45,31 @@
 
 DEFINE COMPONENT Cyl_TOF
 DEFINITION PARAMETERS ()
-  SETTING PARAMETERS (nt=128, nphi=90, ny=1, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, phimax=180, tmin=0, tmax=1, restore_neutron=0, tshift=0)
+  SETTING PARAMETERS (nt=128,  ny=1, string filename=0, int nowritefile=0, radius=1, yheight=2, phimin=0, tmin=0, tmax=1, restore_neutron=0, tshift=0, nphi_groups=1, nphi_pergroup=1, phi_groupgap=0., phi_binwidth=1.)
 OUTPUT PARAMETERS ()
 /* Neutron parameters: (x,y,z,vx,vy,vz,t,sx,sy,sz,p) */
 
 DECLARE
 %{
+  #include <math.h>
   DArray3d TOF_N;
   DArray3d TOF_p;
   DArray3d TOF_p2;
-  double phibinwidth;
   double ybinwidth;
   double tbinwidth;
+  int nphi;
+  double phimax;
 %}
 
 INITIALIZE
 %{
   int iphi, iy, it;
-
+  nphi = nphi_groups*nphi_pergroup;
   TOF_N  = create_darr3d(nphi, ny, nt);
   TOF_p  = create_darr3d(nphi, ny, nt);
   TOF_p2 = create_darr3d(nphi, ny, nt);
 
+  /* initialize the counters */
   for (iphi=0; iphi<nphi; iphi++) {
     for (iy=0; iy<ny; iy++)
       for(it=0; it<nt; it++){
@@ -78,12 +81,14 @@ INITIALIZE
       }
   }
 
-  phibinwidth = (phimax-phimin)/(double)nphi;
-  printf("phibinwidth = %.2f", phibinwidth);
+  //if(tmax<tmin) ERROR
+  phimax = phimin + nphi_groups*phi_binwidth*nphi_pergroup + (nphi_groups-1)*phi_groupgap;
+  printf("phimax = %.2f\n", phimax);
   ybinwidth   = (yheight)      /(double)ny;
   tbinwidth   = (tmax-tmin)    /(double)nt;
   // Use instance name for monitor output if no input was given
   if (!strcmp(filename,"\0")) sprintf(filename,"Cyl_TOF");
+  printf("Cyl_TOF file: %s\n", filename);
 %}
 
 TRACE
@@ -107,13 +112,23 @@ TRACE
   /* Calculate pixel */
   tshifted = t + tshift;
   phi=atan2(x,z)*RAD2DEG;
+
+  
   if (phi >= phimin && phi <= phimax) {
-    if (tshifted >= tmin && tshifted <= tmax) {
-      iphi = floor( (phi-phimin)/phibinwidth );
+    if ( tshifted >= tmin && tshifted <= tmax) {
+      /* check if in gap between tube modules */
+      double deltaphi=phi-phimin;
+      double total_groupwidth =  nphi_pergroup*phi_binwidth+phi_groupgap;
+      double igroup=0;
+      deltaphi= modf(deltaphi/total_groupwidth,&igroup);
+      if(deltaphi>(1-phi_groupgap/total_groupwidth)) ABSORB;
+      iphi = igroup*nphi_groups+floor(deltaphi/phi_binwidth);
+      
       iy   = floor( (y+yh)/ybinwidth );
+      if (iy>=ny) ABSORB;
       it   = floor( (tshifted-tmin)/tbinwidth );
       double p2 = p*p;
-      
+      /* printf("iphi = %d\niy = %d\nit = %d\nt = %.2e\ntmin = %.2e\ny = %.2e\nyh = %.2f", iphi, iy, it, tshifted, tmin, y, yh); */
 #pragma acc atomic
       TOF_N[iphi][iy][it] = TOF_N[iphi][iy][it]+1;
       
