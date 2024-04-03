@@ -70,7 +70,11 @@ def set_tests(myinstrument, test_number):
                 myinstrument.set_sample_by_name("qSq")
                 myinstrument.master[
                     "qSq_file"
-                ] = '"/users/nourbakhsh/digitaltwin/instrument_database/institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+                ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+                #                '"simul_5711.sq"'
+
+
+acquisition_time = 60  # seconds
 
 
 def run_test(myinstrument, test_number):
@@ -83,18 +87,26 @@ def run_test(myinstrument, test_number):
     data = myinstrument.output
     detectors = data[calcname_data].get_data()["data"]
     for detector in detectors:
+        # print("------------------------------")
+        # print(detector)
+        # help(detector)
+        # print(detector.Intensity)
         if detector.name == "detector_central":
             return detector.Intensity
 
 
 Intensities = []
+import numpy as np
 
-
-for itest in range(2, 3):
+a = run_test(myinstrument, 0)
+print(np.sum(a))
+sys.exit(0)
+for itest in range(0, 3):
     Intensities.append(run_test(myinstrument, itest))
 
-for itest in range(2, 3):
-    print(itest, " : ", Intensities[itest][1])
+for itest in range(0, 3):
+    print(itest, " : ", Intensities[itest])
+
 
 sys.exit(0)
 
