@@ -354,6 +354,7 @@ class ThALES(McStasInstrumentBase):
             H53_7out.set_AT([0, 0, H53_7.l], RELATIVE=H53_7)
 
         else:
+            HCS.flux = 5.5e12
             HCS.dist = 20
             HCS.focus_xw = 0.04
             HCS.focus_yh = 0.12
@@ -397,11 +398,13 @@ class ThALES(McStasInstrumentBase):
             height=0.2,
             verbose=1,
         )
-        # Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
+        Monochromator.append_EXTEND(
+            'if(SCATTERED==0){ ABSORB; printf("SCATTERED = %d\\n", SCATTERED);}'
+        )
         Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
 
         beamstop = mycalculator.add_component(
-            "BS", "Beamstop", AT=[0, 0, 2], RELATIVE=Monochromator_Arm
+            "BS", "Beamstop", AT=0.8, RELATIVE=Monochromator_Arm
         )
         beamstop.set_parameters(xwidth=1, yheight=1)
 
@@ -421,10 +424,13 @@ class ThALES(McStasInstrumentBase):
             options='"box intensity, bins=1 pressure=0.001"',
         )
 
-        before_sample_slit = mycalculator.add_component("slit_before_sample", "Slit")
-        before_sample_slit.xwidth = 0.03
-        before_sample_slit.yheight = 0.028
-        before_sample_slit.set_AT([0, 0, ThALES_L - 0.250], RELATIVE=Monochromator_Out)
+        before_sample_slit = mycalculator.add_component(
+            "slit_before_sample",
+            "Slit",
+            AT=ThALES_L - 0.250,
+            RELATIVE=Monochromator_Out,
+        )
+        before_sample_slit.set_parameters(xwidth=0.03, yheight=0.028)
 
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
@@ -462,6 +468,12 @@ class ThALES(McStasInstrumentBase):
             "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
         )
         Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
+
+        # this BS is in place to stop the beam if the analyzer is at angle 0
+        beamstop = mycalculator.add_component(
+            "BS_after_sample", "Beamstop", AT=0.2, RELATIVE=self._sample_arm
+        )
+        beamstop.set_parameters(xwidth=0.03, yheight=0.04)
 
         slit_distance = 0.250
         after_sample_slit = SampleCalc.add_component(
@@ -575,6 +587,33 @@ class ThALES(McStasInstrumentBase):
         # Do not add sample parameters. They should be modified externally retrieving
         # sample with .sample
         # this obviously will require the instrument to be recompiled
+
+    def set_test(self, test_number: Optional[int] = None):
+        myinstrument = self
+        myinstrument.sample_shape("sphere", r=0.02, th=0.005)
+        myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
+        myinstrument.master["a4"] = 60 * ureg.degree
+        myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
+        if test_number == 0:  # flux at sample position
+            myinstrument.sample_holder(None, None)
+            myinstrument.set_sample_by_name("monitor")
+            myinstrument.sample.xwidth = 0.02
+            myinstrument.sample.yheight = 0.04
+
+        elif test_number == 1:  # vanadium
+            myinstrument.set_sample_by_name("vanadium")
+        elif test_number == 2:  # testing the flux
+            myinstrument.master["a2"] = 77.25 * ureg.degree
+            myinstrument.master["a4"] = -60 * ureg.degree
+            myinstrument.master["a6"] = 77.27 * ureg.degree
+
+        else:
+            raise RuntimeError(f"Test number {test_number} out of range")
+
+    def test_datafile(self, test_number: Optional[int] = None):
+        file = ""
+        raise RuntimeError(f"Test number {test_number} out of range")
+        return file
 
 
 # ------------------------------ Helper functions
