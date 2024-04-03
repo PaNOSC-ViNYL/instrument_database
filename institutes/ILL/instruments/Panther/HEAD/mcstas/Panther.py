@@ -55,6 +55,10 @@ def get_flavours():
     return ["None", "nosection", "quick", "quicknosection"]
 
 
+def def_tests(flavour: Optional[str] = None):
+    myinstrument = def_instrument(flavour)
+
+
 ############## Mandatory method
 def def_instrument(flavour: Optional[str] = None):
     """Function returning the specialized instrument object based on the flavour requested"""
@@ -77,20 +81,6 @@ class Panther(McStasInstrumentBase):
     """:class: Instrument class defining the Panther instrument at ILL"""
 
     # ------------------------------ utility methods made available for the users
-
-    def wavelength_to_angle(self, value: [float, pint.Quantity]) -> pint.Quantity:
-        """Conversion from wavelength to angle
-        for Bragg law with lattice parameter
-        equal to the monochromator lattice"""
-        d_lattice = self.parameters["OriginCalc"]["monochromator_d"].pint_value
-        return (math.asin(value / 2.0 / d_lattice) * 2 * ureg.radians).to("degrees")
-
-    def energy_to_angle(self, value: [float, pint.Quantity]) -> pint.Quantity:
-        """Conversion from energy to angle
-        for Bragg law with lattice parameter
-        equal to the monochromator lattice"""
-        wl = math.sqrt(81.80421 * ureg.meV / value) * ureg.angstrom
-        return self.wavelength_to_angle(wl).to("degrees")
 
     # ------------------------------ Specialized methods required by the Instrument class [mandatory]
 
@@ -227,7 +217,12 @@ class Panther(McStasInstrumentBase):
 
         Ei.value = 15 * ureg.meV
         Ei.add_interval(7.5, 130, True)
-        mycalculator.parameters["dE"] = 0.10
+
+        # The energy resolution varies between 3.8 and 5.7% of the i of
+        # the incoming energy for the pyrolytic graphite
+        # monochromator, depending on the monochromator take-off
+        # angle.
+        mycalculator.parameters["dE"] = 0.06
 
         del mycalculator.parameters["lambda"]
         del mycalculator.parameters["dlambda"]
@@ -249,7 +244,7 @@ class Panther(McStasInstrumentBase):
 
         a2_interval = a2.get_intervals()[0]
         mycalculator.add_declare_var("double", "mono_d")
-        mycalculator.append_initialize('printf("%d\\n", mono_index);')
+        mycalculator.append_initialize('printf("%ld\\n", mono_index);')
         mycalculator.append_initialize(  # TODO: remove the cast to int (int) in the comparison. Now only needed for McStas3.3 because mono_index is long and the compiler treats it as unsigned
             "if((int)mono_index<0){\n"
             + '  printf("Selecting monochromator...");\n'
@@ -276,7 +271,7 @@ class Panther(McStasInstrumentBase):
             'printf("a2 = %.2f\\n",a2);'
         )  # put a warning if A2 does not match
 
-        mycalculator.append_initialize('printf("mono_index = %d\\n", mono_index);')
+        mycalculator.append_initialize('printf("mono_index = %ld\\n", mono_index);')
         if not _start_from_Fermi:
             # ------------------------------------------------------------
             H12 = mycalculator.add_component("H12", "Arm", AT=[0, 0, 0], RELATIVE=HCS)
@@ -482,7 +477,7 @@ class Panther(McStasInstrumentBase):
             HCS.focus_xw = 0.02
             HCS.dist = 2
 
-            HCS.flux = 5e5
+            HCS.flux = 2e9
         mycalculator.add_parameter(
             "double", "Efoc", comment="Focusing energy", unit="meV", value=0
         )
@@ -579,16 +574,16 @@ class Panther(McStasInstrumentBase):
         collimator = mycalculator.add_component(
             "collimator", "Collimator_radial", AT=[0, 0, 0], RELATIVE=detector_arm
         )
-        collimator.set_parameters(
-            radius=1,
-            length=1,
+        collimator.set_parameters(  # as reported in https://doi.org/10.1051/epjconf/202227202001
+            radius=0.434,
+            length=0.2,
             nchan=9 * 32 + 8,
             xwidth=0,
-            yheight=2,
+            yheight=0.587,  # 2,
             theta_min=-5,
             theta_max=136,
             nslit=1,
-            roc=0.1,
+            roc=0.02,
             verbose=1,
         )
 
@@ -611,7 +606,7 @@ class Panther(McStasInstrumentBase):
         nt = mycalculator.add_parameter(
             "int", "nt", value=512, comment="Number of time channels"
         )
-
+        # if chopper_ratio is 2: nt=1024
         detector = mycalculator.add_component(
             "detector",
             "Cyl_TOF",
@@ -619,23 +614,77 @@ class Panther(McStasInstrumentBase):
             RELATIVE=detector_arm,
         )
 
+        chopper_rpm = mycalculator.add_parameter(
+            "double",
+            "chopper_rpm",
+            comment="Fermi chopper speed",
+            unit="",
+            value=0,
+        )
+
+        chopper_ratio = mycalculator.add_parameter(
+            "double", "chopper_ratio", comment="", unit="", value=1
+        )
+
+        time_frame = mycalculator.add_declare_var("double", "time_frame")
+
+        mycalculator.append_initialize(
+            "time_frame = chopper_ratio/2.0/chopper_rpm/60.0;"
+        )
         detector.set_parameters(
-            nphi=141,
             ny=ny,
             nt=nt,
             yheight=2.0,
             radius=Lsd,
-            phimin=-5,
-            phimax=136,
-            tmin=0,
-            tmax=1,
-            # nphigroups=1
-            # nphipergroup=1
-            # phigroupgap=0
+            phimin=-17.328,
+            # phimax=136,
+            tmin=1e-3,
+            tmax=time_frame,
+            nphi_groups=9,
+            nphi_pergroup=32,
+            phi_groupgap=0.518,
+            phi_binwidth=0.518,
             # saveingap= 0|1
         )
 
         # ------------------------------ instrument parameters
+
+    def set_test(self, test_number: Optional[int] = None):
+        myinstrument = self
+        myinstrument.sample_shape("holder")
+        if test_number == 0:  # flux at sample position
+            myinstrument.sample_holder(None, None)
+            myinstrument.set_sample_by_name("monitor")
+            myinstrument.master["energy"] = 19 * ureg.meV
+            myinstrument.sample.xwidth = 0.02
+            myinstrument.sample.yheight = 0.04
+
+        elif test_number == 1:  # direct beam with empty sample holder
+            myinstrument.set_sample_by_name("None")
+        elif test_number == 2:  # with sample
+            myinstrument.set_sample_by_name("qSq")
+            myinstrument.master[
+                "sqw_file"
+            ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+        elif test_number == -1:  # direct beam no beamstop
+            myinstrument.set_sample_by_name("None")
+            myinstrument.sample_holder(None, None)
+            myinstrument.master["attenuator_index"] = 6
+            myinstrument.master["bs_index"] = -1
+        else:
+            raise RuntimeError(f"Test number {test_number} out of range")
+
+    def test_datafile(self, test_number: Optional[int] = None):
+        file = ""
+        if test_number == 0 or test_number == -1:  # direct attenuated beam
+            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
+        elif test_number == 1:  # direct beam with empty sample holder
+            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
+        elif test_number >= 2:
+            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs"
+        else:
+            raise RuntimeError(f"Test number {test_number} out of range")
+        return file
 
 
 # ------------------------------ sample parameters
