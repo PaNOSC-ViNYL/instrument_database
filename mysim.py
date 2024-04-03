@@ -7,11 +7,11 @@ import os
 repo = API.Repository(local_repo=".")
 instrument_name = "ThALES"
 instrument_name = "Panther"
-instrument_name = "IN5"
+instrument_name = "D11"
 
 repo.ls_flavours("ILL", instrument_name, "HEAD", "mcstas")
 flavour = "full"
-# flavour = "nosection"
+flavour = "nosection"
 myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", flavour, dep=False)
 # myinstrument = repo.load("ILL", instrument_name, "HEAD", "mcstas", "merge", dep=False)
 
@@ -30,13 +30,33 @@ myinstrument.set_instrument_base_dir(basedir)
 # myinstrument.master["a4"] = 60 * ureg.degree
 # myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
 print(myinstrument.get_total_SPLIT())
-myinstrument.set_sample_by_name("vanadium")
+# myinstrument.set_sample_by_name("vanadium")
 # myinstrument.set_sample_by_name("H2O")
-myinstrument.sample_cylinder_shape(0.005, 0.01)
+# myinstrument.sample_cylinder_shape(0.005, 0.01)
 print(myinstrument)
-myinstrument.sim_neutrons(500000000)
+myinstrument.sim_neutrons(5000)
 myinstrument.set_seed(654321)
 
+myinstrument.run()
+myinstrument.force_compile(False)
+
+
+calcname = "OriginCalc"
+Intensities = []
+for att in range(0, 8):
+    myinstrument.calculators["OriginCalc"].parameters["attenuator_index"] = att
+    myinstrument.run()
+    data = myinstrument.output
+    calcname_data = calcname + "_data"
+    detectors = data[calcname_data].get_data()["data"]
+    for detector in detectors:
+        print(detector.name)
+        if detector.name == "PSD_attenuator":
+            Intensities.append(detector.Intensity)
+        # print(detector, "\n\t I = ",detector.Intensity, "\n\t E =", detector.Error, "\n\t N =", detector.Ncount)
+
+for att in range(0, 1):
+    print(att, " : ", Intensities[att])
 # print("Ltof: "+str(myinstrument.calcLtof(myinstrument.calculators["OriginCalc"], "Chopper0", "Chopper1", True)))
 # sys.exit(0)
 # diagnostics
@@ -46,7 +66,7 @@ myinstrument.set_seed(654321)
 # mycalc.show_diagram(analysis=True)
 import mcstasscript as ms
 
-myinstrument.run()
+# myinstrument.run()
 sys.exit(0)
 np = 21
 np = (np - 1) / 2
