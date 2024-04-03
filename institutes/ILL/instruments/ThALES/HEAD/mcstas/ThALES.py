@@ -49,7 +49,7 @@ ureg = pint.get_application_registry()
 
 ############## Mandatory method
 def get_flavours():
-    return ["full", "nosection"]
+    return ["full", "nosection", "quick", "quicknosection"]
 
 
 ############## Mandatory method
@@ -62,6 +62,10 @@ def def_instrument(flavour: Optional[str] = None):
         return ThALES()
     if flavour == "nosection":
         return ThALES(False)
+    if flavour in ["quick"]:
+        return ThALES(True, True)
+    if flavour in ["quicknosection"]:
+        return ThALES(False, True)
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
 
@@ -165,7 +169,7 @@ class ThALES(McStasInstrumentBase):
     #        super().set_instrument_base_dir(dirname)
 
     # ------------------------------ The instrument definition goes in the __init__
-    def __init__(self, do_section=True):
+    def __init__(self, do_section=True, _start_from_virtual_source=False):
         """Here the real definition of the instrument is performed"""
 
         super().__init__("ThALES", do_section)
@@ -203,6 +207,7 @@ class ThALES(McStasInstrumentBase):
             value=33,
         )
         a2.add_interval(33, 128, True)
+        self.add_parameter_to_master("a2", mycalculator, a2)
 
         monochromator_d = mycalculator.add_parameter(
             "double",
@@ -239,125 +244,140 @@ class ThALES(McStasInstrumentBase):
             'printf("(RHmono,RVmono) = (%.2f,%.2f)\\n", RHmono, RVmono);'
         )
 
-        # imported source and associated parameters: check the source file!
-        # - lambda
-        # - dlambda
-        # - Ei
-        # - dE
+        # imported source requires the following variables to be defined for the value of lambda:
+        # "lambda =2*sin(0.5*a2*DEG2RAD)*monochromator_d;"
+        # - a2
+        # - monochromator_d
+        #
         HCS = source.HCS_source(mycalculator)
-        HCS.E0 = "Ei"
-        HCS.target_index = 2
         HCS.flux = 16e10
 
+        mycalculator.parameters["dlambda"] = 0.08  # imported from HCS
+
         # ------------------------------------------------------------
-        # start of the guide
-        H5 = mycalculator.add_component("H5", "Arm")
-        H5.set_AT([0, 0, 2.155], RELATIVE=HCS)
+        if not _start_from_virtual_source:
+            HCS.dist = 2.155
+            HCS.focus_xw = 0.06
+            HCS.focus_yh = 0.12
+
+            # start of the guide
+            H5 = mycalculator.add_component("H5", "Arm")
+            H5.set_AT([0, 0, 2.155], RELATIVE=HCS)
+
+            # adds monitors at the same position of the previous component
+
+            H53_1a = mycalculator.add_component("H5_1", "Guide_gravity")
+            # material: Al 5083
+            H53_1a.w1 = 0.060
+            H53_1a.h1 = 0.120
+            H53_1a.l = 1.0
+            #    H53_1a.R0 = gR0
+            #    H53_1a.Qc = gQc
+            #    H53_1a.alpha = gAlpha
+            #    H53_1a.m = 3
+            #    H53_1a.W = gW
+            H53_1a.reflect = '"supermirror_m3.rfl"'
+            H53_1a.set_AT([0, 0, 0], RELATIVE=H5)
+
+            H53_1b = mycalculator.copy_component("H5_1b", H53_1a)
+            H53_1b.l = 1.775
+            H53_1b.set_AT([0, 0, H53_1a.l], RELATIVE=H53_1a)
+
+            # membrane
+            # gap 25 mm
+            H53_A = mycalculator.add_component("H53_A", "Arm")
+            H53_A.set_AT([0, 0, H53_1b.l + 0.025 + 0.006], RELATIVE=H53_1b)
+
+            H53_2a = mycalculator.copy_component("H53_2a", H53_1a)
+            H53_2a.l = 2.317
+            H53_2a.set_AT([0, 0, 0], RELATIVE=H53_A)
+
+            H53_2b = mycalculator.copy_component("H53_2b", H53_1a)
+            H53_2b.l = 0.757
+            H53_2b.set_AT([0, 0, H53_2a.l], RELATIVE=H53_2a)
+
+            H53_B = mycalculator.add_component("H53_B", "Arm")
+            H53_B.set_AT([0, 0, H53_2b.l + 0.060 + 0.027], RELATIVE=H53_2b)
+
+            H53_3 = mycalculator.copy_component("H53_3", H53_1a)
+            H53_3.l = 0.501
+            H53_3.set_AT([0, 0, 0], RELATIVE=H53_B)
+
+            H53_4 = mycalculator.copy_component("H53_4", H53_1a)
+            H53_4.l = 0.501
+            H53_4.set_AT([0, 0, H53_3.l], RELATIVE=H53_3)
+
+            H53_5 = mycalculator.copy_component("H53_5", H53_1a)
+            H53_5.l = 5.809
+            H53_5.set_AT([0, 0, H53_4.l], RELATIVE=H53_4)
+
+            H53_C = mycalculator.add_component("H53_C", "Arm")
+            H53_C.set_AT([0, 0, H53_5.l + 0.0078 + 0.024 + 0.110], RELATIVE=H53_5)
+
+            H53_6 = mycalculator.copy_component("H53_6", H53_1a)
+            H53_6.l = 2.420
+            H53_6.set_AT([0, 0, 0], RELATIVE=H53_C)
+
+            H53_D = mycalculator.add_component(
+                "H53_D", "Arm", AT=[0, 0, H53_6.l + 0.0195 + 0.002], RELATIVE=H53_6
+            )
+
+            # adds monitors at the same position of the previous component
+
+            H53_7 = mycalculator.add_component("H53_7_parabolic", "Guide_tapering")
+            H53_7.option = '"elliptical"'
+            H53_7.w1 = 0.06
+            H53_7.h1 = 0.12
+            H53_7.l = 2.4915
+            H53_7_ah = 2.737445  # major semi-axis
+            H53_7_bh = H53_7.w1 / 2.0  # minor semi-axis
+            H53_7.linw = math.sqrt(H53_7_ah * H53_7_ah - H53_7_bh * H53_7_bh)
+            H53_7.loutw = (
+                H53_7.linw - H53_7.l
+            )  # the length of the guide must be smaller than the coordinate of the focus
+            #    H53_7_linw = 0
+            #    H53_7_linh = 0
+            H53_7.linh = 0  # plane mirrors (vertical)
+            H53_7.louth = 0  #  plane mirrors (vertical)
+            H53_7.R0 = gR0
+            H53_7.Qcx = gQc
+            H53_7.Qcy = gQc
+            H53_7.alphax = gAlpha
+            H53_7.alphay = gAlpha
+            H53_7.W = gW
+            H53_7.mx = 3
+            H53_7.my = 3
+            H53_7.segno = 1  # is this the number of segments?
+            H53_7.set_AT([0, 0, 0], RELATIVE=H53_D)
+
+            H53_7out = mycalculator.add_component("H53_7out", "Arm")
+            H53_7out.set_AT([0, 0, H53_7.l], RELATIVE=H53_7)
+
+        else:
+            HCS.dist = 20
+            HCS.focus_xw = 0.04
+            HCS.focus_yh = 0.12
+            H53_7out = mycalculator.add_component(
+                "H53_7out", "Arm", AT=20, RELATIVE=HCS
+            )
 
         # adds monitors at the same position of the previous component
 
-        H53_1a = mycalculator.add_component("H5_1", "Guide_gravity")
-        # material: Al 5083
-        H53_1a.w1 = 0.060
-        H53_1a.h1 = 0.120
-        H53_1a.l = 1.0
-        #    H53_1a.R0 = gR0
-        #    H53_1a.Qc = gQc
-        #    H53_1a.alpha = gAlpha
-        #    H53_1a.m = 3
-        #    H53_1a.W = gW
-        H53_1a.reflect = '"supermirror_m3.rfl"'
-        H53_1a.set_AT([0, 0, 0], RELATIVE=H5)
-
-        H53_1b = mycalculator.copy_component("H5_1b", H53_1a)
-        H53_1b.l = 1.775
-        H53_1b.set_AT([0, 0, H53_1a.l], RELATIVE=H53_1a)
-
-        # membrane
-        # gap 25 mm
-        H53_A = mycalculator.add_component("H53_A", "Arm")
-        H53_A.set_AT([0, 0, H53_1b.l + 0.025 + 0.006], RELATIVE=H53_1b)
-
-        H53_2a = mycalculator.copy_component("H53_2a", H53_1a)
-        H53_2a.l = 2.317
-        H53_2a.set_AT([0, 0, 0], RELATIVE=H53_A)
-
-        H53_2b = mycalculator.copy_component("H53_2b", H53_1a)
-        H53_2b.l = 0.757
-        H53_2b.set_AT([0, 0, H53_2a.l], RELATIVE=H53_2a)
-
-        H53_B = mycalculator.add_component("H53_B", "Arm")
-        H53_B.set_AT([0, 0, H53_2b.l + 0.060 + 0.027], RELATIVE=H53_2b)
-
-        H53_3 = mycalculator.copy_component("H53_3", H53_1a)
-        H53_3.l = 0.501
-        H53_3.set_AT([0, 0, 0], RELATIVE=H53_B)
-
-        H53_4 = mycalculator.copy_component("H53_4", H53_1a)
-        H53_4.l = 0.501
-        H53_4.set_AT([0, 0, H53_3.l], RELATIVE=H53_3)
-
-        H53_5 = mycalculator.copy_component("H53_5", H53_1a)
-        H53_5.l = 5.809
-        H53_5.set_AT([0, 0, H53_4.l], RELATIVE=H53_4)
-
-        H53_C = mycalculator.add_component("H53_C", "Arm")
-        H53_C.set_AT([0, 0, H53_5.l + 0.0078 + 0.024 + 0.110], RELATIVE=H53_5)
-
-        H53_6 = mycalculator.copy_component("H53_6", H53_1a)
-        H53_6.l = 2.420
-        H53_6.set_AT([0, 0, 0], RELATIVE=H53_C)
-
-        H53_D = mycalculator.add_component(
-            "H53_D", "Arm", AT=[0, 0, H53_6.l + 0.0195 + 0.002], RELATIVE=H53_6
+        slit_A = mycalculator.add_component(
+            "slit_A", "Slit", AT=0.3, RELATIVE="PREVIOUS"
         )
-
-        # adds monitors at the same position of the previous component
-
-        H53_7 = mycalculator.add_component("H53_7_parabolic", "Guide_tapering")
-        H53_7.option = '"elliptical"'
-        H53_7.w1 = 0.06
-        H53_7.h1 = 0.12
-        H53_7.l = 2.4915
-        H53_7_ah = 2.737445  # major semi-axis
-        H53_7_bh = H53_7.w1 / 2.0  # minor semi-axis
-        H53_7.linw = math.sqrt(H53_7_ah * H53_7_ah - H53_7_bh * H53_7_bh)
-        H53_7.loutw = (
-            H53_7.linw - H53_7.l
-        )  # the length of the guide must be smaller than the coordinate of the focus
-        #    H53_7_linw = 0
-        #    H53_7_linh = 0
-        H53_7.linh = 0  # plane mirrors (vertical)
-        H53_7.louth = 0  #  plane mirrors (vertical)
-        H53_7.R0 = gR0
-        H53_7.Qcx = gQc
-        H53_7.Qcy = gQc
-        H53_7.alphax = gAlpha
-        H53_7.alphay = gAlpha
-        H53_7.W = gW
-        H53_7.mx = 3
-        H53_7.my = 3
-        H53_7.segno = 1  # is this the number of segments?
-        H53_7.set_AT([0, 0, 0], RELATIVE=H53_D)
-
-        H53_7out = mycalculator.add_component("H53_7out", "Arm")
-        H53_7out.set_AT([0, 0, H53_7.l], RELATIVE=H53_7)
-
-        # adds monitors at the same position of the previous component
-
-        slit_A = mycalculator.add_component("slit_A", "Slit")
         slit_A.xwidth = 0.04
         slit_A.yheight = 0.12
-        slit_A.set_AT([0, 0, H53_7.l + 0.3], RELATIVE=H53_7)
 
         # monitor
 
-        Monochromator_Arm = mycalculator.add_component("Monochromator_Arm", "Arm")
-        Monochromator_Arm.set_AT([0, 0, 2], RELATIVE=slit_A)
+        Monochromator_Arm = mycalculator.add_component(
+            "Monochromator_Arm", "Arm", AT=2, RELATIVE=slit_A
+        )
 
         # double check the probability of reflection
         Monochromator = mycalculator.add_component(
-            "Moneochromator", "Monochromator_curved", AT=0, RELATIVE=Monochromator_Arm
+            "Monochromator", "Monochromator_curved", AT=0, RELATIVE=Monochromator_Arm
         )
         #   Monochromator.reflect = '"HOPG.rfl"'
         #   Monochromator.transmit = '"HOPG.trm"'
@@ -377,7 +397,7 @@ class ThALES(McStasInstrumentBase):
             height=0.2,
             verbose=1,
         )
-        #    Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
+        # Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
         Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
 
         beamstop = mycalculator.add_component(
@@ -401,7 +421,7 @@ class ThALES(McStasInstrumentBase):
             options='"box intensity, bins=1 pressure=0.001"',
         )
 
-        before_sample_slit = mycalculator.add_component("before_sample_slit", "Slit")
+        before_sample_slit = mycalculator.add_component("slit_before_sample", "Slit")
         before_sample_slit.xwidth = 0.03
         before_sample_slit.yheight = 0.028
         before_sample_slit.set_AT([0, 0, ThALES_L - 0.250], RELATIVE=Monochromator_Out)
@@ -428,24 +448,27 @@ class ThALES(McStasInstrumentBase):
             value=0,
         )
         a4.add_interval(-128, 128, True)
+        self.add_parameter_to_master("a4", SampleCalc, a4)
 
-        self._sample_environment_arm.set_AT([0, 0, 0.250], RELATIVE=sample_mcpl_arm)
+        self._sample_arm.set_AT(0.250, RELATIVE=sample_mcpl_arm)
+        self._sample_environment_arm.set_AT(0.250, RELATIVE=sample_mcpl_arm)
 
         # default sample
-        self.set_sample_focus(0.03, 0.04, 0.250)
+        self.sample_focus(0.03, 0.04, 0.250)
 
         sample = self.set_sample_by_name("Vanadium")
 
-        Sample_Out = SampleCalc.add_component("Sample_Out", "Arm")
-        Sample_Out.set_AT([0, 0, 0], RELATIVE=self._sample_arm)
-        #        Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
+        Sample_Out = SampleCalc.add_component(
+            "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
+        )
         Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
-        after_sample_slit = SampleCalc.add_component("after_sample_slit", "Slit")
+        slit_distance = 0.250
+        after_sample_slit = SampleCalc.add_component(
+            "slit_after_sample", "Slit", AT=slit_distance, RELATIVE=Sample_Out
+        )
         after_sample_slit.xwidth = 0.03
         after_sample_slit.yheight = 0.04
-        slit_distance = 0.250
-        after_sample_slit.set_AT([0, 0, slit_distance], RELATIVE=Sample_Out)
 
         # ------------------------------------------------------------
         AnalyzerCalc, after_sample_slit = self.add_new_section(
@@ -460,6 +483,7 @@ class ThALES(McStasInstrumentBase):
             unit="degree",
             value=33,
         )
+        self.add_parameter_to_master("a6", AnalyzerCalc, a6)
 
         RHanalyzer = AnalyzerCalc.add_parameter(
             "double",
@@ -539,12 +563,10 @@ class ThALES(McStasInstrumentBase):
         detector_all.options = '"intensity, square bins=1, file=detector_all.dat"'
 
         # ------------------------------ instrument parameters
-        myinstr.add_master_parameter("a2", {OriginCalc.name: "a2"}, unit="degree")
-        myinstr.add_master_parameter(
-            "a3", {SampleCalc.name: "sample_y_rotation"}, unit="degree"
+        self.add_parameter_to_master(
+            "a3", SampleCalc, SampleCalc.parameters["sample_y_rotation"]
         )
-        myinstr.add_master_parameter("a4", {SampleCalc.name: "a4"}, unit="degree")
-        myinstr.add_master_parameter("a6", {AnalyzerCalc.name: "a6"}, unit="degree")
+
         myinstr.master["a2"] = 79.10 * ureg.degree
         myinstr.master["a3"] = 0 * ureg.degree
         myinstr.master["a4"] = 60 * ureg.degree
