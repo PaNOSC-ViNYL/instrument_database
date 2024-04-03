@@ -3,7 +3,7 @@ import mcstasscript as ms
 from mcstasscript.interface import instr
 
 # ------------------------------ Mandatory classes to use
-from libpyvinyl.Instrument import Instrument
+from libpyvinyl.Instrument import Instrument, BaseCalculator
 from libpyvinyl.Parameters import Parameter
 
 # ------------------------------ Extras
@@ -43,6 +43,48 @@ class McStasInstrumentBase(Instrument):
         self.target_z = None
 
         self.sample_environments = ["None"]
+
+    def calcLtof(self, fcomp: BaseCalculator, lcomp: BaseCalculator):
+        L = 0
+        for calc in self.calculators:
+            L = L + calcLtof(calc, fcomp.name, lcomp.name)
+        return L
+
+    def calcLtof(
+        self, mycalculator: BaseCalculator, fcomp: str, lcomp: str, debug=False
+    ):
+        complist = mycalculator.component_list
+        firstfound = False
+        L = 0
+        for comp in complist:
+            if debug:
+                print(comp.name)
+            if comp.name == fcomp:
+                firstfound = True
+                if debug:
+                    print("first found")
+            if not firstfound:
+                continue
+            if comp.name == lcomp:
+                break
+            if comp.AT_relative == "ABSOLUTE":
+                print(
+                    "WARNING: component "
+                    + comp.name
+                    + " is being ignored because positioned in ABSOLUTE coordinate system"
+                )
+                continue
+            if debug:
+                print("Calc TOF for " + comp.name)
+            nextcomp = comp.AT_reference
+            L = L + math.sqrt(
+                comp.AT_data[0] * comp.AT_data[0]
+                + comp.AT_data[1] * comp.AT_data[1]
+                + comp.AT_data[2] * comp.AT_data[2]
+            )
+            if debug:
+                print("L = " + str(L))
+        return L
 
     def add_sample_arms(self, mycalculator, previous_component):
         """The set_AT and set_ROTATE should be called afterwards.
