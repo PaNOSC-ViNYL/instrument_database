@@ -70,7 +70,7 @@ def VCS_source(mcstas_instrument: McCode_instr) -> Component:
     )
     sdlambda = mcstas_instrument.add_parameter("double", "dlambda", value=0.1, unit="")
 
-    HCS = mcstas_instrument.add_component(
+    VCS = mcstas_instrument.add_component(
         "VCS", "Source_simple", AT=[0, 0, 0], RELATIVE="Origin"
     )
     VCS.set_parameters(
@@ -79,8 +79,8 @@ def VCS_source(mcstas_instrument: McCode_instr) -> Component:
         focus_xw=0.038,
         focus_yh=0.2,
         lambda0="lambda",
-        dlambda="dlambda*lambda",
-        verbose=1,
+        dlambda="dlambda",
+        #   verbose=1,
         flux=1e13,
         gauss=1,
     )
