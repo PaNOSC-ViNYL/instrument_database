@@ -78,14 +78,24 @@ ratio["left"] = (
 # print(metadata_list["detector_right"])
 # plt.show()
 
-
+fig = plt.figure()
+plt.imshow(
+    detectors_simulation["central"].Intensity,
+    aspect="auto",
+    #cmap="seismic",
+    origin="lower",
+    #norm="log"
+)
+plt.show()
+plt.savefig('foo.pdf')
+#sys.exit(0)
 fig, axs = plt.subplots(2, 3)
 fig.suptitle("Vertically stacked subplots")
 axs[0][0].imshow(
     detectors_data["left"].transpose(), aspect="auto", cmap="seismic", origin="lower"
 )
 axs[0][1].imshow(
-    detectors_data["central"].transpose(), aspect="auto", cmap="seismic", origin="lower"
+    detectors_data["central"].transpose(), aspect="auto", cmap="seismic", origin="lower", norm="log"
 )
 axs[0][2].imshow(
     detectors_data["right"].transpose(), aspect="auto", cmap="seismic", origin="lower"
@@ -102,6 +112,7 @@ axs[1][1].imshow(
     aspect="auto",
     cmap="seismic",
     origin="lower",
+    norm="log"
 )
 axs[1][2].imshow(
     detectors_simulation["right"].Intensity,
@@ -109,6 +120,23 @@ axs[1][2].imshow(
     cmap="seismic",
     origin="lower",
 )
+
+
+fig, axs = plt.subplots(2,1, sharex=True, sharey=True)
+axs[0].imshow(
+    detectors_data["central"].transpose(), aspect="auto", cmap="seismic", origin="lower", norm="log"
+)
+axs[1].imshow(
+    detectors_simulation["central"].Intensity,
+    aspect="auto",
+    cmap="seismic",
+    origin="lower",
+    norm="log"
+)
+for ax in axs:
+    ax.set(adjustable='box', aspect='equal')
+plt.savefig('p.pdf')
+
 # cbar = fig.colorbar(detectors_simulation["central"])
 # cbar.set_label("ZLabel", loc="top")
 # cax = plt.axes([0.85, 0.1, 0.075, 0.8])
