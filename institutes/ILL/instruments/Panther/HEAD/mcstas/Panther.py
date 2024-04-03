@@ -237,6 +237,8 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
         mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
+        # mycalculator.append_initialize("time_frame=chopper_ratio/2./chopper_rpm/60.;")
+        # mycalculator.append_initialize('printf("time_frame = %.2e\\n", time_frame);')
 
         # optimal time focusing:
         Lcs = 0.8  # [m] chopper-sample distance
@@ -471,9 +473,16 @@ class Panther(McStasInstrumentBase):
 
         if _start_from_Fermi:
             fermi.zero_time = 2
-            source.focus_yh = fermi.yheight * 0.9
-            source.focus_xw = fermi.nslit * fermi.w * 1.2
+            # focusing on entry of the Fermi Chopper
+            HCS.focus_yh = fermi.yheight * 0.9
+            HCS.focus_xw = fermi.nslit * fermi.w * 1.2
+            HCS.dist = 1.7
+            # focusing on the sample area
+            HCS.focus_yh = 0.04
+            HCS.focus_xw = 0.02
+            HCS.dist = 2
 
+            HCS.flux = 5e5
         mycalculator.add_parameter(
             "double", "Efoc", comment="Focusing energy", unit="meV", value=0
         )
@@ -505,6 +514,20 @@ class Panther(McStasInstrumentBase):
         )
 
         Lbsd = fermi.radius + 0.04
+
+        monitor = mycalculator.add_component(
+            "monitor", "Monitor_nD", AT=Lbsd - 0.01, RELATIVE=fermi
+        )
+        monitor.set_parameters(
+            xwidth=0.01,
+            yheight=0.01,
+            zdepth=0.01,
+            filename='"monitor.dat"',
+            restore_neutron=1,
+            options='"box intensity, bins=1 pressure=0.001"',
+            # options='"x bins={} y bins={} file={}"'.format(1, 1, "counter.dat"
+        )
+
         before_sample_diaphragm = mycalculator.add_component(
             "before_sample_diaphragm", "Slit", AT=Lbsd, RELATIVE=fermi
         )
@@ -546,16 +569,13 @@ class Panther(McStasInstrumentBase):
         # Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
         # ------------------------------------------------------------
-        # mycalculator, detector_arm = self.add_new_section("DetectorCalc", Sample_Out)
-        detector_arm = Sample_Out
-        detector_arm = mycalculator.add_component(
-            "detector_arm", "Arm", AT=[0, -0.4, 0], RELATIVE=detector_arm
-        )
-
-        # ------------------------------------------------------------
         """
         the is the possibility to simulate the transmission exactly or by approximation depending if nblades is given or not
         """
+        detector_arm = mycalculator.add_component(
+            "detector_arm", "Arm", AT=[0, -0.4, 0], RELATIVE=Sample_Out
+        )
+
         collimator = mycalculator.add_component(
             "collimator", "Collimator_radial", AT=[0, 0, 0], RELATIVE=detector_arm
         )
@@ -572,34 +592,41 @@ class Panther(McStasInstrumentBase):
             verbose=1,
         )
 
-        time_channels = 512
+        # ------------------------------------------------------------
+        mycalculator, detector_arm = self.add_new_section("DetectorCalc", detector_arm)
+
         tube_width = 0.022
         theta_bins = 9 * 32 + 8
         theta_min = -5
         angle_increment = math.asin(tube_width / 2.0 / Lsd) * 2  # * 180 / math.pi
         theta_max = theta_bins * angle_increment * 180 / math.pi + theta_min
 
-        y_channels = 512
+        ny = mycalculator.add_parameter(
+            "int",
+            "ny",
+            value=256,
+            comment="Number of channels along the tube (y direction)",
+        )
 
-        theta_max = 180
-        theta_min = -180
-        theta_bins = 180
+        nt = mycalculator.add_parameter(
+            "int", "nt", value=512, comment="Number of time channels"
+        )
 
         detector = mycalculator.add_component(
             "detector",
             "Cyl_TOF",
-            AT=[0, 0, 0],
+            AT=0,
             RELATIVE=detector_arm,
         )
 
         detector.set_parameters(
-            nphi=180,
-            ny=y_channels,
-            nt=time_channels,
+            nphi=141,
+            ny=ny,
+            nt=nt,
             yheight=2.0,
             radius=Lsd,
-            phimin=-11,
-            phimax=134,
+            phimin=-5,
+            phimax=136,
             tmin=0,
             tmax=1,
             # nphigroups=1
