@@ -36,81 +36,12 @@ myinstrument.set_instrument_base_dir(basedir)
 # print(myinstrument)
 myinstrument.sim_neutrons(500000)
 myinstrument.set_seed(654321)
-
-
-test_number = 0  # None 1 or 2
-
-
-def set_tests(myinstrument, test_number):
-    instrument_name = myinstrument.name
-
-    if instrument_name == "ThALES":
-        myinstrument.master["a2"] = myinstrument.energy_to_angle(4.98 * ureg.meV)
-        myinstrument.master["a4"] = 60 * ureg.degree
-        myinstrument.master["a6"] = myinstrument.master["a2"].pint_value
-    if instrument_name == "Panther":
-        myinstrument.master["energy"] = 19 * ureg.meV
-    if instrument_name == "D11":
-        if test_number is not None:
-
-            myinstrument.master["detpos"] = 2 * ureg.m
-            myinstrument.master["attenuator_index"] = 0
-            myinstrument.master["collimation"] = 8 * ureg.m
-            myinstrument.sample_holder(
-                material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
-            )
-            myinstrument.sample_shape("holder")
-            if test_number == 0:
-                myinstrument.set_sample_by_name("None")
-                myinstrument.sample_holder(None, None)
-                myinstrument.master["attenuator_index"] = 6
-            elif test_number == 1:
-                myinstrument.set_sample_by_name("None")
-            elif test_number == 2:
-                myinstrument.set_sample_by_name("qSq")
-                myinstrument.master[
-                    "qSq_file"
-                ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
-                #                '"simul_5711.sq"'
-
-
-acquisition_time = 60  # seconds
-
-
-def run_test(myinstrument, test_number):
-    calcname = "OriginCalc"
-    calcname_data = calcname + "_data"
-
-    set_tests(myinstrument, test_number)
-
-    myinstrument.run()
-    data = myinstrument.output
-    detectors = data[calcname_data].get_data()["data"]
-    for detector in detectors:
-        # print("------------------------------")
-        # print(detector)
-        # help(detector)
-        # print(detector.Intensity)
-        if detector.name == "detector_central":
-            return detector.Intensity
-
-
-Intensities = []
-import numpy as np
-
-a = run_test(myinstrument, 0)
-print(np.sum(a))
-sys.exit(0)
-for itest in range(0, 3):
-    Intensities.append(run_test(myinstrument, itest))
-
-for itest in range(0, 3):
-    print(itest, " : ", Intensities[itest])
-
-
-sys.exit(0)
-
 calcname = "OriginCalc"
+
+myinstrument.calculators[calcname].show_diagram(analysis=True)
+
+sys.exit(0)
+
 attenuation_values = [
     8.325,  # attenuator 1
     26.21,  # attenuator 2
