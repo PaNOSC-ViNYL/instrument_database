@@ -354,7 +354,7 @@ class D11(McStasInstrumentBase):
         if remove_H15:
             mysource = sourcesimple.VCS_source(mycalculator)
             mysource.set_parameters(
-                xwidth=0.03,
+                xwidth=0.01,
                 yheight=0.05,
                 # zdepth=0.1,
                 focus_xw=0.03,
@@ -550,14 +550,14 @@ class D11(McStasInstrumentBase):
         microGap = 0.0001
 
         def inactive_coll(i, collimation_length, movable_guide_config):
-            print(
-                i,
-                "("
-                + str(collimation_length)
-                + " - collimation)>0 ? "
-                + str(movable_guide_config["n"][i])
-                + " : 0",
-            )
+            # print(
+            #     i,
+            #     "("
+            #     + str(collimation_length)
+            #     + " - collimation)>0 ? "
+            #     + str(movable_guide_config["n"][i])
+            #     + " : 0",
+            # )
 
             return (
                 "("

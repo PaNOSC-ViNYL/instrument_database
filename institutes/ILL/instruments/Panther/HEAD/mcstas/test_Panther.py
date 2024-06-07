@@ -5,15 +5,14 @@
 # - [ ] vanadium sample: r=5mm h=40mm th=1mm
 # - [ ] plot of 3D data for comparison
 # - [ ] profile of 3D data for comparison
-from conftest import ureg
+from pytest_check import check
+from conftest import ureg, PlotHelper, ComparePlots, PdfPages, plt
 import sys, os, pytest, math
-
-# import the units
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
 
 from Panther import def_instrument
+from conftest import plot_sample_monitor
 
 
 # ------------------------------ helper functions
@@ -65,62 +64,28 @@ def compare_data(detector_data, acquisition_time, mc_detectors, electronic_noise
         ), d
 
 
-def stat(data):
-    if len(data.shape) != 2:
-        raise RuntimeError("wrong number of dimensions")
-
-    def vv(data, axis):
-        # array with the bin indexes
-        x = np.array(range(0, data.shape[axis]))
-
-        # cumulative weights along one axis
-        w = np.sum(data, axis=axis)
-
-        sumw = np.sum(w)
-        sumwx = np.sum(x * w)
-        sumwx2 = np.sum(x * x * w)
-
-        m = sumwx / sumw
-        std = sumwx2 / sumw - m * m
-        return (m, np.sqrt(std))
-
-    mx, stdx = vv(data, 0)
-    my, stdy = vv(data, 1)
-
-    return (mx, my, stdx, stdy)
-
-
-def plot_sample_monitor(sim, plot_settings):
+def plot_data_sim(data, sim, time, plot_settings):
+    pixel_sizes = plot_settings[0]
     tmp_path = plot_settings[1]
-    settings = plot_settings[0]
 
-    fig = plt.figure(layout="constrained", figsize=(15, 10))
-    axs = fig.subplot_mosaic("""IN""")
+    ph1 = {}
+    ph2 = {}
+    for d in sim:
+        ph1[d] = PlotHelper(sim[d].Intensity.T * time)
+        ph1[d].set_pixel_size(pixel_sizes[d]["px"], pixel_sizes[d]["py"])
+        if data is not None:
+            ph2[d] = PlotHelper(data[d])
+            ph2[d].set_pixel_size(pixel_sizes[d]["px"], pixel_sizes[d]["py"])
 
-    immap = {}
-    immap["I"] = axs["I"].imshow(sim.Intensity.T, **settings["sample_monitor"])
-    immap["N"] = axs["N"].imshow(sim.Ncount.T, **settings["sample_monitor"])
-    fig.colorbar(ax=axs["I"], mappable=immap["I"])
-    fig.colorbar(ax=axs["N"], mappable=immap["N"])
+    compare_plots = ComparePlots(ph1, ph2, "Simulation", "Data")
 
-    plt.savefig(os.path.join(tmp_path, "sample_monitor.pdf"))
-
-
-def plot_data_sim(data, sim, plot_settings):
-    tmp_path = plot_settings[1]
-    settings = plot_settings[0]
+    plot_positions = {
+        "detector": "c",
+    }
 
     fig = plt.figure(layout="constrained", dpi=92, figsize=(15, 15))
-    axs = fig.subplot_mosaic(
-        """
-        c
-        C
-        """,
-        # set the height ratios between the rows
-        # height_ratios=[1, 1],
-        # set the width ratios between the columns
-        # width_ratios=[1, 2, 1],
-    )
+    axs = fig.subplot_mosaic([["cx"], ["cy"]])
+    return
     # fig.suptitle("Vertically stacked subplots")
     name = next(iter(data.keys()))  # first, and unique, detector name
     immap = {}
@@ -248,6 +213,36 @@ def config0(set_instr):
 
 
 @pytest.fixture
+def config_sample_monitor(config0):
+    """
+    Instrument configuration config0 with sample monitor of 2x2 cm2 at sample position
+    """
+    myinstrument = config0
+    myinstrument.master["energy"] = 110 * ureg.meV
+    myinstrument.set_sample_by_name("monitor")
+    myinstrument.sample.set_parameters(
+        xwidth=0.04,
+        yheight=0.08,
+        zdepth=0.01,
+    )
+
+    # remove all simulation components after the sample monitor
+    *_, calc = myinstrument.calculators
+
+    while calc != myinstrument._calculator_with_sample.name:
+        myinstrument.remove_calculator(calc)
+
+    calc = myinstrument._calculator_with_sample
+    comp = calc.get_last_component()
+
+    while comp.name != myinstrument.sample.name:
+        calc.remove_component(comp)
+        comp = calc.get_last_component()
+
+    return myinstrument
+
+
+@pytest.fixture
 def config_vanadium(config0):
     """Test with vanadium sample"""
     myinstrument = config0
@@ -267,7 +262,7 @@ def data_vanadium():
         os.path.abspath(
             "institutes/ILL/instruments/Panther/HEAD/mcstas/data/032156.nxs"
         )
-    )[0]
+    )
 
 
 # @pytest.fixture
@@ -295,23 +290,10 @@ def plot_settings(detector_names, tmp_path):
     settings = {}
     for d in detector_names:
         settings[d] = {
-            "cmap": "hsv",
-            "origin": "lower",
-            "norm": "log",
-            "extent": [
-                0,
-                detectors[d]["pixel_size_x"][0]
-                * detectors[d]["data"][:, :, 0].shape[0],
-                0,
-                detectors[d]["pixel_size_y"][0]
-                * detectors[d]["data"][:, :, 0].shape[1],
-            ],
+            "px": detectors[d]["pixel_size_x"][0],
+            "py": detectors[d]["pixel_size_y"][0],
         }
 
-    settings["sample_monitor"] = {
-        "cmap": "hsv",
-        "origin": "lower",
-    }
     return settings, tmp_path
 
 
@@ -357,8 +339,35 @@ def test_master_parameters(config0):
     # print(help(myinstr.master))
     master_parameters = ["chopper_rpm", "chopper_ratio", "energy", "Efoc"]
 
+    # check that master parameters here defined are present in the simulation
     for par in master_parameters:
         assert par in myinstr.master
+
+    # check that the test accounts for all the master parameters defined in the simulation
+    for par in myinstr.master:
+        assert par.name in master_parameters
+
+
+def test_intensity_at_sample(config_sample_monitor, plot_settings):
+    myinstrument = config_sample_monitor
+    myinstrument.settings(ncount=2e8)
+
+    myinstrument.run()
+    detectors = myinstrument.output.get_data()["data"]
+    detector = [d for d in detectors if d.name in ["sample_monitor"]][0]
+
+    # check simulation vs previous version
+    assert np.sum(detector.Ncount) == 36552
+    assert np.sum(detector.Intensity) == pytest.approx(10751, abs=1)
+    ph = PlotHelper(detector.Intensity.T)
+    ph.set_limits(detector.metadata.limits)
+    ph.stats[0].mean = pytest.approx(49.68, abs=0.02)
+    ph.stats[1].mean = pytest.approx(49.58, abs=0.02)
+    ph.stats[0].std = pytest.approx(22.52, abs=0.02)
+    ph.stats[1].std = pytest.approx(22.40, abs=0.02)
+
+    detector = {d.name: d for d in detectors if d.name in ["sample_monitor"]}
+    plot_sample_monitor(detector, plot_settings)
 
 
 class PSD_TOF:
@@ -375,7 +384,7 @@ class PSD_TOF:
                 i.append(np.swapaxes(d.Intensity, 0, 1))
                 e.append(np.swapaxes(d.Error, 0, 1))
                 n.append(np.swapaxes(d.Ncount, 0, 1))
-        self.I = np.stack(i)
+        self.Intensity = np.stack(i)
         self.E = np.stack(e)
         self.N = np.stack(n)
 
@@ -383,14 +392,9 @@ class PSD_TOF:
 
 
 def test_direct_beam(config0, plot_settings, data_vanadium, detector_names):
+    data, time = data_vanadium
     myinstrument = config0
     myinstrument.settings(ncount=1e5, mpi=1)
-    myinstrument.set_sample_by_name("monitor")
-    myinstrument.sample.set_parameters(
-        xwidth=0.02,
-        yheight=0.02,
-        zdepth=0.01,
-    )
     mycalc = myinstrument.calculators["OriginCalc"]
     mycalc.get_component("Monochromator").verbose = 1
 
@@ -402,10 +406,8 @@ def test_direct_beam(config0, plot_settings, data_vanadium, detector_names):
 
     TOF = PSD_TOF(detectors)
 
-    plot_sample_monitor(sample_monitor[0], plot_settings)
-
     # each tube is saved in a different file, need to compose them back
-    plot_data_sim(data_vanadium, {"detector": TOF}, plot_settings)
+    plot_data_sim(data, {"detector": TOF}, time, plot_settings)
 
     assert np.sum(sample_monitor[0].Ncount) == 8373
     assert np.sum(sample_monitor[0].Intensity) == pytest.approx(4152070)
@@ -435,13 +437,14 @@ def test_vanadium(config_vanadium, plot_settings, data_vanadium, detector_names)
     assert True == True
 
 
-def test_diagram(config0):
+def test_diagram(config0, tmp_path):
     myinstrument = config0
     myinstrument.sim_neutrons(1e5)
 
     mycalc = myinstrument.calculators["OriginCalc"]
     # myinstrument.run()
     mycalc.show_diagram(analysis=True, variable=None)
+    plt.savefig(os.path.join(tmp_path, "diagram.pdf"))
     assert True == True
 
 
