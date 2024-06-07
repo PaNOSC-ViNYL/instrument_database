@@ -955,8 +955,49 @@ class McStasInstrumentBase(Instrument):
         return hash(h)
 
     def run(self) -> None:
+
         # self._check_sample_shape()
-        # self.custom_flags("-I mcstas/components")
+
+        def update_calc_base_dir(calc):
+            calc.calculator_base_dir = "-".join(
+                [
+                    calc.name,
+                    "_".join([str(calc.calc_hash), str(calc.params_hash)]),
+                ]
+            )
+
+        previous_changed = False
+        self.settings(force_compile=False)
+        for calc in self.calculators.values():
+
+            if calc.is_calc_changed():
+                previous_changed = True
+                # need to recompile and rerun
+                print(
+                    "Calculator {} changed: {} -> {}".format(
+                        calc.name, calc.calc_hash, hash(calc)
+                    )
+                )
+                calc._update_hash()
+                update_calc_base_dir(calc)
+
+                # update hash with force_compile == False
+                calc.settings(force_compile=True)
+                calc.backengine()
+            elif calc.is_paramset_changed():
+                previous_changed = True
+                print(f"Parameters of calculator {calc.name} changed")
+                # need to re-run without recompiling
+                calc._update_hash()
+                update_calc_base_dir(calc)
+                calc.backengine()
+            else:
+                print(f"Calculator {calc.name} unchanged")
+                if previous_changed:
+                    print(f"Re-running {calc.name} since previous calculator changed")
+                    # calc.backengine()
+
+        return
         return super().run()
 
         for calculator in self.calculators.values():
@@ -996,15 +1037,15 @@ class McStasInstrumentBase(Instrument):
     #     for mycalc in self.calculators.values():
     #         mycalc.settings(seed=number)
 
-    def force_compile(self, force_compile: bool) -> None:
-        """Setting the force compile on all the calculators"""
-        for mycalc in self.calculators.values():
-            mycalc.settings(force_compile=force_compile)
+    # def force_compile(self, force_compile: bool) -> None:
+    #     """Setting the force compile on all the calculators"""
+    #     for mycalc in self.calculators.values():
+    #         mycalc.settings(force_compile=force_compile)
 
-    def custom_flags(self, flags: str) -> None:
-        """Additional custom flags for McRun"""
-        for mycalc in self.calculators.values():
-            mycalc.settings(custom_flags=flags)
+    # def custom_flags(self, flags: str) -> None:
+    #     """Additional custom flags for McRun"""
+    #     for mycalc in self.calculators.values():
+    #         mycalc.settings(custom_flags=flags)
 
     def get_total_SPLIT(self):
         split = 1
