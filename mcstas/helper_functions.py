@@ -56,6 +56,7 @@ class PlotHelper:
         if weights is None:
             self.__weights = np.ones(data.shape)
 
+        # make 1D statistics
         x, wx = self.marginal(axis=1)
         y, wy = self.marginal(axis=0)
 
