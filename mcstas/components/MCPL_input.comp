@@ -26,8 +26,7 @@
 * %P
 * INPUT PARAMETERS
 *
-* filename: [str]       Name of neutron mcpl file to read.
-* filelist: [str]       Name of the file with the list of MCPL input files to read, one per line.
+* filename: [str]       Name of neutron mcpl file to read or name of the file with the list of MCPL input files to read, one per line.
 * verbose: [ ]          Print debugging information for first 10 particles read.
 * preload: [ ]          Load particles during INITIALIZE. On GPU preload is forced.
 * polarisationuse: [ ]  If !=0 read polarisation vectors from file.
@@ -43,7 +42,7 @@
 
 DEFINE COMPONENT MCPL_input
 DEFINITION PARAMETERS ()
-SETTING PARAMETERS (string filename=0, string filelist=0, polarisationuse=1,verbose=1, Emin=0, Emax=FLT_MAX, int repeat_count=1, E_smear=0, pos_smear=0, dir_smear=0, int preload=0)
+SETTING PARAMETERS (string filename=0, polarisationuse=1,verbose=1, Emin=0, Emax=FLT_MAX, int repeat_count=1, E_smear=0, pos_smear=0, dir_smear=0, int preload=0)
 OUTPUT PARAMETERS ()
 DEPENDENCY "-Wl,-rpath,CMD(mcpl-config --show libdir) -LCMD(mcpl-config --show libdir) -lmcpl -ICMD(mcpl-config --show includedir)"
 
@@ -94,23 +93,26 @@ INITIALIZE
     /* No need to check if the file opens correctly since mcpl will
      * abort internally if it cannot open the file.*/
     //inputfile = mcpl_open_file(filename);
-
-    if (filelist && strlen(filelist) && strcmp(filelist, "NULL") && strcmp(filelist,"0") && repeat_count>0) {
-      /* read the list of input files from a file */
-      /*	fprintf(stderr, "filelist = %s\n",filelist);*/
-      FILE *filelist_f = fopen(filelist, "r");
-      if(filelist_f!=NULL){
-	nfiles=0;
-	while(fgets(filenames[nfiles], 256, filelist_f)!=NULL){
-	  filenames[nfiles][strlen(filenames[nfiles])-1]='\0';
-	  nfiles++;
-	}
-      }else exit(2);
-    } else if (filename && strlen(filename) && strcmp(filename, "NULL") && strcmp(filename,"0") && repeat_count>0) {
-      /* We got a proper filename, do the rest of the work */
-      nfiles=1;
-      sprintf(filenames[0],"%s", filename);
+    unsigned int f_len = strlen(filename);
+    if (filename && f_len && strcmp(filename, "NULL") && strcmp(filename,"0") && repeat_count>0) {
+      if (f_len>7 && strcmp(filename+f_len-8,".mcpl.gz")==0){
+	  /* We got a proper filename, do the rest of the work */
+	  nfiles=1;
+	  sprintf(filenames[0],"%s", filename);
+	}else{
+	  /* read the list of input files from a file */
+	  fprintf(stderr, "filelist = %s\n",filename+f_len-7);
+	  FILE *filelist_f = fopen(filename, "r");
+	  if(filelist_f!=NULL){
+	    nfiles=0;
+	    while(fgets(filenames[nfiles], 256, filelist_f)!=NULL){
+	      filenames[nfiles][strlen(filenames[nfiles])-1]='\0';
+	      nfiles++;
+	    }
+	  }else exit(2);
+      }
     }
+
 
     unsigned long long int nparts;
     for(unsigned int ifile =0; ifile<nfiles; ++ifile){
