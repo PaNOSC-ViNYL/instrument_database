@@ -27,6 +27,7 @@
 * INPUT PARAMETERS
 *
 * filename: [str]       Name of neutron mcpl file to read.
+* filelist: [str]       Name of the file with the list of MCPL input files to read, one per line.
 * verbose: [ ]          Print debugging information for first 10 particles read.
 * preload: [ ]          Load particles during INITIALIZE. On GPU preload is forced.
 * polarisationuse: [ ]  If !=0 read polarisation vectors from file.
@@ -42,7 +43,7 @@
 
 DEFINE COMPONENT MCPL_input
 DEFINITION PARAMETERS ()
-SETTING PARAMETERS (string filename=0, polarisationuse=1,verbose=1, Emin=0, Emax=FLT_MAX, int repeat_count=1, E_smear=0, pos_smear=0, dir_smear=0, int preload=0)
+SETTING PARAMETERS (string filename=0, string filelist=0, polarisationuse=1,verbose=1, Emin=0, Emax=FLT_MAX, int repeat_count=1, E_smear=0, pos_smear=0, dir_smear=0, int preload=0)
 OUTPUT PARAMETERS ()
 DEPENDENCY "-Wl,-rpath,CMD(mcpl-config --show libdir) -LCMD(mcpl-config --show libdir) -lmcpl -ICMD(mcpl-config --show includedir)"
 
@@ -53,7 +54,12 @@ SHARE
 
 DECLARE
 %{
-mcpl_file_t inputfile;
+mcpl_file_t* inputfile;
+int containing_particles[100];
+char filenames[256][256];
+mcpl_file_t inputfiles[100];
+unsigned int icurrentfile;
+unsigned int nfiles;
 long long nparticles;
 long long read_neutrons;
 long long used_neutrons;
@@ -87,18 +93,48 @@ INITIALIZE
     }
     /* No need to check if the file opens correctly since mcpl will
      * abort internally if it cannot open the file.*/
-    inputfile = mcpl_open_file(filename);
+    //inputfile = mcpl_open_file(filename);
 
-  
-    if ( !(nparticles=mcpl_hdr_nparticles(inputfile)) ) {
+    if (filelist && strlen(filelist) && strcmp(filelist, "NULL") && strcmp(filelist,"0") && repeat_count>0) {
+      /* read the list of input files from a file */
+      /*	fprintf(stderr, "filelist = %s\n",filelist);*/
+      FILE *filelist_f = fopen(filelist, "r");
+      if(filelist_f!=NULL){
+	nfiles=0;
+	while(fgets(filenames[nfiles], 256, filelist_f)!=NULL){
+	  filenames[nfiles][strlen(filenames[nfiles])-1]='\0';
+	  nfiles++;
+	}
+      }else exit(2);
+    } else if (filename && strlen(filename) && strcmp(filename, "NULL") && strcmp(filename,"0") && repeat_count>0) {
+      /* We got a proper filename, do the rest of the work */
+      nfiles=1;
+      sprintf(filenames[0],"%s", filename);
+    }
+
+    unsigned long long int nparts;
+    for(unsigned int ifile =0; ifile<nfiles; ++ifile){
+      fprintf(stderr, "INFO: reading file %d #%s#\n", ifile, filenames[ifile]);
+      inputfiles[ifile]=mcpl_open_file(filenames[ifile]);
+      if ( !(nparts=mcpl_hdr_nparticles(inputfiles[ifile])) ) { 
+	fprintf(stderr, "WARNING: file %d %s does not contain neutrons -> skipping\n", ifile, filenames[ifile]);
+	mcpl_close_file(inputfiles[ifile]);
+	containing_particles[ifile]=0;
         fprintf(stderr,"Warning(%s): MCPL-file reports no present particles. Foolishly trying to go on.\n",NAME_CURRENT_COMP);
         #ifndef OPENACC
         nparticles=ncount;
         #endif
-    }else{
-        printf("Message(%s): MCPL file (%s) produced with %s.\n",NAME_CURRENT_COMP,filename,mcpl_hdr_srcname(inputfile));
-        printf("Message(%s): MCPL file (%s) contains %lu particles.\n",NAME_CURRENT_COMP,filename,(long unsigned)nparticles); 
+      }else{
+	nparticles+=nparts;
+	containing_particles[ifile]=1;
+	printf("Message(%s): MCPL file (%s) produced with %s.\n",NAME_CURRENT_COMP,filenames[ifile],mcpl_hdr_srcname(inputfiles[ifile]));
+	printf("Message(%s): MCPL file (%s) contains %ld particles.\n",NAME_CURRENT_COMP,filenames[ifile],nparts); 
+      }
     }
+    icurrentfile=0;
+    while(containing_particles[icurrentfile]==0) icurrentfile++;
+    inputfile = inputfiles+icurrentfile;
+  
     mcset_ncount(nparticles);
 
     if(repeat_count==0) repeat_count=1;
@@ -158,7 +194,7 @@ INITIALIZE
       int loop;
       for (loop=0; loop < nparticles ; loop++) {
 	const mcpl_particle_t *particle;
-	particle=mcpl_read(inputfile);
+	particle=mcpl_read(*inputfile);
 	if (particle) {
 	  if (particle->pdgcode==2112) {
 	    if (verbose && read_neutrons<11) {
@@ -202,10 +238,18 @@ INITIALIZE
 	    }
 	    read_neutrons++;
 	  }
+	}else{
+	  while(++icurrentfile<nfiles && containing_particles[icurrentfile]==0){};
+	  if(icurrentfile<nfiles){
+	    mcpl_close_file(*inputfile);
+	    printf("Reading next MCPL file: %s\n", filenames[icurrentfile]);
+	    inputfile = inputfiles+icurrentfile;
+	    --loop; //don't increment at the end of the loop
+	  }
 	}
       }
       printf("Done reading MCPL file, found %ld neutrons\n",(long unsigned)read_neutrons);
-      mcpl_close_file(inputfile);
+      mcpl_close_file(*inputfile);
       fprintf(stdout, "\n\n Warning: You are using MCPL_input with a repeat_count of %lu:\n - Neutron count requested is %lu x %lu <= %lu",
 	      (long unsigned)repeat_count,(long unsigned)read_neutrons,
 	      (long unsigned)repeat_count,(long unsigned)repeat_cnt*read_neutrons);
@@ -227,15 +271,15 @@ TRACE
 #ifndef OPENACC
   const mcpl_particle_t *particle;// = (mcpl_particle_t *) calloc(sizeof(mcpl_particle_t),1);
   if(!preload) {
-    particle = mcpl_read(inputfile);
+    particle = mcpl_read(*inputfile);
 
     ncount=mcget_ncount();
     if (!particle) {
       if(repeat_cnt>1) {
 	/* Trigger rewind of the file and ABSORB to get the first neutron "again" */
 	repeating++;
-	mcpl_rewind(inputfile);
-	particle = mcpl_read(inputfile);
+	mcpl_rewind(*inputfile);
+	particle = mcpl_read(*inputfile);
 #if defined (USE_MPI)   
 	MPI_MASTER(
 #endif
@@ -243,8 +287,16 @@ TRACE
 #if defined (USE_MPI) 
     );
 #endif
-      } else
-	ABSORB;
+      }else{
+	while(++icurrentfile<nfiles && containing_particles[icurrentfile]==0){};
+	if(icurrentfile<nfiles){
+	  mcpl_close_file(*inputfile);
+	  printf("Reading next MCPL file: %s\n", filenames[icurrentfile]);
+	  inputfile = inputfiles+icurrentfile;
+	  particle = mcpl_read(*inputfile);
+	}else
+	  ABSORB;
+      }
     }
     if (particle->pdgcode!=2112) {
         /*Either no particle read, particle is not a neutron, or it has invalid energy - terminate to trigger next ray*/
@@ -382,7 +434,7 @@ SAVE
 %{
   #ifndef OPENACC
   if (!preload) {
-      mcpl_close_file(inputfile);
+      mcpl_close_file(*inputfile);
   }
   #endif
 %}
