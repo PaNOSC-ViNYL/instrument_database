@@ -15,6 +15,8 @@ import math
 # list here all the common parts to be imported
 from typing import List, Optional, Any
 
+maxSplit = 10
+
 
 class McStasInstrumentBase(Instrument):
     """:class: BaseClass to be used for creating a good instrument"""
@@ -508,8 +510,8 @@ class McStasInstrumentBase(Instrument):
             )
 
             self._calculator_with_sample.append_initialize(
-                "sample_split = 2 * floor(2*PI/(0.5*{w}/{z}));".format(
-                    w=self.focus_xw, z=z
+                "sample_split = fmax({maxSplit},2 * floor(2*PI/(0.5*{w}/{z})));".format(
+                    w=self.focus_xw, z=z, maxSplit=maxSplit
                 )
             )
 
