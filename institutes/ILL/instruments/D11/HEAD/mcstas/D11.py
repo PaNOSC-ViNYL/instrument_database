@@ -524,7 +524,7 @@ class D11(McStasInstrumentBase):
             "if(collimation!=collimation_options[icollimation]){"
         )
         mycalculator.append_initialize(
-            'printf("[ERROR] chosen collimation not within accepted values\\n");}'
+            'printf("[ERROR] chosen collimation not within accepted values, exiting\\n");exit(EXIT_FAILURE);}'
         )
         # ----------------------------------------
 
