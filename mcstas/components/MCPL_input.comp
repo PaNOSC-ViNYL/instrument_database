@@ -101,7 +101,6 @@ INITIALIZE
 	  sprintf(filenames[0],"%s", filename);
 	}else{
 	  /* read the list of input files from a file */
-	  fprintf(stderr, "filelist = %s\n",filename+f_len-7);
 	  FILE *filelist_f = fopen(filename, "r");
 	  if(filelist_f!=NULL){
 	    nfiles=0;
@@ -113,7 +112,7 @@ INITIALIZE
       }
     }
 
-
+    nparticles=0;
     unsigned long long int nparts;
     for(unsigned int ifile =0; ifile<nfiles; ++ifile){
       fprintf(stderr, "INFO: reading file %d #%s#\n", ifile, filenames[ifile]);
@@ -123,9 +122,9 @@ INITIALIZE
 	mcpl_close_file(inputfiles[ifile]);
 	containing_particles[ifile]=0;
         fprintf(stderr,"Warning(%s): MCPL-file reports no present particles. Foolishly trying to go on.\n",NAME_CURRENT_COMP);
-        #ifndef OPENACC
-        nparticles=ncount;
-        #endif
+        //#ifndef OPENACC
+        //nparticles=ncount;
+        //#endif
       }else{
 	nparticles+=nparts;
 	containing_particles[ifile]=1;
