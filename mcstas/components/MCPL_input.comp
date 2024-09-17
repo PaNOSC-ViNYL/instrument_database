@@ -268,13 +268,13 @@ TRACE
 %{
 
   double nrm;
-  long long ncount;
+  long long ncount = mcget_ncount();
+  if(nparticles){
 #ifndef OPENACC
   const mcpl_particle_t *particle;// = (mcpl_particle_t *) calloc(sizeof(mcpl_particle_t),1);
   if(!preload) {
     particle = mcpl_read(*inputfile);
 
-    ncount=mcget_ncount();
     if (!particle) {
       if(repeat_cnt>1) {
 	/* Trigger rewind of the file and ABSORB to get the first neutron "again" */
@@ -328,7 +328,7 @@ TRACE
 #endif    
   }
 #endif
-  ncount = mcget_ncount();
+  //ncount = mcget_ncount();
   //fprintf(stdout,"Trace ncount is %ld on %i\n",ncount,ismpislave);
   unsigned long long i=_particle->_uid;
   if (preload) {
@@ -429,12 +429,13 @@ TRACE
   /* Correct for repetition, by repeat_count and/or MPI */
   p /= (repeat_tot);
   SCATTER;
+  }
 %}
 
 SAVE
 %{
   #ifndef OPENACC
-  if (!preload) {
+  if (!preload && nparticles) {
       mcpl_close_file(*inputfile);
   }
   #endif
