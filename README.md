@@ -143,6 +143,21 @@ pip install -e instrumentDataBaseAPI/
 ```
 
 #### Setting up McStas environment
+##### Install McStas 3.5.1
+ -# Download miniforge from https://conda-forge.org/miniforge/
+ -# Load conda manually to setup automatic conda configuration at shell startup. For fish shell:
+ `source /home/nourbakhsh/miniforge3/etc/fish/conf.d/conda.fish`
+ `conda init fish`
+ -# Create a mcstas dedicated environment
+ `conda create --name mcstas`
+ -# Activate environment 
+ `conda activate mcstas`
+ -# Install mcstas in the environment
+ `mamba install mcstas compilers openmpi=4`
+ -# Install McStasScript
+ `mamba install pip jupyterlab ipympl`
+ `mamba install --file McStasScript/requirements.txt`
+ 
 In case the simulation uses mcstas as simulation program, the `MCSTAS` environment variable should be set, exported and pointing to the McStas root directory.
 
 An example in fish shell:
