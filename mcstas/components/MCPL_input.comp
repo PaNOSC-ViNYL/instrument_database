@@ -49,14 +49,16 @@ DEPENDENCY "-Wl,-rpath,CMD(mcpl-config --show libdir) -LCMD(mcpl-config --show l
 SHARE
 %{
 #include <mcpl.h>
+#define MAX_MCPL_FILES 512
+#define FILENAME_MAX_LEN 256
 %}
 
 DECLARE
 %{
 mcpl_file_t* inputfile;
-int containing_particles[100];
-char filenames[256][256];
-mcpl_file_t inputfiles[100];
+int containing_particles[MAX_MCPL_FILES];
+char filenames[MAX_MCPL_FILES][FILENAME_MAX_LEN];
+mcpl_file_t inputfiles[MAX_MCPL_FILES];
 unsigned int icurrentfile;
 unsigned int nfiles;
 long long nparticles;
@@ -83,7 +85,7 @@ DArray1d P;
 
 INITIALIZE
 %{
-    char line[256];
+    char line[FILENAME_MAX_LEN];
     long long ncount;
 
     if(Emax<Emin){
@@ -104,9 +106,19 @@ INITIALIZE
 	  FILE *filelist_f = fopen(filename, "r");
 	  if(filelist_f!=NULL){
 	    nfiles=0;
-	    while(fgets(filenames[nfiles], 256, filelist_f)!=NULL){
-	      filenames[nfiles][strlen(filenames[nfiles])-1]='\0';
-	      nfiles++;
+	    while(fgets(filenames[nfiles], MAX_MCPL_FILES, filelist_f)!=NULL){
+	      //filenames[nfiles][strlen(filenames[nfiles])-1]='\0';
+	      if(strlen(filenames[nfiles])>0){
+		int l = strlen(filenames[nfiles])-1;
+		if(filenames[nfiles][l]=='\n')
+		  filenames[nfiles][l]='\0';
+		fprintf(stderr, "Last character: #%c#\n",filenames[nfiles][strlen(filenames[nfiles])-1]);
+		nfiles++;
+	      }
+	      if(nfiles>=MAX_MCPL_FILES){
+		fprintf(stderr,"ERROR(%s): Maximum number of mcpl files reached (%d)", NAME_CURRENT_COMP, MAX_MCPL_FILES);
+		exit(2);
+	      }
 	    }
 	  }else exit(2);
       }
@@ -115,7 +127,7 @@ INITIALIZE
     nparticles=0;
     unsigned long long int nparts;
     for(unsigned int ifile =0; ifile<nfiles; ++ifile){
-      fprintf(stderr, "INFO: reading file %d #%s#\n", ifile, filenames[ifile]);
+      fprintf(stderr, "INFO: reading file %d/%d #%s#\n", ifile, nfiles,filenames[ifile]);
       inputfiles[ifile]=mcpl_open_file(filenames[ifile]);
       if ( !(nparts=mcpl_hdr_nparticles(inputfiles[ifile])) ) { 
 	fprintf(stderr, "WARNING: file %d %s does not contain neutrons -> skipping\n", ifile, filenames[ifile]);
