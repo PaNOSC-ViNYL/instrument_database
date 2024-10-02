@@ -510,7 +510,7 @@ class McStasInstrumentBase(Instrument):
             )
 
             self._calculator_with_sample.append_initialize(
-                "sample_split = fmax({maxSplit},2 * floor(2*PI/(0.5*{w}/{z})));".format(
+                "sample_split = fmin({maxSplit},2 * floor(2*PI/(0.5*{w}/{z})));".format(
                     w=self.focus_xw, z=z, maxSplit=maxSplit
                 )
             )
