@@ -48,9 +48,11 @@ from typing import List, Optional, Any
 
 # for unit conversions
 import pint
+
 from pint import set_application_registry
 
 ureg = pint.get_application_registry()
+# ureg = pint.UnitRegistry()
 
 ############## Mandatory method
 def get_flavours():

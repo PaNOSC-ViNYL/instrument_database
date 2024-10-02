@@ -324,7 +324,7 @@ def test_name(set_instr):
 
 
 def test_detector_size(data_vanadium):
-    detectors = data_vanadium
+    detectors = data_vanadium[0]
     assert detectors["detector"].shape == (288, 256, 512)
 
 
