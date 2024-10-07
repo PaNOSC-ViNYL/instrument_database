@@ -652,6 +652,16 @@ class Panther(McStasInstrumentBase):
         nt = mycalculator.add_parameter(
             "int", "nt", value=512, comment="Number of time channels"
         )
+
+        tmin = mycalculator.add_parameter(
+            "double", "tdelay", value=0, comment="Time min in the histogram"
+        )
+        self.add_parameter_to_master(tmin.name, mycalculator, tmin)
+        twidth = mycalculator.add_parameter(
+            "double", "twidth", value=0.000003, comment="Width of the time bin"
+        )
+        self.add_parameter_to_master(twidth.name, mycalculator, twidth)
+
         # if chopper_ratio is 2: nt=1024
         detector = mycalculator.add_component(
             "detector",
@@ -677,11 +687,11 @@ class Panther(McStasInstrumentBase):
                 chopper_ratio.name, mycalculator, chopper_ratio
             )
 
-        time_frame = mycalculator.add_declare_var("double", "time_frame")
+        # twidth = mycalculator.add_declare_var("double", "time_frame")
 
-        mycalculator.append_initialize(
-            "time_frame = chopper_ratio/2.0/chopper_rpm/60.0;"
-        )
+        # mycalculator.append_initialize(
+        #    "time_frame = chopper_ratio/2.0/chopper_rpm/60.0;"
+        # )
         detector.set_parameters(
             ny=ny,
             nt=nt,
@@ -689,8 +699,8 @@ class Panther(McStasInstrumentBase):
             radius=Lsd,
             phimin=-17.328,
             # phimax=136,
-            tmin=0,  # "({Lcs}+{Lsd})/neutron_velocity".format(Lcs=Lcs, Lsd=Lsd),
-            tmax=0.002,  # time_frame,
+            tmin=tmin,  # "({Lcs}+{Lsd})/neutron_velocity".format(Lcs=Lcs, Lsd=Lsd),
+            tmax=twidth,  # time_frame,
             nphi_groups=9,
             nphi_pergroup=32,
             phi_groupgap=0.518,
