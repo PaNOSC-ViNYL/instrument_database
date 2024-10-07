@@ -125,11 +125,11 @@ class Panther(McStasInstrumentBase):
 
         monochromators = [
             # name, lattice parameter,
-            ["PG002", 3.3550],
-            ["PG004", 1.6775],
-            ["Cu220", 1.2763],
-            ["PG006", 1.1183],
-            ["Cu331", 0.8282],
+            ["pg002", 3.3550],
+            ["pg004", 1.6775],
+            ["cu220", 1.2763],
+            ["pg006", 1.1183],
+            ["cu331", 0.8282],
         ]
 
         # ------------------------------------------------------------
@@ -137,13 +137,13 @@ class Panther(McStasInstrumentBase):
         mycalculator, Origin = self.add_new_section("OriginCalc")
 
         mono_index = mycalculator.add_parameter(
-            "int",
+            "string",
             "mono_index",
-            comment="Monochromator index. -1 = auto: based on the energy",
-            value=-1,
+            comment="Monochromator name. empty = auto: based on the energy",
+            value='""',
         )
-        mono_index.add_option(-1, True)  # auto
-        mono_index.add_option(list(range(0, len(monochromators))), True)
+        mono_index.add_option('""', True)  # auto
+        mono_index.add_option([m[0] for m in monochromators], True)
 
         # gnuplot> lambda(x) = sqrt(81.80421/x)
         # gnuplot> angle(x,d) = 2*asin(lambda(x)/2/d)*180/pi
@@ -158,6 +158,15 @@ class Panther(McStasInstrumentBase):
             value=[x[1] for x in monochromators],
             comment="monochromator lattice parameter",
         )
+
+        # does not work in McStasScript
+        # mycalculator.add_declare_var(
+        #     "string",
+        #     "mono_names",
+        #     array=len(monochromators),
+        #     value=[str(x[0]) for x in monochromators],
+        #     comment="monochromator name",
+        # )
 
         a2 = mycalculator.add_parameter(
             "double",
@@ -255,25 +264,40 @@ class Panther(McStasInstrumentBase):
 
         a2_interval = a2.get_intervals()[0]
         mycalculator.add_declare_var("double", "mono_d")
-        mycalculator.append_initialize('printf("%ld\\n", mono_index);')
-        mycalculator.append_initialize(  # TODO: remove the cast to int (int) in the comparison. Now only needed for McStas3.3 because mono_index is long and the compiler treats it as unsigned
-            "if((int)mono_index<0){\n"
+        mycalculator.append_initialize('printf("%s\\n", mono_index);')
+        mycalculator.append_initialize(
+            "char mono_names[{}][5] = ".format(len(monochromators)) + "{"
+        )
+        for i in monochromators:
+            mycalculator.append_initialize('"{}",'.format(i[0]))
+        mycalculator.append_initialize("};\n")
+        mycalculator.append_initialize(
+            "mono_d = -1;\n"
+            + 'if(strcmp(mono_index,"")){\n'
             + '  printf("Selecting monochromator...\\n");\n'
-            + "  for(mono_index=0; mono_index < {nindex} && !(a2 > {amin!s} && a2 < {amax!s} ); ++mono_index)".format(
+            + "  for(int mindex=0; mindex < {nindex} && !(a2 > {amin!s} && a2 < {amax!s} ); ++mindex)".format(
                 nindex=len(monochromators),
                 amin=a2_interval[0].m,
                 amax=a2_interval[1].m,
             )
             + "{\n"
-            + "    mono_d = mono_ds[mono_index];\n"
+            + "    mono_d = mono_ds[mindex];\n"
             + "    a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
+            + '    printf("using mono: %s\\n", mono_names[mindex]);\n'
             + '//printf("selecting mono_d = %.4f\\n",mono_d);\n'
             + '//printf("selecting a2 = %.2f\\n",a2);\n'
             + "  }\n"
             + "}else{\n"
-            + "  mono_d = mono_ds[mono_index];\n"
-            + "  a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
-            + "}\n"
+            + "  for(int mindex=0; mindex < {nindex}; ++mindex)".format(
+                nindex=len(monochromators)
+            )
+            + "{\n"
+            + "    if(strcmp(mono_index,mono_names[mindex])==0){\n"
+            + "        mono_d = mono_ds[mindex];\n"
+            + "        a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
+            + "    }\n"
+            + "}}\n"
+            + 'if(mono_d==-1){printf("ERROR: mono_d not set, maybe mono_index not acceptable\\n");}\n'
         )
         mycalculator.append_initialize(
             'printf("mono_d = %.4f\\n",mono_d);'
@@ -282,7 +306,7 @@ class Panther(McStasInstrumentBase):
             'printf("a2 = %.2f\\n",a2);'
         )  # put a warning if A2 does not match
 
-        mycalculator.append_initialize('printf("mono_index = %ld\\n", mono_index);')
+        mycalculator.append_initialize('printf("mono_index = %s\\n", mono_index);')
         if not _start_from_Fermi:
             # ------------------------------------------------------------
             H12 = mycalculator.add_component("H12", "Arm", AT=[0, 0, 0], RELATIVE=HCS)
@@ -415,7 +439,7 @@ class Panther(McStasInstrumentBase):
                 "double", "RMH_h", value=221, comment="default value for PG"
             )
             mycalculator.append_initialize(  # different values for Cu
-                "if(mono_index == 2 || mono_index == 4 ){ RMV_u=12.7;  RMV_w=0.449; RMH_g=45; RMH_h=221;}"
+                'if(strncmp(mono_index,"cu",2) == 0){ RMV_u=12.7;  RMV_w=0.449; RMH_g=45; RMH_h=221;}'
             )
 
             mycalculator.append_initialize(
@@ -428,7 +452,7 @@ class Panther(McStasInstrumentBase):
 
             mycalculator.add_declare_var("float", "mono_mosaic")
             mycalculator.append_initialize(
-                "mono_mosaic = (mono_index==2 || mono_index==4) ? 30 : 50;"  # 0.3: 0.5
+                'mono_mosaic = (strncmp(mono_index,"cu",2) == 0) ? 30 : 50;'  # 0.3: 0.5
             )
 
             Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
