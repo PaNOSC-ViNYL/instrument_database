@@ -518,12 +518,18 @@ class Panther(McStasInstrumentBase):
                 'if(strncmp(mono_index,"cu",2) == 0){ RMV_u=12.7;  RMV_w=0.449; RMH_g=45; RMH_h=221;}'
             )
 
+            ana_focus = 1.0 / (1.0 / distances["Lhm"] + 1.0 / distances["Lms"])
             mycalculator.append_initialize(
-                "if(mono_rv<0) mono_rv = (RMV_u + acos(1- RMV_w/sin(DEG2RAD*a2/2)))/1000.;"
+                # "if(mono_rv<0) mono_rv = (RMV_u + acos(1- RMV_w/sin(DEG2RAD*a2/2)))/1000.;"
+                "if(mono_rv<0) mono_rv = 2 * {ana_focus} * sin(DEG2RAD*a2/2) ;".format(
+                    ana_focus=ana_focus
+                )
             )
             mycalculator.append_initialize(
                 # "if(mono_rh<0) mono_rh = (RMH_g + RMH_h * sin(DEG2RAD*a2/2))/1000.;"
-                f"if(mono_rh<0) mono_rh = 2*(1./(1./{Lhm}+1./{Lms})  )/ sin(DEG2RAD*a2/2);"
+                "if(mono_rh<0) mono_rh = 2*(1./(1./{Lhm}+1./{Lms})  )/ sin(DEG2RAD*a2/2);".format(
+                    Lhm=distances["Lhm"], Lms=distances["Lms"]
+                )
             )
 
             mycalculator.add_declare_var("float", "mono_mosaic")
