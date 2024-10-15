@@ -314,7 +314,10 @@ class Panther(McStasInstrumentBase):
         # the incoming energy for the pyrolytic graphite
         # monochromator, depending on the monochromator take-off
         # angle.
-        mycalculator.parameters["dE"] = 0.06
+        mycalculator.parameters["dE"] = 0.06 / 3
+        # the 3 is to optimize the simulation a bit, to be checked
+        # from the test_diagnostics:
+        # dE =
 
         del mycalculator.parameters["lambda"]
         del mycalculator.parameters["dlambda"]
