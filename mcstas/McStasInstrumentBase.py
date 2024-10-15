@@ -21,6 +21,11 @@ maxSplit = 10
 class McStasInstrumentBase(Instrument):
     """:class: BaseClass to be used for creating a good instrument"""
 
+    def do_section(self, do_section=None):
+        if do_section is not None:
+            self.__do_section = do_section
+        return self.__do_section
+
     def __init__(self, name, do_section=True):
 
         super().__init__(name, instrument_base_dir=".")
@@ -227,7 +232,7 @@ class McStasInstrumentBase(Instrument):
         Always returns the origin of the neutrons and sample and sample environments at that same position. They need to be displaced afterwards with a
         self._sample_environment_arm.set_AT([x,y,z], RELATIVE=vin)
         """
-
+        # print("Do section = {}".format(self.__do_section))
         # This is to obtain the same instrument as a single McStas instrument
         if section_name is None:
             section_name = new_calcname

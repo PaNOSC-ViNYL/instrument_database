@@ -413,7 +413,8 @@ class Panther(McStasInstrumentBase):
                 RELATIVE=H12_bouchon,
             )
             BC1.set_parameters(
-                nu="chopper_rpm / chopper_ratio /60",
+                # nu="chopper_rpm / chopper_ratio /60 /3", #this is how it is in Panther
+                nu="chopper_rpm / chopper_ratio /60 *2",  # using this to improve simulation performance
                 radius=0.300,
                 yheight=0.175,
                 nslit=6,
@@ -432,7 +433,7 @@ class Panther(McStasInstrumentBase):
             )
             diaphragm.set_parameters(xwidth=0.150, yheight=0.500)
 
-            phase_init = 29
+            phase_init = 24
             lastBC = BC1
             for iBC in [2, 3, 4, 5]:
                 dist = distances["L1{}".format(iBC)]
@@ -440,9 +441,6 @@ class Panther(McStasInstrumentBase):
                     "BC{}".format(iBC), BC1, AT=dist, RELATIVE=BC1
                 )
                 BC.set_parameters(
-                    # phase="{dist}/neutron_velocity*360*{bcfreq}+{phase}".format(
-                    #    dist=distances["L12"], bcfreq=BC1.nu, phase=phase_init
-                    # ),
                     delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
                         dist=dist, phase_init=phase_init, omega=BC1.nu
                     ),
@@ -585,7 +583,7 @@ class Panther(McStasInstrumentBase):
             R0=0,  # no super mirror
             zero_time=0,
             delay="{dist}/neutron_velocity + {phase_init}/({omega})/ 360".format(
-                dist=distances["L1c"], phase_init=25, omega="chopper_rpm/60"
+                dist=distances["L1c"], phase_init=12, omega="chopper_rpm/60"
             ),
         )
         slit_fermi.set_parameters(

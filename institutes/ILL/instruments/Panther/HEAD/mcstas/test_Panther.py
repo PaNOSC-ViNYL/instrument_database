@@ -206,9 +206,76 @@ def config0(set_instr):
 
     myinstrument.calculators["OriginCalc"].remove_component("collimator")
 
-    myinstrument.master["energy"] = 110 * ureg.meV
+    myinstrument.master["energy"] = 10 * ureg.meV
+    myinstrument.master["mono_index"] = '"pg002"'
+    myinstrument.master["a2"] = 50.46 * ureg.degree
+    myinstrument.master["chopper_rpm"] = 7998
+
+    myinstrument.master["a2"] = 0 * ureg.degree
+    myinstrument.master["mono_index"] = '"pg"'
+    myinstrument.master["chopper_rpm"] = 0
+
+    # myinstrument.calculators["OriginCalc"].parameters["mono_index"] = "0"
     myinstrument.set_sample_by_name("None")
     myinstrument.sample_holder(None, None)
+    return myinstrument
+
+
+@pytest.fixture
+def config_before_fermi(config0):
+    """
+    Instrument configuration config0 with MCPL output before the fermi
+    """
+    myinstrument = config0
+    myinstrument.master["a2"] = 0 * ureg.degree
+    myinstrument.master["mono_index"] = "0"
+    myinstrument.master["chopper_rpm"] = 0
+
+    myinstrument.do_section(True)
+
+    mycalc = myinstrument.calculators["OriginCalc"]
+    for component in reversed(mycalc.component_list):
+        if component.name == "monitor":
+            break
+        mycalc.remove_component(component)
+    oldfermi = mycalc.get_component("fermi_chopper")
+    comp = mycalc.get_last_component()
+
+    mycalculator, mono_out = myinstrument.add_new_section(
+        "FermiChopperCalc", output_arm="Monochromator_Out"
+    )
+
+    fermi = mycalculator.add_component(oldfermi.name, oldfermi.component_name)
+    fermi.set_parameters(oldfermi.__dict__)
+    fermi.set_RELATIVE(mono_out)
+
+    monitor = mycalculator.add_component(comp.name, comp.component_name)
+    monitor.set_parameters(comp.__dict__)
+    # print(fermi)
+
+    chopper_rpm = mycalculator.add_parameter(
+        "double",
+        "chopper_rpm",
+        comment="Fermi chopper speed",
+        unit="",
+        value=0,
+    )
+    myinstrument.add_parameter_to_master(chopper_rpm.name, mycalculator, chopper_rpm)
+
+    ei = mycalculator.add_parameter("double", "Ei", unit="meV")
+    myinstrument.add_parameter_to_master("energy", mycalculator, ei)
+    mycalculator.add_declare_var("double", "lambda")
+    mycalculator.append_initialize("lambda = sqrt(81.80421036/Ei);")
+    mycalculator.add_declare_var("double", "neutron_velocity")
+    mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
+    mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
+    mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
+
+    # print(fermi)
+    mycalc.remove_component(oldfermi)
+    mycalc.remove_component(comp)
+    # print(myinstrument)
+    # print(mycalculator)
     return myinstrument
 
 
@@ -251,8 +318,8 @@ def config_vanadium(config0):
     myinstrument.sample.set_SPLIT(
         1
     )  # disabling the SPLIT due to the focusing on detector
-    myinstrument.master["chopper_ratio"] = 3
-    myinstrument.master["Efoc"] = 100
+    myinstrument.master["chopper_ratio"] = 1
+    # myinstrument.master["Efoc"] = 100
     return myinstrument
 
 
@@ -337,7 +404,15 @@ def test_master_parameters(config0):
     myinstr = config0
 
     # print(help(myinstr.master))
-    master_parameters = ["chopper_rpm", "chopper_ratio", "energy", "Efoc"]
+    master_parameters = [
+        "mono_index",
+        "chopper_rpm",
+        "chopper_ratio",
+        "energy",
+        "Efoc",
+        "tdelay",
+        "twidth",
+    ]
 
     # check that master parameters here defined are present in the simulation
     for par in master_parameters:
@@ -348,17 +423,40 @@ def test_master_parameters(config0):
         assert par.name in master_parameters
 
 
+def test_mono_index(config0):
+    myinstrument = config0
+    myinstrument.master["chopper_rpm"] = 0
+    myinstrument.settings(ncount=10, mpi=1)
+    *_, calc = myinstrument.calculators
+
+    while calc != "OriginCalc":
+        myinstrument.remove_calculator(calc)
+
+    mycalc = myinstrument.calculators["OriginCalc"]
+    for component in reversed(mycalc.component_list):
+        if component.name == "HCS":
+            break
+        mycalc.remove_component(component)
+
+    myinstrument.run()
+
+
 def test_intensity_at_sample(config_sample_monitor, plot_settings):
     myinstrument = config_sample_monitor
     myinstrument.settings(ncount=2e8)
 
-    myinstrument.run()
+    try:
+        myinstrument.run()
+    except:
+        print("ciao")
+        print(myinstrument.output)
     detectors = myinstrument.output.get_data()["data"]
+    print(detectors)
     detector = [d for d in detectors if d.name in ["sample_monitor"]][0]
 
     # check simulation vs previous version
-    assert np.sum(detector.Ncount) == 36552
-    assert np.sum(detector.Intensity) == pytest.approx(10751, abs=1)
+    assert np.sum(detector.Ncount) == 32575
+    assert np.sum(detector.Intensity) == pytest.approx(9580, abs=1)
     ph = PlotHelper(detector.Intensity.T)
     ph.set_limits(detector.metadata.limits)
     ph.stats[0].mean = pytest.approx(49.68, abs=0.02)
@@ -439,7 +537,7 @@ def test_vanadium(config_vanadium, plot_settings, data_vanadium, detector_names)
 
 def test_diagram(config0, tmp_path):
     myinstrument = config0
-    myinstrument.sim_neutrons(1e5)
+    myinstrument.settings(ncount=1e5)
 
     mycalc = myinstrument.calculators["OriginCalc"]
     # myinstrument.run()
@@ -549,20 +647,343 @@ def test_optim_HCS_focus(config0, tmp_path):
     assert True == True
 
 
+def test_BCs(config0, tmp_path):
+    myinstrument = config0
+    myinstrument.settings(ncount=1e5)
+
+    # remove all simulation components after the OriginCalc calculator
+    *_, calc = myinstrument.calculators
+
+    while calc != "OriginCalc":
+        myinstrument.remove_calculator(calc)
+
+    # remove all components after BC5
+    import mcstasscript as ms
+
+    mycalc = myinstrument.calculators["OriginCalc"]
+
+    for component in reversed(mycalc.component_list):
+        if component.name == "BC5":
+            break
+        mycalc.remove_component(component)
+
+    monitor = mycalc.add_component(
+        "monitor", "Monitor_nD", AT=2.001, RELATIVE="diaphragm1"
+    )
+    monitor.set_parameters(
+        xwidth=0.150,
+        yheight=0.500,
+        zdepth=0.01,
+        filename='"monitor.dat"',
+        restore_neutron=1,
+        options='"box intensity, bins=1"',
+        # options='"x bins={} y bins={} file={}"'.format(1, 1, "counter.dat"
+    )
+
+    def create_diag(mycalc):
+        diag = ms.Diagnostics(mycalc)
+        diag.settings(ncount=1e5, suppress_output=False, mpi=1)
+        diag.show_settings()
+        diag.clear_points()
+
+        for component in diag.instr.component_list:
+            if component.component_name in [
+                "DiskChopper",
+                "Monochromator_curved",
+                "FermiChopper",
+            ]:
+                diag.add_point(before=component.name)
+                diag.add_point(after=component.name)
+            if component.name in ["monitor"]:
+                diag.add_point(before=component.name)
+
+        return diag
+
+    counts = []
+    intensity = []
+    phases = [30]
+    distances = myinstrument.distances()
+    print(distances)
+    for energy in [10, 50, 100]:
+        myinstrument.master["energy"] = energy * ureg.meV
+
+        for phase in phases:
+            for ibc in [2, 3, 4, 5]:
+                bc = mycalc.get_component("BC{}".format(ibc))
+                # bc.phase = "{}+{}".format(bc.phase, phase)
+                # del bc.phase
+                d = myinstrument.distances()["L1{}".format(ibc)]
+                bc.delay = (
+                    "{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                        dist=d,
+                        phase_init=phase,
+                        omega=bc.nu,
+                    )
+                )
+
+                print(bc)
+            mycalc.append_initialize(
+                'printf("BC2 delay = %.6e\\n", {phase_init}/({omega})/360);\n'.format(
+                    phase_init=phase,
+                    omega=bc.nu,
+                )
+            )
+            diag = create_diag(mycalc)
+            diag.run()
+
+            diag.clear_views()
+            diag.add_view("e", same_scale=False)
+            diag.add_view(
+                "t",
+                same_scale=True,
+                left_min=-0.003,
+            )
+            diag.add_view("t", "x", same_scale=False, log=True)
+            diag.add_view("t", "y", same_scale=False)
+            diag.add_view("x", "y", same_scale=False, log=True)
+
+            print(diag)
+            fig = diag.plot()
+            fig.savefig(
+                os.path.join(
+                    tmp_path, "diagnostics_bc1_e{}_ph{}.pdf".format(phase, energy)
+                )
+            )
+
+            detectors = diag.instr.output.get_data()["data"]
+            sample_monitor = [d for d in detectors if d.name == "monitor"]
+            print(sample_monitor)
+            counts.append(sample_monitor[0].Ncount)
+            intensity.append(sample_monitor[0].Intensity)
+            # assert np.sum(sample_monitor[0].Ncount) == 8373
+            # assert np.sum(sample_monitor[0].Intensity) == pytest.approx(4152070)
+
+    print(phases)
+    print(counts)
+    print(intensity)
+
+    assert True == True
+
+
+def test_fermi_phase(config_before_fermi, tmp_path):
+    myinstrument = config_before_fermi
+    myinstrument.settings(ncount=1e8, mpi=8)
+    print(myinstrument.master)
+
+    mycalc = myinstrument.calculators["FermiChopperCalc"]
+    # print(mycalc.parameters)
+    # print(mycalc.component_list)
+
+    import mcstasscript as ms
+
+    def create_diag(mycalc):
+        diag = ms.Diagnostics(mycalc)
+        diag.settings(ncount=1e7, suppress_output=False, mpi=8)
+        # diag.show_settings()
+        diag.clear_points()
+
+        for component in diag.instr.component_list:
+            if component.component_name in [
+                "Monochromator_curved",
+                "FermiChopper",
+            ]:
+                diag.add_point(before=component.name)
+                diag.add_point(after=component.name)
+            if component.name in ["monitor"]:
+                diag.add_point(before=component.name)
+
+        diag.clear_views()
+        diag.add_view("e", same_scale=False)
+        diag.add_view(
+            "t",
+            same_scale=True,
+            # left_lim=-0.003,
+            right_lim=0.01,
+        )
+        diag.add_view("t", "x", same_scale=False, log=True)
+        diag.add_view("t", "y", same_scale=False)
+        diag.add_view("x", "y", same_scale=False, log=True)
+        diag.add_view("x", "z", same_scale=False, log=True)
+
+        return diag
+
+    counts = []
+    intensity = []
+    phases = range(50, 100, 10)
+    for energy in [10, 50, 100]:
+        myinstrument.master["energy"] = energy * ureg.meV
+        myinstrument.run()
+
+        for phase in phases:
+            bc = mycalc.get_component("fermi_chopper")
+            d = myinstrument.distances()["L1c"]
+            bc.delay = "{dist}/neutron_velocity + {phase_init}/({omega})/ 360".format(
+                dist=myinstrument.distances()["L1c"],
+                phase_init=phase,
+                omega="chopper_rpm/60",
+            )
+            # bc.verbose = 2
+            # bc.phase = -90
+            # print(bc)
+
+            diag = create_diag(mycalc)
+            diag.run()
+
+            # print(diag)
+            fig = diag.plot()
+            fig.savefig(
+                os.path.join(
+                    tmp_path, "diagnostics_fermi_e{}_ph{}.pdf".format(energy, phase)
+                )
+            )
+
+            detectors = diag.instr.output.get_data()["data"]
+            sample_monitor = [d for d in detectors if d.name == "monitor"]
+            print(sample_monitor)
+            counts.append(sample_monitor[0].Ncount)
+            intensity.append(sample_monitor[0].Intensity)
+            # assert np.sum(sample_monitor[0].Ncount) == 8373
+            # assert np.sum(sample_monitor[0].Intensity) == pytest.approx(4152070)
+
+    print(phases)
+    print(counts)
+    print(intensity)
+
+    assert True == True
+
+
+def test_BC1(config0, tmp_path):
+    """used to test the phase_init for the first BC"""
+    myinstrument = config0
+    myinstrument.settings(ncount=1e5)
+
+    # remove all simulation components after the OriginCalc calculator
+    *_, calc = myinstrument.calculators
+
+    while calc != "OriginCalc":
+        myinstrument.remove_calculator(calc)
+
+    # remove all components after BC5
+    import mcstasscript as ms
+
+    mycalc = myinstrument.calculators["OriginCalc"]
+
+    for component in reversed(mycalc.component_list):
+        if component.name == "diaphragm1":
+            break
+        mycalc.remove_component(component)
+
+    monitor = mycalc.add_component(
+        "monitor", "Monitor_nD", AT=2.001, RELATIVE="diaphragm1"
+    )
+    monitor.set_parameters(
+        xwidth=0.150,
+        yheight=0.500,
+        zdepth=0.01,
+        filename='"monitor.dat"',
+        restore_neutron=1,
+        options='"box intensity, bins=1"',
+        # options='"x bins={} y bins={} file={}"'.format(1, 1, "counter.dat"
+    )
+
+    def create_diag(mycalc):
+        diag = ms.Diagnostics(mycalc)
+        diag.settings(ncount=1e5, suppress_output=False, mpi=1)
+        diag.show_settings()
+        diag.clear_points()
+
+        for component in diag.instr.component_list:
+            if component.component_name in [
+                "DiskChopper",
+                "Slit",
+                "Monochromator_curved",
+                "FermiChopper",
+            ]:
+                diag.add_point(before=component.name)
+                diag.add_point(after=component.name)
+            if component.name in ["monitor"]:
+                diag.add_point(before=component.name)
+
+        return diag
+
+    counts = []
+    intensity = []
+    phases = [20, 29, 30, 31]
+    for energy in [10, 50, 100]:
+        myinstrument.master["energy"] = energy * ureg.meV
+
+        for phase in phases:
+            bc = mycalc.get_component("BC1")
+            bc.phase = phase
+            print(bc)
+
+            diag = create_diag(mycalc)
+            diag.run()
+
+            diag.clear_views()
+            diag.add_view("e", same_scale=False)
+            diag.add_view("t", same_scale=True, left_min=-0.003, right_lim=0.003)
+            diag.add_view("t", "x", same_scale=False, log=True)
+            diag.add_view("t", "y", same_scale=False)
+            diag.add_view("x", "y", same_scale=False, log=True)
+
+            print(diag)
+            fig = diag.plot()
+            fig.savefig(
+                os.path.join(
+                    tmp_path, "diagnostics_bc1_ph{}_e{}.pdf".format(phase, energy)
+                )
+            )
+
+            detectors = diag.instr.output.get_data()["data"]
+            sample_monitor = [d for d in detectors if d.name == "monitor"]
+            print(sample_monitor)
+            counts.append(sample_monitor[0].Ncount)
+            intensity.append(sample_monitor[0].Intensity)
+            # assert np.sum(sample_monitor[0].Ncount) == 8373
+            # assert np.sum(sample_monitor[0].Intensity) == pytest.approx(4152070)
+
+    print(phases)
+    print(counts)
+    print(intensity)
+
+    assert True == True
+
+
 def test_diagnostics(config_vanadium, tmp_path):
     myinstrument = config_vanadium
-    myinstrument.sim_neutrons(1e5)
+    myinstrument.settings(ncount=1e5)
+
+    myinstrument.master["energy"] = 50 * ureg.meV
 
     mycalc = myinstrument.calculators["OriginCalc"]
     mycalc.remove_component("detector")
-    mycalc.get_component("HCS").focus_yh = 0.04
+    # mycalc.get_component("HCS").focus_yh = 0.04
     import mcstasscript as ms
 
+    phase = 30
     fermi = mycalc.get_component("fermi_chopper")
-    # fermi.delay = 0.0038
-    fermi.phase = -10
-    fermi.zero_time = 1
+    fermi.verbose = 0
+    d = myinstrument.distances()["L1c"]
+    # fermi.delay = "{dist}/neutron_velocity + {phase_init}/({omega})/ 360".format(
+    #    dist=myinstrument.distances()["L1c"],
+    #    phase_init=phase,
+    #    omega="chopper_rpm/60",
+    # )
+    #    fermi.phase = -90
     print(fermi)
+
+    BC1 = mycalc.get_component("BC1")
+    # BC1.nu = "chopper_rpm/chopper_ratio/60*2"
+    for iBC in range(2, 5):
+        nBC = "BC{}".format(iBC)
+        dist = myinstrument.distances()["L1{}".format(iBC)]
+        BC = mycalc.get_component(nBC)
+        # BC.nu = BC1.nu
+        # BC.delay = "{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+        #    dist=dist, phase_init=24, omega=BC1.nu
+        # )
+        print(BC)
 
     diag = ms.Diagnostics(mycalc)
     diag.settings(ncount=1e6, suppress_output=False, mpi=1)
@@ -570,7 +991,7 @@ def test_diagnostics(config_vanadium, tmp_path):
     diag.clear_points()
 
     for component in diag.instr.component_list:
-        if component.component_name in ["Progress_bar", "Arm"]:
+        if component.component_name in ["Progress_bar", "Arm", "Monochromator_curved"]:
             continue
         if component.component_name in ["Beamstop"]:
             diag.add_point(before=component.name)
@@ -579,10 +1000,9 @@ def test_diagnostics(config_vanadium, tmp_path):
             diag.add_point(after=component.name)
             continue
         if component.component_name in [
-            "Disk_Chopper",
+            "DiskChopper",
             "Slit",
-            "Monochromator_curved",
-            "Fermi_chopper",
+            "FermiChopper",
         ]:
             diag.add_point(before=component.name)
             diag.add_point(after=component.name)
@@ -604,9 +1024,9 @@ def test_diagnostics(config_vanadium, tmp_path):
     diag.add_view("x", bins=50)  # , limits=[-0.04,0.04])
     diag.add_view("y", bins=50)  # , same_scale=False, limits=[-0.07,0.07])
     # diag.add_view("x","y",bins=[30,30])
-    diag.add_view("e", same_scale=False)
+    diag.add_view("e", same_scale=True)
     # diag.add_view("l",same_scale=False)
-    diag.add_view("t", same_scale=False)
+    diag.add_view("t", same_scale=True)
     diag.add_view("t", "x", same_scale=False, log=True)
     diag.add_view("t", "y", same_scale=False)
     diag.add_view("x", "y", same_scale=False, log=True)
@@ -618,6 +1038,7 @@ def test_diagnostics(config_vanadium, tmp_path):
 
     diag.add_view("vz", same_scale=True)
     print(diag)
+
     fig = diag.plot()
     fig.savefig(os.path.join(tmp_path, "diagnostics.pdf"))
 
