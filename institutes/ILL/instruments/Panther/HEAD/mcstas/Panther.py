@@ -380,6 +380,7 @@ class Panther(McStasInstrumentBase):
         )  # put a warning if A2 does not match
 
         mycalculator.append_initialize('printf("mono_index = %s\\n", mono_index);')
+
         if not _start_from_Fermi:
             # ------------------------------------------------------------
             H12 = mycalculator.add_component("H12", "Arm", AT=[0, 0, 0], RELATIVE=HCS)
@@ -415,7 +416,7 @@ class Panther(McStasInstrumentBase):
                 nu="chopper_rpm / chopper_ratio /60",
                 radius=0.300,
                 yheight=0.175,
-                nslit=bc_nslits,
+                nslit=6,
                 isfirst=1,
                 abs_out=1,
                 xwidth=0.150,
