@@ -89,6 +89,76 @@ class Panther(McStasInstrumentBase):
     # ------------------------------ Specialized methods required by the Instrument class [mandatory]
 
     # ------------------------------ Internal methods (not available to users)
+    def distances(self):
+        return self.__distances()
+
+    def __distances(self):
+        """
+        Puts Panther-2 distances in a dictionary
+        Versions:
+        13-Dec-2022: add (trivial) L11=  0
+        28-Nov-2022: For Panther-2, replaces old panlen() for Panther-1
+        Call:
+        dist= [tof.]plen() followed by Lms= dist['Lms']
+        or: Lcd= plen()['Lcd']
+        Input:
+        None
+        Output:
+        plen: dictionary
+        """
+        # Known distances
+        L11 = 0.0  # BC1 to BC1 (somewhat trivial, but needed)
+        L12 = 0.723  # BC1 to BC2
+        L23 = 0.972  # BC2 to BC3
+        L34 = 0.918  # BC3 to BC4
+        L45 = 0.919  # BC4 to BC5
+        Lcs = 0.800  # Fermi chopper to sample
+        Lms = 2.500  # Mono to sample
+        Lsd = 2.500  # Sample to detector
+        Lcd = Lcs + Lsd  # 3.200 Fermi chopper to detector
+        # Guessed distances
+        L1m = 6.407  # BC1 to mono (this distance is somewhat uncertain)
+        Lhm = 4.123  # Horizontal virtual slit to monochromator
+        # Calculted distances
+        L13 = L12 + L23  #  1.695
+        L14 = L13 + L34  #  2.613
+        L15 = L14 + L45  #  3.532
+        L1s = L1m + Lms  #  8.907
+        L1c = L1s - Lcs  #  8.107
+        L1d = L1s + Lsd  # 11.407
+        """
+        # Calculated distances between mono and the choppers
+        L1m= L15 + L5m # 6.407
+        L2m= L1m - L12 # 5.684
+        L3m= L1m - L13 # 4.712
+        L4m= L1m - L14 # 3.794
+        Lmc= Lms - Lcs # 1.700 Mono to Fermi
+        # BCi to Fermi distances
+        L1c= L1m + Lmc # 8.107
+        L2c= L2m + Lmc # 7.384
+        L3c= L3m + Lmc # 6.412
+        L4c= L4m + Lmc # 5.494
+        L5c= L5m + Lmc # 4.575
+        """
+        return dict(
+            L11=L11,
+            L12=L12,
+            L13=L13,
+            L14=L14,
+            L15=L15,
+            L23=L23,
+            L34=L34,
+            L45=L45,
+            L1m=L1m,
+            L1s=L1s,
+            L1c=L1c,
+            L1d=L1d,
+            Lcs=Lcs,
+            Lms=Lms,
+            Lsd=Lsd,
+            Lcd=Lcd,
+            Lhm=Lhm,
+        )
 
     # ------------------------------ The instrument definition goes in the __init__
     def __init__(self, do_section=True, _start_from_Fermi=False):
@@ -96,33 +166,29 @@ class Panther(McStasInstrumentBase):
 
         super().__init__("Panther", do_section)
 
-        def tofdelay(fcomp, lcomp, delay=None):
-            if fcomp.name != "BC1":
-                raise RuntimeError(
-                    "First component should be Chopper 0 for delay calculation"
+        distances = self.__distances()
+
+        def init_chopper_rpm(mycalculator):
+            distances = self.__distances()
+            eis = self.get_settings_table()
+            # mycalculator.append_initialize(
+            #     "if(chopper_rpm==0) chopper_rpm = 60*neutron_velocity * fabs(tan(DEG2RAD*a2 / 2)) / PI / (({Lcs} + {Lsd}*pow((1 - Efoc / Ei),(-3/2))) * (1 - {Lms} / {Lhm}));".format(
+            #         Lcs=distances["Lcs"],
+            #         Lsd=distances["Lsd"],
+            #         Lms=distances["Lms"],
+            #         Lhm=distances["Lhm"],
+            #     )
+            # )
+            mycalculator.append_initialize(
+                "if(chopper_rpm==0){\n" + '    printf("Ei = %.2f\\n", Ei);\n'
+            )
+            for i in eis:
+                mycalculator.append_initialize(
+                    "    if(Ei>={}) chopper_rpm = {};".format(i[0], int(i[2] * 1e3))
                 )
-            dist = 0.800
-            chopper_distances = {
-                "BC1": dist,
-                "BC2": dist * 2,
-                "BC3": dist * 3,
-                "BC4": dist * 4,
-                "BC5": dist * 5,
-            }
-            if lcomp.name not in chopper_distances:
-                RuntimeError("Last component should be one of the choppers")
-
-            L = chopper_distances[lcomp.name]
-            # L = self.calcLtof(mycalculator, fcomp.name, lcomp.name, debug=True)
-            if delay == None:
-                delay = fcomp.delay
-
-            print(f"{fcomp.name} -> {lcomp.name} : L = {L}; delay = {delay}")
-            return str(L) + "/neutron_velocity + " + str(delay)
+            mycalculator.append_initialize("}")
 
         # ------------------------------ some local variables
-        myinstr = self
-
         monochromators = [
             # name, lattice parameter,
             ["pg002", 3.3550],
@@ -140,10 +206,14 @@ class Panther(McStasInstrumentBase):
             "string",
             "mono_index",
             comment="Monochromator name. empty = auto: based on the energy",
-            value='""',
+            value="0",
         )
-        mono_index.add_option('""', True)  # auto
-        mono_index.add_option([m[0] for m in monochromators], True)
+        mono_index.add_option("0", True)  # auto
+        mono_index.add_option("", True)  # auto
+        mono_index.add_option('"pg"', True)
+        mono_index.add_option('"cu"', True)
+        mono_index.add_option(['"{}"'.format(m[0]) for m in monochromators], True)
+        self.add_parameter_to_master(mono_index.name, mycalculator, mono_index)
 
         # gnuplot> lambda(x) = sqrt(81.80421/x)
         # gnuplot> angle(x,d) = 2*asin(lambda(x)/2/d)*180/pi
@@ -176,7 +246,8 @@ class Panther(McStasInstrumentBase):
             value=0,
         )
         a2.add_option(0, True)  # for automatic calculation
-        a2.add_interval(36.00, 58.97, True)
+        a2.add_interval(36.00, 62.0, True)  # 58.97, True)
+        self.add_parameter_to_master(a2.name, mycalculator, a2)
 
         chopper_rpm = mycalculator.add_parameter(
             "double",
@@ -216,6 +287,7 @@ class Panther(McStasInstrumentBase):
         # - Ei
         # - dE
         mycalculator.append_initialize("dE = dE * Ei;")
+        mycalculator.append_initialize('printf("dE = %.2f\\n", dE);')
         mycalculator.add_declare_var(
             "double",
             "HCS_focus_xw",
@@ -256,49 +328,47 @@ class Panther(McStasInstrumentBase):
         # mycalculator.append_initialize('printf("time_frame = %.2e\\n", time_frame);')
 
         # optimal time focusing:
-        Lcs = 0.8  # [m] chopper-sample distance
-        Lsd = 2.5  # [m] sample-detector distance
-        Lmc = 1.7  # [m] monochromator-chopper distance
-        Lms = Lmc + Lcs  # [m] monochromator-sample distance
-        Lhm = 4.123  # [m] distance between the horizontal virtual source and the monochromator
+
+        # Lhm = 4.123  # [m] distance between the horizontal virtual source and the monochromator
 
         a2_interval = a2.get_intervals()[0]
         mycalculator.add_declare_var("double", "mono_d")
-        mycalculator.append_initialize('printf("%s\\n", mono_index);')
+        mycalculator.append_initialize('printf("mono_index = %s\\n", mono_index);')
         mycalculator.append_initialize(
-            "char mono_names[{}][5] = ".format(len(monochromators)) + "{"
+            "char mono_names[{}][6] = ".format(len(monochromators)) + "{"
         )
         for i in monochromators:
             mycalculator.append_initialize('"{}",'.format(i[0]))
         mycalculator.append_initialize("};\n")
         mycalculator.append_initialize(
             "mono_d = -1;\n"
-            + 'if(strcmp(mono_index,"")){\n'
-            + '  printf("Selecting monochromator...\\n");\n'
-            + "  for(int mindex=0; mindex < {nindex} && !(a2 > {amin!s} && a2 < {amax!s} ); ++mindex)".format(
-                nindex=len(monochromators),
-                amin=a2_interval[0].m,
-                amax=a2_interval[1].m,
-            )
-            + "{\n"
-            + "    mono_d = mono_ds[mindex];\n"
-            + "    a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
-            + '    printf("using mono: %s\\n", mono_names[mindex]);\n'
-            + '//printf("selecting mono_d = %.4f\\n",mono_d);\n'
-            + '//printf("selecting a2 = %.2f\\n",a2);\n'
-            + "  }\n"
-            + "}else{\n"
-            + "  for(int mindex=0; mindex < {nindex}; ++mindex)".format(
+            + 'printf("Selecting monochromator...\\n");\n'
+            + "int mindex=0;\n"
+            + "int set_mono=(1==1);\n"
+            + "int set_a2 = (a2<=0);\n"
+            + "for(mindex=0; mindex < {nindex} && set_mono; ++mindex)".format(
                 nindex=len(monochromators)
             )
             + "{\n"
-            + "    if(strcmp(mono_index,mono_names[mindex])==0){\n"
+            + '    if(strcmp(mono_index,"0")==0 || strlen(mono_index)==0 || (strncmp(mono_index,mono_names[mindex],2)==0 && strcmp(mono_index,mono_names[mindex])<=0)){\n'
+            + "        //mono_index = mono_names[mindex];\n"
             + "        mono_d = mono_ds[mindex];\n"
-            + "        a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
+            + '        printf("   - trying mono: %s\\n", mono_names[mindex]);\n'
+            + "        if(set_a2){\n"
+            + "            a2 = 2*asin(lambda/2/mono_d)*RAD2DEG;\n"
+            + '            printf("   - tring a2 = %.6f\\n",a2);\n'
+            + "        }\n"
+            + "        if(a2 >= {amin!s}-1e-2 && a2 <= {amax!s} ) set_mono=0;\n".format(
+                amin=a2_interval[0].m, amax=a2_interval[1].m
+            )
             + "    }\n"
-            + "}}\n"
-            + 'if(mono_d==-1){printf("ERROR: mono_d not set, maybe mono_index not acceptable\\n");}\n'
+            + "}\n"
+            + "if(mindex=="
+            + "{nindex}".format(nindex=len(monochromators))
+            + '){printf("ERROR: mono_d not set, maybe mono_index not acceptable\\n");return 1;}\n'
+            + 'if(strcmp(mono_index,"0")==0 || strlen(mono_index)==0) mono_index = mono_names[--mindex];\n'
         )
+
         mycalculator.append_initialize(
             'printf("mono_d = %.4f\\n",mono_d);'
         )  # get the value corresponing to the selected monochromator
@@ -338,41 +408,45 @@ class Panther(McStasInstrumentBase):
                 AT=1.4199,
                 RELATIVE=H12_bouchon,
             )
-            bc_nslits = 6
             BC1.set_parameters(
-                nu="chopper_rpm/60 * 2 / chopper_ratio /" + str(bc_nslits),
+                nu="chopper_rpm / chopper_ratio /60",
                 radius=0.300,
                 yheight=0.175,
                 nslit=bc_nslits,
                 isfirst=1,
                 abs_out=1,
                 xwidth=0.150,
-                delay=0.002,
+                phase=30.0,  # test_BC1 shows that at 30 the first neutrons have time=0, it should be improved
             )
 
             diaphragm = mycalculator.add_component(
-                "diaphragm1", "Slit", AT=0.5825, RELATIVE=BC1
+                # "diaphragm1", "Slit", AT=0.5825, RELATIVE=BC1
+                "diaphragm1",
+                "Slit",
+                AT=0.0005,
+                RELATIVE=BC1,
             )
             diaphragm.set_parameters(xwidth=0.150, yheight=0.500)
 
-            BC2 = mycalculator.copy_component("BC2", BC1, AT=0.800, RELATIVE=BC1)
-            BC2.set_parameters(
-                delay=tofdelay(BC1, BC2),
-                isfirst=0,
-                #            nu="-" + BC1.nu,
-            )
-            BC3 = mycalculator.copy_component("BC3", BC2, AT=0.800, RELATIVE=BC2)
-            BC3.delay = tofdelay(BC1, BC3)
-            BC4 = mycalculator.copy_component("BC4", BC2, AT=0.800, RELATIVE=BC3)
-            BC4.delay = tofdelay(BC1, BC4)
-            BC5 = mycalculator.copy_component("BC5", BC2, AT=0.800, RELATIVE=BC4)
-            BC5.delay = tofdelay(BC1, BC5)
-            BC1.verbose = 0
+            phase_init = 29
+            lastBC = BC1
+            for iBC in [2, 3, 4, 5]:
+                dist = distances["L1{}".format(iBC)]
+                BC = mycalculator.copy_component(
+                    "BC{}".format(iBC), BC1, AT=dist, RELATIVE=BC1
+                )
+                BC.set_parameters(
+                    # phase="{dist}/neutron_velocity*360*{bcfreq}+{phase}".format(
+                    #    dist=distances["L12"], bcfreq=BC1.nu, phase=phase_init
+                    # ),
+                    delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                        dist=dist, phase_init=phase_init, omega=BC1.nu
+                    ),
+                    isfirst=0,
+                )
+                del BC.phase
+                lastBC = BC
 
-            L_bc5_fermi = (
-                BC2.AT_data[2] + BC3.AT_data[2] + BC4.AT_data[2] + BC5.AT_data[2]
-            )
-            print("L_bc5_fermi before BC3 = ", BC2.AT_data[2] + BC3.AT_data[2])
             # ------------------------------
 
             DCH = mycalculator.add_parameter(
@@ -387,7 +461,7 @@ class Panther(McStasInstrumentBase):
                 'if(dch==0) dch=0.0378 + 0.136*sin(DEG2RAD*a2/2);printf("dch = %.3f\\n", dch);'
             )
             diaphragm = mycalculator.add_component(  # AT=9.8185, RELATIVE=HCS
-                "heavy_diaphragm", "Slit", AT=0.5011, RELATIVE=BC5
+                "heavy_diaphragm", "Slit", AT=0.5011, RELATIVE=lastBC
             )
             diaphragm.set_parameters(xwidth=DCH, yheight=0.150)
 
@@ -396,9 +470,8 @@ class Panther(McStasInstrumentBase):
 
             # AT=12.1485, RELATIVE=HCS)
             Monochromator_Arm = mycalculator.add_component(
-                "Monochromator_Arm", "Arm", AT=2.8311, RELATIVE=BC5
+                "Monochromator_Arm", "Arm", AT=2.8311, RELATIVE=lastBC
             )
-            L_bc5_fermi = L_bc5_fermi + Monochromator_Arm.AT_data[2]
 
             Monochromator = mycalculator.add_component(
                 "Monochromator", "Monochromator_curved"
@@ -483,10 +556,11 @@ class Panther(McStasInstrumentBase):
             "slit_fermi", "Slit", AT=1.600, RELATIVE=Monochromator_Out
         )
         fermi = mycalculator.add_component(
-            "fermi_chopper", "FermiChopper", AT=1.700, RELATIVE=Monochromator_Out
+            "fermi_chopper",
+            "FermiChopper",
+            AT=distances["Lms"] - distances["Lcs"],
+            RELATIVE=Monochromator_Out,
         )
-        # L_bc5_fermi = L_bc5_fermi + fermi.AT_data[2]
-        # print(L_bc5_fermi)
 
         fermi.set_parameters(
             radius=math.sqrt((0.0006 * 45) ** 2 + 0.023 ** 2),
@@ -499,11 +573,10 @@ class Panther(McStasInstrumentBase):
             eff=0.86 * 0.8,
             m=0,
             R0=0,  # no super mirror
-            zero_time=2,
-            # delay=0.007,
-            # delay=str(L_bc5_fermi) + " / neutron_velocity",
-            #            delay=0.0065,
-            # phase=-23.1209 * 2,
+            zero_time=0,
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/ 360".format(
+                dist=distances["L1c"], phase_init=25, omega="chopper_rpm/60"
+            ),
         )
         slit_fermi.set_parameters(
             xwidth=fermi.nslit * fermi.w * 1.4, yheight=fermi.yheight * 1
@@ -525,17 +598,24 @@ class Panther(McStasInstrumentBase):
         Efoc = mycalculator.add_parameter(
             "double", "Efoc", comment="Focusing energy", unit="meV", value=0
         )
-        self.add_parameter_to_master("Efoc", mycalculator, Efoc)
+        # self.add_parameter_to_master("Efoc", mycalculator, Efoc)
 
         #        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
-        mycalculator.append_initialize(
-            "if(chopper_rpm==0) chopper_rpm = 60*neutron_velocity * fabs(tan(DEG2RAD*a2 / 2)) / PI / (({Lcs} + {Lsd}*pow((1 - Efoc / Ei),(-3/2))) * (1 - {Lms} / {Lhm}));".format(
-                Lcs=Lcs, Lsd=Lsd, Lms=Lms, Lhm=Lhm
-            )
-        )
+        init_chopper_rpm(mycalculator)
 
         mycalculator.append_initialize(
-            'printf("Chopper_rpm = %.2f\\nNeutron velocity: %.2f\\nE_focus: %.2f\\n", chopper_rpm, neutron_velocity, Efoc );'
+            'printf("Chopper_rpm = %.2f\\nchopper_ratio = %.2f\\nNeutron velocity: %.2f\\nE_focus: %.2f\\n", chopper_rpm, chopper_ratio, neutron_velocity, Efoc );'
+        )
+        # mycalculator.append_initialize(
+        #    'printf("phase FC = %.2f\\n", {});\n'.format(fermi.phase)
+        # )
+        for iBC in [2, 3, 4, 5]:
+            bc = mycalculator.get_component("BC{}".format(iBC))
+            mycalculator.append_initialize(
+                'printf("delay {} = %.2e\\n", {});\n'.format(bc.name, bc.delay)
+            )
+        mycalculator.append_initialize(
+            'printf("delay {} = %.2e\\n", {});\n'.format(fermi.name, fermi.delay)
         )
 
         # ------------------------------
@@ -588,11 +668,13 @@ class Panther(McStasInstrumentBase):
             "SampleCalc", sample_mcpl_arm, True
         )
         # ------------------------------------------------------------
-        self._sample_arm.set_AT(Lcs - Lbsd, RELATIVE=sample_mcpl_arm)
-        self._sample_environment_arm.set_AT(Lcs - Lbsd, RELATIVE=sample_mcpl_arm)
+        self._sample_arm.set_AT(distances["Lcs"] - Lbsd, RELATIVE=sample_mcpl_arm)
+        self._sample_environment_arm.set_AT(
+            distances["Lcs"] - Lbsd, RELATIVE=sample_mcpl_arm
+        )
 
         # default sample
-        self.sample_focus(Lsd, 2, Lsd)
+        self.sample_focus(distances["Lsd"], 2, distances["Lsd"])
         sample = self.set_sample_by_name("vanadium")
 
         Sample_Out = mycalculator.add_component(
@@ -639,7 +721,9 @@ class Panther(McStasInstrumentBase):
         tube_width = 0.022
         theta_bins = 9 * 32 + 8
         theta_min = -5
-        angle_increment = math.asin(tube_width / 2.0 / Lsd) * 2  # * 180 / math.pi
+        angle_increment = (
+            math.asin(tube_width / 2.0 / distances["Lsd"]) * 2
+        )  # * 180 / math.pi
         theta_max = theta_bins * angle_increment * 180 / math.pi + theta_min
 
         ny = mycalculator.add_parameter(
@@ -654,11 +738,15 @@ class Panther(McStasInstrumentBase):
         )
 
         tmin = mycalculator.add_parameter(
-            "double", "tdelay", value=0, comment="Time min in the histogram"
+            "double",
+            "tdelay",
+            value=0,
+            comment="Time min in the histogram (us)",
+            unit="mus",
         )
         self.add_parameter_to_master(tmin.name, mycalculator, tmin)
         twidth = mycalculator.add_parameter(
-            "double", "twidth", value=0.000003, comment="Width of the time bin"
+            "double", "twidth", value=0, comment="Width of the time bin"
         )
         self.add_parameter_to_master(twidth.name, mycalculator, twidth)
 
@@ -670,6 +758,7 @@ class Panther(McStasInstrumentBase):
             RELATIVE=detector_arm,
         )
 
+        # if this is a separate calculator
         if not chopper_rpm.name in mycalculator.parameters:
             chopper_rpm = mycalculator.add_parameter(
                 "double",
@@ -687,20 +776,31 @@ class Panther(McStasInstrumentBase):
                 chopper_ratio.name, mycalculator, chopper_ratio
             )
 
+            Efoc = mycalculator.add_parameter(
+                "double", "Efoc", comment="Focusing energy", unit="meV", value=0
+            )
+            self.add_parameter_to_master("Efoc", mycalculator, Efoc)
+
+            # mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
+            init_chopper_rpm(mycalculator)
+
         # twidth = mycalculator.add_declare_var("double", "time_frame")
 
-        # mycalculator.append_initialize(
-        #    "time_frame = chopper_ratio/2.0/chopper_rpm/60.0;"
-        # )
+        mycalculator.append_initialize(
+            "if(twidth<=0) twidth = chopper_ratio/2.0/chopper_rpm/60.0;"
+        )
         detector.set_parameters(
+            filename='"{}"'.format(detector.name),
             ny=ny,
             nt=nt,
             yheight=2.0,
-            radius=Lsd,
+            radius=distances["Lsd"],
             phimin=-17.328,
             # phimax=136,
-            tmin=tmin,  # "({Lcs}+{Lsd})/neutron_velocity".format(Lcs=Lcs, Lsd=Lsd),
-            tmax=twidth,  # time_frame,
+            tmin="{} * 1e-6".format(
+                tmin.name
+            ),  # "({Lcs}+{Lsd})/neutron_velocity".format(Lcs=Lcs, Lsd=Lsd),
+            tmax="({}+{}) * 1e-6".format(tmin.name, twidth.name),  # time_frame,
             nphi_groups=9,
             nphi_pergroup=32,
             phi_groupgap=0.518,
@@ -709,6 +809,37 @@ class Panther(McStasInstrumentBase):
         )
 
         # ------------------------------ instrument parameters
+
+    def get_settings_table(self):
+        """return predefined table of chopper_rpm w.r.t. energy"""
+        eis = [
+            [7.5, "", 8],
+            [8.75, "", 8],
+            [10, "", 8],
+            [12.5, "", 8],
+            [15, "", 8],
+            [19, "", 9.2],
+            [30, "", 16],
+            [35, "", 16],
+            [40, "", 16],
+            [50, "", 16],
+            [60, "", 16],
+            [76.11, "pg006", 18.4],
+            [67.5, "pg006", 19],
+            [78.75, "pg006", 19],
+            [90, "pg006", 20],
+            [112.5, "pg006", 20],
+            [52, "cu220", 19],
+            [60, "cu220", 19],
+            [75, "cu220", 19],
+            [90, "cu220", 19],
+            [110, "cu220", 19],
+            [130, "cu220", 19],
+            [130, "cu220", 20],
+            [123, "cu331", 19],
+            [150, "cu331", 19],
+        ]
+        return eis
 
     def set_test(self, test_number: Optional[int] = None):
         myinstrument = self
