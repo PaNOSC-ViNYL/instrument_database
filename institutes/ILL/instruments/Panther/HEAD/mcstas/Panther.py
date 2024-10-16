@@ -12,7 +12,6 @@
  - [ ] parameters of the Fermi Chopper
  - [ ] verify the formulat for the RV RH of the monochromator in case the parameter value is 0
  - [ ] Add the phase for the chopper
- - [ ] check what happens if chopper_rpm==0 and Efoc==0
  - [ ] How is determined the tmin for the detector acquisition?
  - [ ] fix the time_frame
 """
@@ -264,18 +263,18 @@ class Panther(McStasInstrumentBase):
         a2 = mycalculator.add_parameter(
             "double",
             "a2",
-            comment="Angle between beam reflected by monochromator and incident beam",
+            comment="Angle between beam reflected by monochromator and incident beam: internally calculated if a2=0",
             unit="degree",
             value=0,
         )
         a2.add_option(0, True)  # for automatic calculation
         a2.add_interval(36.00, 62.0, True)  # 58.97, True)
-        self.add_parameter_to_master(a2.name, mycalculator, a2)
+        #self.add_parameter_to_master(a2.name, mycalculator, a2)
 
         chopper_rpm = mycalculator.add_parameter(
             "double",
             "chopper_rpm",
-            comment="Fermi chopper speed",
+            comment="Fermi chopper speed: internally calculated if value =0",
             unit="",
             value=0,
         )
@@ -294,14 +293,14 @@ class Panther(McStasInstrumentBase):
                 "double",
                 "mono_rv",
                 comment="Monochromator vertical focusing: internally calculated if value is negative",
-                value=-1,  # flat by default -> calculated internally
+                value=-1,
                 unit="",
             )
             mono_rh = mycalculator.add_parameter(
                 "double",
                 "mono_rh",
                 comment="Monochromator horizontal focusing: internally calculated if value is negative",
-                value=-1,  # flat by default -> calculated internally
+                value=-1,
                 unit="",
             )
 
