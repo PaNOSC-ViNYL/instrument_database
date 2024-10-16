@@ -510,19 +510,15 @@ class Panther(McStasInstrumentBase):
                 t0=0,  # remove transmitted neutrons that would be absorbed by the Beamstop
                 order=0,  # higher order neutrons would not pass the diaphragm
                 r0=1,
+                mosaic = "mono_mosaic",  # depends if PG or Cu
+                RV = mono_rv,
+                RH = mono_rh,
+                DM = "mono_d",
             )
 
             #   Monochromator.reflect = '"HOPG.rfl"'
             #   Monochromator.transmit = '"HOPG.trm"'
-            Monochromator.mosaic = "mono_mosaic"  # depends if PG or Cu
-            #        Monochromator.r0 = 1
-            Monochromator.t0 = 0  # remove transmitted neutrons
-            Monochromator.RV = mono_rv
-            Monochromator.RH = mono_rh
-            Monochromator.DM = "mono_d"
             # Monochromator.append_EXTEND("if(flag!=SCATTERED) ABSORB;")
-            Monochromator.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
-            Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
 
             mycalculator.add_declare_var(
                 "double", "RMV_u", value=12.7, comment="default value for PG"
@@ -543,14 +539,14 @@ class Panther(McStasInstrumentBase):
             ana_focus = 1.0 / (1.0 / distances["Lhm"] + 1.0 / distances["Lms"])
             mycalculator.append_initialize(
                 # "if(mono_rv<0) mono_rv = (RMV_u + acos(1- RMV_w/sin(DEG2RAD*a2/2)))/1000.;"
-                "if(mono_rv<0) mono_rv = 2 * {ana_focus} * sin(DEG2RAD*a2/2) ;".format(
+                "if(mono_rv<0) mono_rv = 2 * ({ana_focus}) * sin(DEG2RAD*a2/2) ;".format(
                     ana_focus=ana_focus
                 )
             )
             mycalculator.append_initialize(
                 # "if(mono_rh<0) mono_rh = (RMH_g + RMH_h * sin(DEG2RAD*a2/2))/1000.;"
-                "if(mono_rh<0) mono_rh = 2*(1./(1./{Lhm}+1./{Lms})  )/ sin(DEG2RAD*a2/2);".format(
-                    Lhm=distances["Lhm"], Lms=distances["Lms"]
+                "if(mono_rh<0) mono_rh = 2 * ({ana_focus}) / sin(DEG2RAD*a2/2);".format(
+                    ana_focus=ana_focus
                 )
             )
 
