@@ -554,10 +554,7 @@ class Panther(McStasInstrumentBase):
                 'mono_mosaic = (strncmp(mono_index,"cu",2) == 0) ? 30 : 50;'  # 0.3: 0.5
             )
 
-            Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
-            Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
-            Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
-
+            # why /3?
             mycalculator.append_initialize(
                 "HCS_focus_xw = {}*sin(a2/2*DEG2RAD)/3;".format(
                     Monochromator.zwidth * Monochromator.NH
@@ -570,9 +567,17 @@ class Panther(McStasInstrumentBase):
             # AT=13.8485, RELATIVE=HCS)
 
             beamstop = mycalculator.add_component(
-                "BS", "Beamstop", AT=1, RELATIVE=Monochromator_Arm
+                "BS",
+                "Beamstop",
+                AT=(Monochromator.zwidth * Monochromator.NH) / 2,
+                RELATIVE=Monochromator_Arm,
             )
-            beamstop.set_parameters(xwidth=0.5, yheight=0.5)
+            beamstop.set_parameters(xwidth=0.1, yheight=0.1)
+
+            Monochromator_Out = mycalculator.add_component("Monochromator_Out", "Arm")
+            Monochromator_Out.set_AT([0, 0, 0], RELATIVE=Monochromator_Arm)
+            Monochromator_Out.set_ROTATED([0, "a2", 0], RELATIVE=Monochromator_Arm)
+
         else:
             Monochromator_Out = mycalculator.add_component(
                 "Monochromator_Out", "Arm", AT=0, RELATIVE=Origin
