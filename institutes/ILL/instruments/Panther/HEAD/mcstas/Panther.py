@@ -554,9 +554,9 @@ class Panther(McStasInstrumentBase):
                 'mono_mosaic = (strncmp(mono_index,"cu",2) == 0) ? 30 : 50;'  # 0.3: 0.5
             )
 
-            # why /3?
+            # divide further by 3 if want to optimize on fermi output
             mycalculator.append_initialize(
-                "HCS_focus_xw = {}*sin(a2/2*DEG2RAD)/3;".format(
+                "HCS_focus_xw = {}*sin(a2/2*DEG2RAD);".format(
                     Monochromator.zwidth * Monochromator.NH
                 )
             )
