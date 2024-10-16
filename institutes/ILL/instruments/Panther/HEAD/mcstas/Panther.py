@@ -349,28 +349,25 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize("neutron_velocity = 3956.034012/lambda;")
         mycalculator.append_initialize('printf("nv = %2f\\n", neutron_velocity);')
         mycalculator.append_initialize('printf("lambda = %.2f\\n", lambda);')
-        # mycalculator.append_initialize("time_frame=chopper_ratio/2./chopper_rpm/60.;")
-        # mycalculator.append_initialize('printf("time_frame = %.2e\\n", time_frame);')
-
-        # optimal time focusing:
-
-        # Lhm = 4.123  # [m] distance between the horizontal virtual source and the monochromator
 
         a2_interval = a2.get_intervals()[0]
         mycalculator.add_declare_var("double", "mono_d")
         mycalculator.append_initialize('printf("mono_index = %s\\n", mono_index);')
+        # monochromator names
         mycalculator.append_initialize(
             "char mono_names[{}][6] = ".format(len(monochromators)) + "{"
         )
         for i in monochromators:
             mycalculator.append_initialize('"{}",'.format(i[0]))
         mycalculator.append_initialize("};\n")
+        # automatic setting of monochromator, a2
         mycalculator.append_initialize(
             "mono_d = -1;\n"
             + 'printf("Selecting monochromator...\\n");\n'
             + "int mindex=0;\n"
             + "int set_mono=(1==1);\n"
-            + "int set_a2 = (a2<=0);\n"
+            + "int set_a2 = (a2==0);\n"
+            + "a2 = fabs(a2);\n"
             + "for(mindex=0; mindex < {nindex} && set_mono; ++mindex)".format(
                 nindex=len(monochromators)
             )
@@ -736,14 +733,6 @@ class Panther(McStasInstrumentBase):
 
         # ------------------------------------------------------------
         mycalculator, detector_arm = self.add_new_section("DetectorCalc", detector_arm)
-
-        tube_width = 0.022
-        theta_bins = 9 * 32 + 8
-        theta_min = -5
-        angle_increment = (
-            math.asin(tube_width / 2.0 / distances["Lsd"]) * 2
-        )  # * 180 / math.pi
-        theta_max = theta_bins * angle_increment * 180 / math.pi + theta_min
 
         ny = mycalculator.add_parameter(
             "int",
