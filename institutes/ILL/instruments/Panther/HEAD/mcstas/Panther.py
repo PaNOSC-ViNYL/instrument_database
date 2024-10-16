@@ -98,8 +98,8 @@ class Panther(McStasInstrumentBase):
         28-Nov-2022: For Panther-2, replaces old panlen() for Panther-1
         """
         # Known distances
-        Lob = 4.6975 # H12 (source) to H12 bouchon 
-        Lb1 = 1.4199 # H12 bouchon to BC1
+        Lob = 4.6975  # H12 (source) to H12 bouchon
+        Lb1 = 1.4199  # H12 bouchon to BC1
         L11 = 0.0  # BC1 to BC1 (somewhat trivial, but needed)
         L12 = 0.723  # BC1 to BC2
         L23 = 0.972  # BC2 to BC3
@@ -135,7 +135,7 @@ class Panther(McStasInstrumentBase):
         L5c= L5m + Lmc # 4.575
         """
         return dict(
-            Lom=Lob+Lb1+L1m,
+            Lom=Lob + Lb1 + L1m,
             Lob=Lob,
             Lb1=Lb1,
             L11=L11,
@@ -157,7 +157,6 @@ class Panther(McStasInstrumentBase):
             Lhm=Lhm,
             L5m=L5m,
         )
-
 
     # ------------------------------ The instrument definition goes in the __init__
     def __init__(self, do_section=True, _start_from_Fermi=False):
@@ -269,7 +268,7 @@ class Panther(McStasInstrumentBase):
         )
         a2.add_option(0, True)  # for automatic calculation
         a2.add_interval(36.00, 62.0, True)  # 58.97, True)
-        #self.add_parameter_to_master(a2.name, mycalculator, a2)
+        # self.add_parameter_to_master(a2.name, mycalculator, a2)
 
         chopper_rpm = mycalculator.add_parameter(
             "double",
@@ -321,7 +320,7 @@ class Panther(McStasInstrumentBase):
         # HCS.target_index = 2
         HCS.dist = distances["Lom"]
         HCS.focus_xw = "HCS_focus_xw"  # 0.07  # optimized @ 110 meV
-        HCS.focus_yh = 0.05 # reset after monochromator is defined to fit its height
+        HCS.focus_yh = 0.05  # reset after monochromator is defined to fit its height
 
         HCS.flux = 2.5e10
         HCS.radius = 0.100 / 2
@@ -495,7 +494,10 @@ class Panther(McStasInstrumentBase):
             )
 
             Monochromator = mycalculator.add_component(
-                "Monochromator", "Monochromator_curved", AT=0, RELATIVE=Monochromator_Arm
+                "Monochromator",
+                "Monochromator_curved",
+                AT=0,
+                RELATIVE=Monochromator_Arm,
             )
             Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
             Monochromator.set_parameters(  # width=0.300, height=0.220
@@ -507,10 +509,10 @@ class Panther(McStasInstrumentBase):
                 t0=0,  # remove transmitted neutrons that would be absorbed by the Beamstop
                 order=0,  # higher order neutrons would not pass the diaphragm
                 r0=1,
-                mosaic = "mono_mosaic",  # depends if PG or Cu
-                RV = mono_rv,
-                RH = mono_rh,
-                DM = "mono_d",
+                mosaic="mono_mosaic",  # depends if PG or Cu
+                RV=mono_rv,
+                RH=mono_rh,
+                DM="mono_d",
             )
 
             #   Monochromator.reflect = '"HOPG.rfl"'
@@ -620,7 +622,6 @@ class Panther(McStasInstrumentBase):
             HCS.flux = 2e9
 
         init_chopper_rpm(mycalculator)
-
 
         # ------------------------------
         Lbsd = fermi.radius + 0.04
