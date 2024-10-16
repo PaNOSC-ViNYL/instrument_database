@@ -89,24 +89,18 @@ class Panther(McStasInstrumentBase):
     # ------------------------------ Specialized methods required by the Instrument class [mandatory]
 
     # ------------------------------ Internal methods (not available to users)
+    # public because needed in the tests
     def distances(self):
-        return self.__distances()
-
-    def __distances(self):
         """
+        From B. Fak
         Puts Panther-2 distances in a dictionary
         Versions:
         13-Dec-2022: add (trivial) L11=  0
         28-Nov-2022: For Panther-2, replaces old panlen() for Panther-1
-        Call:
-        dist= [tof.]plen() followed by Lms= dist['Lms']
-        or: Lcd= plen()['Lcd']
-        Input:
-        None
-        Output:
-        plen: dictionary
         """
         # Known distances
+        Lob = 4.6975 # H12 (source) to H12 bouchon 
+        Lb1 = 1.4199 # H12 bouchon to BC1
         L11 = 0.0  # BC1 to BC1 (somewhat trivial, but needed)
         L12 = 0.723  # BC1 to BC2
         L23 = 0.972  # BC2 to BC3
@@ -126,6 +120,7 @@ class Panther(McStasInstrumentBase):
         L1s = L1m + Lms  #  8.907
         L1c = L1s - Lcs  #  8.107
         L1d = L1s + Lsd  # 11.407
+        L5m = L1m - L15  # 2.875 shouldn't it be 2.8311 ?
         """
         # Calculated distances between mono and the choppers
         L1m= L15 + L5m # 6.407
@@ -141,6 +136,9 @@ class Panther(McStasInstrumentBase):
         L5c= L5m + Lmc # 4.575
         """
         return dict(
+            Lom=Lob+Lb1+L1m,
+            Lob=Lob,
+            Lb1=Lb1,
             L11=L11,
             L12=L12,
             L13=L13,
@@ -158,7 +156,9 @@ class Panther(McStasInstrumentBase):
             Lsd=Lsd,
             Lcd=Lcd,
             Lhm=Lhm,
+            L5m=L5m,
         )
+
 
     # ------------------------------ The instrument definition goes in the __init__
     def __init__(self, do_section=True, _start_from_Fermi=False):
@@ -166,19 +166,42 @@ class Panther(McStasInstrumentBase):
 
         super().__init__("Panther", do_section)
 
-        distances = self.__distances()
+        distances = self.distances()
+
+        def get_settings_table():
+        """return predefined table of chopper_rpm w.r.t. energy"""
+        eis = [
+            [7.5, "", 8],
+            [8.75, "", 8],
+            [10, "", 8],
+            [12.5, "", 8],
+            [15, "", 8],
+            [19, "", 9.2],
+            [30, "", 16],
+            [35, "", 16],
+            [40, "", 16],
+            [50, "", 16],
+            [60, "", 16],
+            [76.11, "pg006", 18.4],
+            [67.5, "pg006", 19],
+            [78.75, "pg006", 19],
+            [90, "pg006", 20],
+            [112.5, "pg006", 20],
+            [52, "cu220", 19],
+            [60, "cu220", 19],
+            [75, "cu220", 19],
+            [90, "cu220", 19],
+            [110, "cu220", 19],
+            [130, "cu220", 19],
+            [130, "cu220", 20],
+            [123, "cu331", 19],
+            [150, "cu331", 19],
+        ]
+        return eis
 
         def init_chopper_rpm(mycalculator):
-            distances = self.__distances()
-            eis = self.get_settings_table()
-            # mycalculator.append_initialize(
-            #     "if(chopper_rpm==0) chopper_rpm = 60*neutron_velocity * fabs(tan(DEG2RAD*a2 / 2)) / PI / (({Lcs} + {Lsd}*pow((1 - Efoc / Ei),(-3/2))) * (1 - {Lms} / {Lhm}));".format(
-            #         Lcs=distances["Lcs"],
-            #         Lsd=distances["Lsd"],
-            #         Lms=distances["Lms"],
-            #         Lhm=distances["Lhm"],
-            #     )
-            # )
+            distances = self.distances()
+            eis = get_settings_table()
             mycalculator.append_initialize(
                 "if(chopper_rpm==0){\n" + '    printf("Ei = %.2f\\n", Ei);\n'
             )
@@ -297,9 +320,9 @@ class Panther(McStasInstrumentBase):
 
         HCS.E0 = "Ei"
         # HCS.target_index = 2
-        HCS.dist = 12.1485  # 4.6975 + 1.4199 + 0.8 + 0.8 + 0.8
+        HCS.dist = distances["Lom"]
         HCS.focus_xw = "HCS_focus_xw"  # 0.07  # optimized @ 110 meV
-        HCS.focus_yh = 0.05
+        HCS.focus_yh = 0.05 # reset after monochromator is defined to fit its height
 
         HCS.flux = 2.5e10
         HCS.radius = 0.100 / 2
@@ -386,7 +409,7 @@ class Panther(McStasInstrumentBase):
             H12 = mycalculator.add_component("H12", "Arm", AT=[0, 0, 0], RELATIVE=HCS)
 
             H12_bouchon = mycalculator.add_component(
-                "B", "Slit", AT=4.6975, RELATIVE=H12
+                "B", "Slit", AT=distances["Lob"], RELATIVE=H12
             )
             H12_bouchon.set_parameters(radius=0.100)
 
@@ -409,7 +432,7 @@ class Panther(McStasInstrumentBase):
             BC1 = mycalculator.add_component(
                 "BC1",
                 "DiskChopper",
-                AT=1.4199,
+                AT=distances["Lb1"],
                 RELATIVE=H12_bouchon,
             )
             BC1.set_parameters(
@@ -472,12 +495,13 @@ class Panther(McStasInstrumentBase):
 
             # AT=12.1485, RELATIVE=HCS)
             Monochromator_Arm = mycalculator.add_component(
-                "Monochromator_Arm", "Arm", AT=2.8311, RELATIVE=lastBC
+                "Monochromator_Arm", "Arm", AT=distances["L5m"], RELATIVE=lastBC
             )
 
             Monochromator = mycalculator.add_component(
-                "Monochromator", "Monochromator_curved"
+                "Monochromator", "Monochromator_curved", AT=0, RELATIVE=Monochromator_Arm
             )
+            Monochromator.set_ROTATED([0, "a2/2", 0], RELATIVE=Monochromator_Arm)
             Monochromator.set_parameters(  # width=0.300, height=0.220
                 NH=11,
                 NV=15,
@@ -801,37 +825,6 @@ class Panther(McStasInstrumentBase):
         )
 
         # ------------------------------ instrument parameters
-
-    def get_settings_table(self):
-        """return predefined table of chopper_rpm w.r.t. energy"""
-        eis = [
-            [7.5, "", 8],
-            [8.75, "", 8],
-            [10, "", 8],
-            [12.5, "", 8],
-            [15, "", 8],
-            [19, "", 9.2],
-            [30, "", 16],
-            [35, "", 16],
-            [40, "", 16],
-            [50, "", 16],
-            [60, "", 16],
-            [76.11, "pg006", 18.4],
-            [67.5, "pg006", 19],
-            [78.75, "pg006", 19],
-            [90, "pg006", 20],
-            [112.5, "pg006", 20],
-            [52, "cu220", 19],
-            [60, "cu220", 19],
-            [75, "cu220", 19],
-            [90, "cu220", 19],
-            [110, "cu220", 19],
-            [130, "cu220", 19],
-            [130, "cu220", 20],
-            [123, "cu331", 19],
-            [150, "cu331", 19],
-        ]
-        return eis
 
     def set_test(self, test_number: Optional[int] = None):
         myinstrument = self
