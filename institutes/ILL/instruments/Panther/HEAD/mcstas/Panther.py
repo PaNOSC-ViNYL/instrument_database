@@ -603,45 +603,10 @@ class Panther(McStasInstrumentBase):
 
             HCS.flux = 2e9
 
-        Efoc = mycalculator.add_parameter(
-            "double", "Efoc", comment="Focusing energy", unit="meV", value=0
-        )
-        # self.add_parameter_to_master("Efoc", mycalculator, Efoc)
-
-        #        mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
         init_chopper_rpm(mycalculator)
 
-        mycalculator.append_initialize(
-            'printf("Chopper_rpm = %.2f\\nchopper_ratio = %.2f\\nNeutron velocity: %.2f\\nE_focus: %.2f\\n", chopper_rpm, chopper_ratio, neutron_velocity, Efoc );'
-        )
-        # mycalculator.append_initialize(
-        #    'printf("phase FC = %.2f\\n", {});\n'.format(fermi.phase)
-        # )
-        for iBC in [2, 3, 4, 5]:
-            bc = mycalculator.get_component("BC{}".format(iBC))
-            mycalculator.append_initialize(
-                'printf("delay {} = %.2e\\n", {});\n'.format(bc.name, bc.delay)
-            )
-        mycalculator.append_initialize(
-            'printf("delay {} = %.2e\\n", {});\n'.format(fermi.name, fermi.delay)
-        )
 
         # ------------------------------
-        bsw = mycalculator.add_parameter(
-            "double",
-            "before_sample_slit_width",
-            comment="Horizontal width of the slit opening",
-            unit="m",
-            value=0.20,
-        )
-        bsh = mycalculator.add_parameter(
-            "double",
-            "before_sample_slit_height",
-            comment="Vertical height of the slit opening",
-            unit="m",
-            value=0.20,
-        )
-
         Lbsd = fermi.radius + 0.04
 
         monitor = mycalculator.add_component(
@@ -657,10 +622,37 @@ class Panther(McStasInstrumentBase):
             # options='"x bins={} y bins={} file={}"'.format(1, 1, "counter.dat"
         )
 
+        bsw = mycalculator.add_parameter(
+            "double",
+            "before_sample_slit_width",
+            comment="Horizontal width of the slit opening",
+            unit="m",
+            value=0.20,
+        )
+        bsh = mycalculator.add_parameter(
+            "double",
+            "before_sample_slit_height",
+            comment="Vertical height of the slit opening",
+            unit="m",
+            value=0.20,
+        )
         before_sample_diaphragm = mycalculator.add_component(
             "before_sample_diaphragm", "Slit", AT=Lbsd, RELATIVE=fermi
         )
         before_sample_diaphragm.set_parameters(xwidth=bsw, yheight=bsh)
+
+        # ------- printing infos
+        mycalculator.append_initialize(
+            'printf("Chopper_rpm = %.2f\\nchopper_ratio = %.2f\\nNeutron velocity: %.2f\\n", chopper_rpm, chopper_ratio, neutron_velocity);'
+        )
+        for iBC in [2, 3, 4, 5]:
+            bc = mycalculator.get_component("BC{}".format(iBC))
+            mycalculator.append_initialize(
+                'printf("delay {} = %.2e\\n", {});\n'.format(bc.name, bc.delay)
+            )
+        mycalculator.append_initialize(
+            'printf("delay {} = %.2e\\n", {});\n'.format(fermi.name, fermi.delay)
+        )
 
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
@@ -784,15 +776,7 @@ class Panther(McStasInstrumentBase):
                 chopper_ratio.name, mycalculator, chopper_ratio
             )
 
-            Efoc = mycalculator.add_parameter(
-                "double", "Efoc", comment="Focusing energy", unit="meV", value=0
-            )
-            self.add_parameter_to_master("Efoc", mycalculator, Efoc)
-
-            # mycalculator.append_initialize("if(Efoc==0) Efoc=Ei;")
             init_chopper_rpm(mycalculator)
-
-        # twidth = mycalculator.add_declare_var("double", "time_frame")
 
         mycalculator.append_initialize(
             "if(twidth<=0) twidth = chopper_ratio/2.0/chopper_rpm/60.0;"
