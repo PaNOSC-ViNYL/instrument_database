@@ -204,16 +204,16 @@ def config0(set_instr):
     """Base configuration for tests: direct beam with beam stop"""
     myinstrument = set_instr
 
-    myinstrument.calculators["OriginCalc"].remove_component("collimator")
+    # myinstrument.calculators["OriginCalc"].remove_component("collimator")
 
     myinstrument.master["energy"] = 10 * ureg.meV
-    myinstrument.master["mono_index"] = '"pg002"'
-    myinstrument.master["a2"] = 50.46 * ureg.degree
-    myinstrument.master["chopper_rpm"] = 7998
+    # myinstrument.master["mono_index"] = '"pg002"'
+    # myinstrument.master["a2"] = 50.46 * ureg.degree
+    # myinstrument.master["chopper_rpm"] = 7998
 
-    myinstrument.master["a2"] = 0 * ureg.degree
-    myinstrument.master["mono_index"] = '"pg"'
-    myinstrument.master["chopper_rpm"] = 0
+    # myinstrument.master["a2"] = 0 * ureg.degree
+    # myinstrument.master["mono_index"] = '"pg"'
+    # myinstrument.master["chopper_rpm"] = 0
 
     # myinstrument.calculators["OriginCalc"].parameters["mono_index"] = "0"
     myinstrument.set_sample_by_name("None")
@@ -227,9 +227,6 @@ def config_before_fermi(config0):
     Instrument configuration config0 with MCPL output before the fermi
     """
     myinstrument = config0
-    myinstrument.master["a2"] = 0 * ureg.degree
-    myinstrument.master["mono_index"] = "0"
-    myinstrument.master["chopper_rpm"] = 0
 
     myinstrument.do_section(True)
 
@@ -318,8 +315,6 @@ def config_vanadium(config0):
     myinstrument.sample.set_SPLIT(
         1
     )  # disabling the SPLIT due to the focusing on detector
-    myinstrument.master["chopper_ratio"] = 1
-    # myinstrument.master["Efoc"] = 100
     return myinstrument
 
 
@@ -409,7 +404,7 @@ def test_master_parameters(config0):
         "chopper_rpm",
         "chopper_ratio",
         "energy",
-        "Efoc",
+        # "Efoc",
         "tdelay",
         "twidth",
     ]
@@ -455,8 +450,8 @@ def test_intensity_at_sample(config_sample_monitor, plot_settings):
     detector = [d for d in detectors if d.name in ["sample_monitor"]][0]
 
     # check simulation vs previous version
-    assert np.sum(detector.Ncount) == 32575
-    assert np.sum(detector.Intensity) == pytest.approx(9580, abs=1)
+    assert np.sum(detector.Ncount) == 2477200
+    assert np.sum(detector.Intensity) == pytest.approx(683991, abs=1)
     ph = PlotHelper(detector.Intensity.T)
     ph.set_limits(detector.metadata.limits)
     ph.stats[0].mean = pytest.approx(49.68, abs=0.02)
@@ -954,23 +949,17 @@ def test_diagnostics(config_vanadium, tmp_path):
     myinstrument = config_vanadium
     myinstrument.settings(ncount=1e5)
 
-    myinstrument.master["energy"] = 50 * ureg.meV
+    myinstrument.master["energy"] = 30 * ureg.meV
 
     mycalc = myinstrument.calculators["OriginCalc"]
-    mycalc.remove_component("detector")
+    detector = mycalc.get_component("detector")
+    detector.nowritefile = 1
+    # mycalc.remove_component("detector")
     # mycalc.get_component("HCS").focus_yh = 0.04
     import mcstasscript as ms
 
-    phase = 30
     fermi = mycalc.get_component("fermi_chopper")
     fermi.verbose = 0
-    d = myinstrument.distances()["L1c"]
-    # fermi.delay = "{dist}/neutron_velocity + {phase_init}/({omega})/ 360".format(
-    #    dist=myinstrument.distances()["L1c"],
-    #    phase_init=phase,
-    #    omega="chopper_rpm/60",
-    # )
-    #    fermi.phase = -90
     print(fermi)
 
     BC1 = mycalc.get_component("BC1")
@@ -1026,7 +1015,7 @@ def test_diagnostics(config_vanadium, tmp_path):
     # diag.add_view("x","y",bins=[30,30])
     diag.add_view("e", same_scale=True)
     # diag.add_view("l",same_scale=False)
-    diag.add_view("t", same_scale=True)
+    diag.add_view("t", same_scale=False)
     diag.add_view("t", "x", same_scale=False, log=True)
     diag.add_view("t", "y", same_scale=False)
     diag.add_view("x", "y", same_scale=False, log=True)
