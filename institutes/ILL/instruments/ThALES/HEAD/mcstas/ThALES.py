@@ -462,7 +462,7 @@ class ThALES(McStasInstrumentBase):
         # default sample
         self.sample_focus(0.03, 0.04, 0.250)
 
-        sample = self.set_sample_by_name("Vanadium")
+        sample = self.set_sample_by_name("None")
 
         Sample_Out = SampleCalc.add_component(
             "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
@@ -470,7 +470,7 @@ class ThALES(McStasInstrumentBase):
         Sample_Out.set_ROTATED([0, "a4", 0], RELATIVE=self._sample_arm)
 
         # this BS is in place to stop the beam if the analyzer is at angle 0
-        beamstop = mycalculator.add_component(
+        beamstop = SampleCalc.add_component(
             "BS_after_sample", "Beamstop", AT=0.2, RELATIVE=self._sample_arm
         )
         beamstop.set_parameters(xwidth=0.03, yheight=0.04)
