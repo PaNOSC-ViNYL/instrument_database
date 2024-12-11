@@ -165,8 +165,12 @@ if (!nowritefile) {
   for(iphi=0; iphi < nphi; iphi++){
     char ff[256];
     char tt[256];
-    sprintf(ff, "%s_%03i",filename,nphi-iphi-1);
-    sprintf(tt, "PSD TOF monitor: tube %i ",nphi-1-iphi);
+    // if inverse tube numbering
+    //sprintf(ff, "%s_%03i",filename,nphi-iphi-1);
+    //sprintf(tt, "PSD TOF monitor: tube %i ",nphi-1-iphi);
+    sprintf(ff, "%s_%03i",filename,iphi);
+    sprintf(tt, "PSD TOF monitor: tube %i ",iphi);
+    
     DETECTOR_OUT_2D(
       tt,
       "Y position [m]",
