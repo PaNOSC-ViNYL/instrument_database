@@ -741,6 +741,7 @@ class D11(McStasInstrumentBase):
         )
         self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
         self.master[disk_index.name] = 2
+
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
@@ -749,12 +750,65 @@ class D11(McStasInstrumentBase):
             RELATIVE="mg15",
         )
 
+        sample_diaphragm_radius = mycalculator.add_parameter(
+            "double",
+            "sample_diaphragm_radius",
+            unit="m",
+            comment="circular aperture radius",
+            value=0,
+        )
+        sample_diaphragm_height = mycalculator.add_parameter(
+            "double",
+            "sample_diaphragm_height",
+            unit="m",
+            comment="circular aperture height",
+            value=0,
+        )
+        sample_diaphragm_width = mycalculator.add_parameter(
+            "double",
+            "sample_diaphragm_width",
+            unit="m",
+            comment="circular aperture width",
+            value=0,
+        )
+        self.add_parameter_to_master(
+            sample_diaphragm_width.name, mycalculator, sample_diaphragm_width
+        )
+        self.master[sample_diaphragm_width.name] = 0 * ureg.m
+        self.add_parameter_to_master(
+            sample_diaphragm_height.name, mycalculator, sample_diaphragm_height
+        )
+        self.master[sample_diaphragm_height.name] = 0 * ureg.m
+        self.add_parameter_to_master(
+            sample_diaphragm_radius.name, mycalculator, sample_diaphragm_radius
+        )
+        self.master[sample_diaphragm_radius.name] = 0 * ureg.m
+
+        sample_diaphragm = mycalculator.add_component(
+            "sample_diaphragm",
+            Slit,
+            AT=[
+                sample_x,
+                sample_y,
+                movable_guide_config["l"][15] + 2.5 - 0.015,
+            ],
+            RELATIVE="mg15",
+        )
+        sample_diaphragm.set_parameters(
+            radius=sample_diaphragm_radius,
+            xwidth=sample_diaphragm_width,
+            yheight=sample_diaphragm_height,
+        )
+
         # ------------------------------------------------------------
         # this new section contains the sample and the sample environment
         mycalculator, sample_mcpl_arm = self.add_new_section(
             "SampleCalc", sample_mcpl_arm, True
         )
         # ------------------------------------------------------------
+        # the sample can be moved in x and y changing the parameters
+        # sample_x, sample_y, sample_z in McStas coordiate system
+        # w.r.t. the sample_arm position
         self._sample_arm.set_AT(0.05, RELATIVE=sample_mcpl_arm)
         self._sample_environment_arm.set_AT(
             self._sample_arm.AT_data, RELATIVE=sample_mcpl_arm

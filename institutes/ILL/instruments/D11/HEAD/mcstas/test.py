@@ -528,11 +528,39 @@ def test_sample1(
     plot_settings,
     electronic_noise,
 ):
+    """
+    Isotropic_Sqw: sample_holder_in: 46799 neutron events (out of 54373) that should have
+                   scattered were transmitted because scattering conditions
+    WARNING        could not be satisfied after 100 tries.
+    Isotropic_Sqw: sample_holder_in: 13 neutron events (out of 7574) reached
+    WARNING        unrealistic weight. The S(q,w) norm might be too high.
+    Isotropic_Sqw: sample_holder_in: Scattering fraction=0.0478101 of incoming intensity
+                   Absorption fraction           =0.060037
+                   Single   scattering intensity =298322 (coh=297250 inc=1071.96)
+                   Multiple scattering intensity =3380.28
+    Isotropic_Sqw: sample_holder_out: 438613 neutron events (out of 507722) that should have
+                   scattered were transmitted because scattering conditions
+    WARNING        could not be satisfied after 100 tries.
+    Isotropic_Sqw: sample_holder_out: 136 neutron events (out of 69109) reached
+    WARNING        unrealistic weight. The S(q,w) norm might be too high.
+    Isotropic_Sqw: sample_holder_out: Scattering fraction=0.0244595 of incoming intensity
+                   Absorption fraction           =0.0600434
+                   Single   scattering intensity =130143 (coh=129516 inc=626.996)
+                   Multiple scattering intensity =1434.72
+    """
     myinstrument = config0
-    myinstrument.settings(ncount=1e9)
+    myinstrument.settings(ncount=1e7, mpi=5)
     myinstrument.master["bs_index"] = 1
+    thickness = 0.00125
+    sample_thickness = 0.002
+    # d=0.0135
     myinstrument.sample_holder(
-        material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
+        material="quartz",
+        shape="box",
+        w=0.02,
+        h=0.03,
+        d=sample_thickness + 2 * thickness,
+        th=0.00125,
     )
     myinstrument.sample_shape("holder")
 
@@ -549,6 +577,8 @@ def test_sample1(
         + '"'
     )
 
+    myinstrument.sample.verbose = 1
+    print(myinstrument.sample)
     myinstrument.run()
 
     detectors = myinstrument.output.get_data()["data"]

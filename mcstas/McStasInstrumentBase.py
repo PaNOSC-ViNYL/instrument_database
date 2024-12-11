@@ -131,10 +131,32 @@ class McStasInstrumentBase(Instrument):
         )
 
         # do we want a sample rotation parameter by default?
+        x = mycalculator.add_parameter(
+            "double",
+            "sample_x",
+            comment="sample x translation in mcstas coordinates",
+            unit="m",
+            value=0.0,
+        )
+        y = mycalculator.add_parameter(
+            "double",
+            "sample_y",
+            comment="sample y translation in mcstas coordinates",
+            unit="m",
+            value=0.0,
+        )
+        z = mycalculator.add_parameter(
+            "double",
+            "sample_z",
+            comment="sample z translation in mcstas coordinates",
+            unit="m",
+            value=0.0,
+        )
+
         self._sample_arm = mycalculator.add_component(
             "sample_arm",
             "Arm",
-            AT=[0, 0, 0],
+            AT=0,
             ROTATED=[0, "sample_y_rotation", 0],
             RELATIVE=previous_component,
         )
@@ -261,12 +283,19 @@ class McStasInstrumentBase(Instrument):
             vin = Origin
             if output_arm is not None:
                 # this parameter is just to have some flexibility on the compiled instrument
-                mycalculator.add_parameter(
+                vinf = mycalculator.add_parameter(
                     "string",
                     "vin_filename",
                     unit="",
                     comment="",
                     value='"none"',  # + oldcalculator.output["mcpl"] + '"',
+                )
+                vin_nmax = mycalculator.add_parameter(
+                    "int",
+                    "vin_nmax",
+                    unit="",
+                    comment="maximum number of MCPL files to read",
+                    value=0,
                 )
                 vin = mycalculator.add_component(
                     "Vin",
@@ -275,7 +304,7 @@ class McStasInstrumentBase(Instrument):
                     after="Origin",
                 )
                 vin.filename = "vin_filename"
-
+                vin.nmaxfiles = vin_nmax
                 mycalculator.input = oldcalculator.output
         else:
             vin = output_arm
@@ -636,7 +665,7 @@ class McStasInstrumentBase(Instrument):
             self._sample_holder = mycalculator.add_component(
                 "sample_holder_in",
                 "Isotropic_Sqw",
-                AT=[0, 0, 0],
+                AT=["sample_x", "sample_y", "sample_z"],
                 # ROTATED=[0, "a4", 0],
                 RELATIVE=self._sample_arm,
             )
@@ -657,7 +686,7 @@ class McStasInstrumentBase(Instrument):
             s_out = mycalculator.copy_component(
                 "sample_holder_out",
                 self._sample_holder,
-                AT=0,
+                AT=["sample_x", "sample_y", "sample_z"],
                 RELATIVE=self._sample_arm,
             )
             s_out.concentric = 0
@@ -763,7 +792,7 @@ class McStasInstrumentBase(Instrument):
             self.sample = mycalculator.add_component(
                 self.sample_name,
                 "Monitor_nD",
-                AT=0,
+                AT=["sample_x", "sample_y", "sample_z"],
                 RELATIVE=self._sample_arm,
             )
             self.sample.set_parameters(
@@ -783,7 +812,7 @@ class McStasInstrumentBase(Instrument):
             self.sample = mycalculator.add_component(
                 self.sample_name,
                 "V_sample",
-                AT=[0, 0, 0],
+                AT=["sample_x", "sample_y", "sample_z"],
                 # ROTATED=[0, "a4", 0],
                 RELATIVE=self._sample_arm,
             )
@@ -806,7 +835,7 @@ class McStasInstrumentBase(Instrument):
             self.sample = mycalculator.add_component(
                 self.sample_name,
                 "Isotropic_Sqw",
-                AT=[0, 0, 0],
+                AT=["sample_x", "sample_y", "sample_z"],
                 # ROTATED=[0, "a4", 0],
                 RELATIVE=self._sample_arm,
             )
