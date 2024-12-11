@@ -42,7 +42,7 @@
 
 DEFINE COMPONENT MCPL_input
 DEFINITION PARAMETERS ()
-SETTING PARAMETERS (string filename=0, polarisationuse=1,verbose=1, Emin=0, Emax=FLT_MAX, int repeat_count=1, E_smear=0, pos_smear=0, dir_smear=0, int preload=0)
+SETTING PARAMETERS (string filename=0, polarisationuse=1,verbose=1, Emin=0, Emax=FLT_MAX, int repeat_count=1, E_smear=0, pos_smear=0, dir_smear=0, int preload=0, int nmaxfiles=0)
 OUTPUT PARAMETERS ()
 DEPENDENCY "-Wl,-rpath,CMD(mcpl-config --show libdir) -LCMD(mcpl-config --show libdir) -lmcpl -ICMD(mcpl-config --show includedir)"
 
@@ -106,13 +106,13 @@ INITIALIZE
 	  FILE *filelist_f = fopen(filename, "r");
 	  if(filelist_f!=NULL){
 	    nfiles=0;
-	    while(fgets(filenames[nfiles], MAX_MCPL_FILES, filelist_f)!=NULL){
+	    while(fgets(filenames[nfiles], MAX_MCPL_FILES, filelist_f)!=NULL && (nfiles<nmaxfiles || nmaxfiles==0)){
 	      //filenames[nfiles][strlen(filenames[nfiles])-1]='\0';
 	      if(strlen(filenames[nfiles])>0){
 		int l = strlen(filenames[nfiles])-1;
 		if(filenames[nfiles][l]=='\n')
 		  filenames[nfiles][l]='\0';
-		fprintf(stderr, "Last character: #%c#\n",filenames[nfiles][strlen(filenames[nfiles])-1]);
+		//fprintf(stderr, "Last character: #%c#\n",filenames[nfiles][strlen(filenames[nfiles])-1]);
 		nfiles++;
 	      }
 	      if(nfiles>=MAX_MCPL_FILES){
