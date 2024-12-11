@@ -745,7 +745,7 @@ class Panther(McStasInstrumentBase):
         )
         bs.set_parameters(
             xwidth=0.5,
-            yheight=0.5,
+            yheight=0.65,
         )
 
         # ------------------------------------------------------------
@@ -813,7 +813,7 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize('printf("elp = %d\\n", elp);')
 
         # if chopper_ratio is 2: nt=1024
-        sample_height_wrt_detector = 0.4  # in meters
+        sample_height_wrt_detector = 0.65  # in meters
         h_detector = 2  # meters
         detector = mycalculator.add_component(
             "detector",
