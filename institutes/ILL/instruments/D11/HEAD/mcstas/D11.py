@@ -784,12 +784,37 @@ class D11(McStasInstrumentBase):
         )
         self.master[sample_diaphragm_radius.name] = 0 * ureg.m
 
+        sample_diaphragm_x = mycalculator.add_parameter(
+            "double",
+            "sample_diaphragm_x",
+            unit="m",
+            comment="x shift w.r.t. beam center",
+            value=0,
+        )
+        sample_diaphragm_y = mycalculator.add_parameter(
+            "double",
+            "sample_diaphragm_y",
+            unit="m",
+            comment="y shift w.r.t. beam center",
+            value=0,
+        )
+        self.add_parameter_to_master("sample_x", mycalculator, sample_diaphragm_x)
+        self.add_parameter_to_master("sample_y", mycalculator, sample_diaphragm_x)
+        # sample_diaphragm_z = mycalculator.add_parameter(
+        #     "double",
+        #     "sample_diaphragm_z",
+        #     unit="m",
+        #     comment="z shift w.r.t. beam center",
+        #     value=0,
+        # )
+        # self.add_parameter_to_master("sample_z", mycalculator, sample_diaphragm_x)
+
         sample_diaphragm = mycalculator.add_component(
             "sample_diaphragm",
-            Slit,
+            "Slit",
             AT=[
-                sample_x,
-                sample_y,
+                sample_diaphragm_x,
+                sample_diaphragm_y,
                 movable_guide_config["l"][15] + 2.5 - 0.015,
             ],
             RELATIVE="mg15",

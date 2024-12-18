@@ -41,7 +41,7 @@ class PlotHelper:
         """
         data: 2D numpy array
         """
-        if data.ndim != 2:
+        if data.ndim > 3:
             raise RuntimeError(f"wrong number of dimensions <{data.ndim}>")
 
         self.__scatter_plot_settings = {"s": 10}
@@ -49,7 +49,7 @@ class PlotHelper:
         self.__data = None
         self.__weights = None
         self.__stats = None
-        self.__pixel_size = [1, 1]
+        self.__pixel_size = [1, 1, 1]
         self.__xmin = None
 
         self.__data = data
@@ -57,8 +57,20 @@ class PlotHelper:
             self.__weights = np.ones(data.shape)
 
         # make 1D statistics
-        x, wx = self.marginal(axis=1)
-        y, wy = self.marginal(axis=0)
+        mt = self.__data
+        mwt = self.__weights
+        t = None
+        wt = None
+        if data.ndim == 3:
+            # marginalize the third dimension first (time)
+            mt, mwt = self.marginal(axis=2)
+            t, wt = self.marginal(axis=0)
+            t, wt = self.marginal(axis=1, v=t, w=wt)
+            self.__data = mt
+            self.__weights = mwt
+
+        x, wx = self.marginal(axis=1, v=mt, w=mwt)
+        y, wy = self.marginal(axis=0, v=mt, w=mwt)
 
         self.__stats = [self.stat(), self.stat()]  # [x[mean,std], y[mean, std]]
         self.__stats[1].mean, self.__stats[1].std = self.calc_stats(x, self.xbins(1))
@@ -90,12 +102,16 @@ class PlotHelper:
             std = 0
         return (m, np.sqrt(std))
 
-    def marginal(self, axis):
+    def marginal(self, axis, v=None, w=None):
         """currently implemented only for the 2D case, not generalized
         axis: axis to marginalize, i.e. axis desappearing
         """
-        x = np.sum(self.__data, axis=axis)
-        w = np.sqrt(np.sum(np.square(self.__weights), axis=axis))
+        if v is None:
+            v = self.__data
+        if w is None:
+            w = self.__weights
+        x = np.sum(v, axis=axis)
+        w = np.sqrt(np.sum(np.square(w), axis=axis))
         return x, w
 
     def limits(self, nsigma, axis):

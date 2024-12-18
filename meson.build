@@ -10,7 +10,8 @@ project_source_root = meson.project_source_root()
 instruments_bindir = 'mcstas_instruments'
 
 instrfiledir = 'instruments'
-instruments_dict = { 'D11' : 'simple', 'Panther': 'quick'} #, 'ThALES': 'quick'}
+instruments_dict = { 'D11' : 'simple', 'ThALES': 'quick'} #,
+instruments_dict = { 'D11' : 'simple', 'Panther': 'None'}
 sample_list = ['None', 'H2O', 'D2O', 'vanadium', 'sqw','qSq']
 sample_holder_list = ['None', 'QUARTZ']
 sample_environment_list = ['None']
