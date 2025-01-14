@@ -700,14 +700,16 @@ class Panther(McStasInstrumentBase):
         mycalculator.append_initialize(
             'printf("Chopper_rpm = %.2f\\nchopper_ratio = %.2f\\nNeutron velocity: %.2f\\n", chopper_rpm, chopper_ratio, neutron_velocity);'
         )
-        for iBC in [2, 3, 4, 5]:
-            bc = mycalculator.get_component("BC{}".format(iBC))
+
+        if not _start_from_Fermi:
+            for iBC in [2, 3, 4, 5]:
+                bc = mycalculator.get_component("BC{}".format(iBC))
+                mycalculator.append_initialize(
+                    'printf("delay {} = %.2e\\n", {});\n'.format(bc.name, bc.delay)
+                )
             mycalculator.append_initialize(
-                'printf("delay {} = %.2e\\n", {});\n'.format(bc.name, bc.delay)
+                'printf("delay {} = %.2e\\n", {});\n'.format(fermi.name, fermi.delay)
             )
-        mycalculator.append_initialize(
-            'printf("delay {} = %.2e\\n", {});\n'.format(fermi.name, fermi.delay)
-        )
 
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
