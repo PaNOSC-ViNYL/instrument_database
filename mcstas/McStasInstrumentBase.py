@@ -261,12 +261,19 @@ class McStasInstrumentBase(Instrument):
             vin = Origin
             if output_arm is not None:
                 # this parameter is just to have some flexibility on the compiled instrument
-                mycalculator.add_parameter(
+                vinf = mycalculator.add_parameter(
                     "string",
                     "vin_filename",
                     unit="",
                     comment="",
                     value='"none"',  # + oldcalculator.output["mcpl"] + '"',
+                )
+                vin_nmax = mycalculator.add_parameter(
+                    "int",
+                    "vin_nmax",
+                    unit="",
+                    comment="maximum number of MCPL files to read",
+                    value=0,
                 )
                 vin = mycalculator.add_component(
                     "Vin",
@@ -275,7 +282,7 @@ class McStasInstrumentBase(Instrument):
                     after="Origin",
                 )
                 vin.filename = "vin_filename"
-
+                vin.nmaxfiles = vin_nmax
                 mycalculator.input = oldcalculator.output
         else:
             vin = output_arm
