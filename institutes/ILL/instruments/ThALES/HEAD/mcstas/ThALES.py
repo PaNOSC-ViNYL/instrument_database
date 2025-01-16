@@ -250,7 +250,8 @@ class ThALES(McStasInstrumentBase):
         # - monochromator_d
         #
         HCS = source.HCS_source(mycalculator)
-        HCS.flux = 16e10
+        # HCS.flux = 16e10
+        HCS.flux = 16e09
 
         mycalculator.parameters["dlambda"] = 0.08  # imported from HCS
         mycalculator.parameters["dlambda"] = 0.02  # imported from HCS
@@ -355,6 +356,7 @@ class ThALES(McStasInstrumentBase):
 
         else:
             HCS.flux = 5.5e12
+            HCS.flux = 5.5e10
             HCS.dist = 20
             HCS.focus_xw = 0.04
             HCS.focus_yh = 0.12
