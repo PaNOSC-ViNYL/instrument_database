@@ -1,0 +1,9 @@
+[wrap-git]
+url = https://github.com/mctools/mcpl.git
+revision = v1.6.2
+depth = 1
+
+patch_directory = mcpl
+
+[provide]
+mcpl = mcpl_dep
