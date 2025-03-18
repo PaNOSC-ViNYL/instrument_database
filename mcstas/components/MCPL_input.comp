@@ -123,7 +123,8 @@ INITIALIZE
 	  }else exit(2);
       }
     }
-
+    if(nfiles==0) exit(3);
+    
     nparticles=0;
     unsigned long long int nparts;
     for(unsigned int ifile =0; ifile<nfiles; ++ifile){

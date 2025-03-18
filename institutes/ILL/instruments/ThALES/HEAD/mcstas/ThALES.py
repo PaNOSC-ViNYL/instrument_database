@@ -357,6 +357,7 @@ class ThALES(McStasInstrumentBase):
         else:
             HCS.flux = 5.5e12
             HCS.flux = 5.5e10
+            HCS.flux = 1.0e10
             HCS.dist = 20
             HCS.focus_xw = 0.04
             HCS.focus_yh = 0.12

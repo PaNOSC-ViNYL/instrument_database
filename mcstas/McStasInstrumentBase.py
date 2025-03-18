@@ -15,7 +15,7 @@ import math
 # list here all the common parts to be imported
 from typing import List, Optional, Any
 
-maxSplit = 10
+maxSplit = 1
 
 
 class McStasInstrumentBase(Instrument):
@@ -830,7 +830,7 @@ class McStasInstrumentBase(Instrument):
             s.thickness = "sample_thickness"  # 0  # 0.002
             s.verbose = 1
             s.p_interact = 1
-            s.set_SPLIT(10)
+            s.set_SPLIT(1)
             self.set_sample_focus()
 
             if name == "H2O":
