@@ -1,19 +1,19 @@
 """
- Written by: FARHI Emmanuel (farhi@ill.fr)
- Date: 2012
- Origin:ILL
- Release: McStas 2.5
- Version: $Revision: 1.0 $
- %INSTRUMENT_SITE: ILL
+Written by: FARHI Emmanuel (farhi@ill.fr)
+Date: 2012
+Origin:ILL
+Release: McStas 2.5
+Version: $Revision: 1.0 $
+%INSTRUMENT_SITE: ILL
 
- Adapted and modified by Shervin NOURBAKHSH for McStasscript
-        
- TODO:
-  - [ ] controllare il comportamento del MCPL output:
-        da verificare che i neutroni nel file abbiamo una posizione non nulla che e' impostata rispetto all'Arm definito per l'MCPL
-  - [X] addmultislit: da debuggare
-  - [ ] implementare il nuovo detector installato nel 2021
-    - [ ] tube_length ?
+Adapted and modified by Shervin NOURBAKHSH for McStasscript
+
+TODO:
+ - [ ] controllare il comportamento del MCPL output:
+       da verificare che i neutroni nel file abbiamo una posizione non nulla che e' impostata rispetto all'Arm definito per l'MCPL
+ - [X] addmultislit: da debuggare
+ - [ ] implementare il nuovo detector installato nel 2021
+   - [ ] tube_length ?
 """
 
 # ------------------------------ For McStasscript instruments
@@ -54,6 +54,7 @@ import pint
 from pint import set_application_registry
 
 ureg = pint.get_application_registry()
+
 
 ############## Mandatory method
 def get_flavours():
@@ -954,9 +955,9 @@ class D11(McStasInstrumentBase):
             myinstrument.set_sample_by_name("None")
         elif test_number == 2:  # with sample
             myinstrument.set_sample_by_name("qSq")
-            myinstrument.master[
-                "sqw_file"
-            ] = '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+            myinstrument.master["sqw_file"] = (
+                '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
+            )
         elif test_number == -1:  # direct beam no beamstop
             myinstrument.set_sample_by_name("None")
             myinstrument.sample_holder(None, None)
