@@ -194,12 +194,13 @@ def flavour():
     Default flavour to test
     """
     # return "nosection"
-    return "simplefull"
+    return "simpleNS"
 
 
 @pytest.fixture
 def mpi():
     """Setting default mpi"""
+    return 2
     return 8
 
 
@@ -228,7 +229,7 @@ def config0(set_instr):
     myinstrument.master["lambda"] = 6 * ureg.angstrom
     myinstrument.master["detpos"] = 2 * ureg.m
     myinstrument.master["attenuator_index"] = 0
-    myinstrument.master["collimation"] = 8 * ureg.m
+    #myinstrument.master["collimation"] = 8 * ureg.m
     myinstrument.master["bs_index"] = 0
     myinstrument.set_sample_by_name("None")
     myinstrument.sample_holder(None, None)
@@ -335,7 +336,7 @@ def test_name(set_instr):
 
 def test_detector_size(data_direct_attenuated):
     """Check the size of the detectors in a data file"""
-    detectors, time, pixel_sizes = data_direct_attenuated
+    detectors, time = data_direct_attenuated
     assert detectors["detector_central"].shape == (256, 192)
     assert detectors["detector_left"].shape == (32, 256)
     assert detectors["detector_right"].shape == (32, 256)
@@ -347,12 +348,34 @@ def test_master_parameters(config0):
 
     master_parameters = [
         "lambda",
-        "collimation",
-        "disk1_index",
-        "disk2_index",
-        "disk3_index",
-        "disk4_index",
-        "disk5_index",
+        #"collimation",
+        "T01_index",
+        "T02_index",
+        "T03_index",
+        "T04_index",
+        "T05_index",
+        "T06_index",
+        "T07_index",
+        "T08_index",
+        "T09_index",
+        "T10_index",
+        "T11_index",
+        "T12_index",
+        "T13_index",
+        "T14_index",
+#        "T15_index",
+#        "T16_index",
+#        "T17_index",
+"D02_index",
+"D03_index",
+"D05_index",
+"D06_index",
+"D08_index",
+        #"disk1_index",
+        #"disk2_index",
+        #"disk3_index",
+        #"disk4_index",
+        #"disk5_index",
         "detpos",
         "attenuator_index",
         "bs_x",

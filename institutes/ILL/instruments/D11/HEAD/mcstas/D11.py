@@ -1,25 +1,10 @@
-"""
-Written by: FARHI Emmanuel (farhi@ill.fr)
-Date: 2012
-Origin:ILL
-Release: McStas 2.5
-Version: $Revision: 1.0 $
-%INSTRUMENT_SITE: ILL
-
-Adapted and modified by Shervin NOURBAKHSH for McStasscript
-
-TODO:
- - [ ] controllare il comportamento del MCPL output:
-       da verificare che i neutroni nel file abbiamo una posizione non nulla che e' impostata rispetto all'Arm definito per l'MCPL
- - [X] addmultislit: da debuggare
- - [ ] implementare il nuovo detector installato nel 2021
-   - [ ] tube_length ?
-"""
+""" """
 
 # ------------------------------ For McStasscript instruments
-import mcstasscript as ms
+# import mcstasscript as ms
 from mcstasscript.interface import functions
-from mcstasscript.interface import instr
+
+# from mcstasscript.interface import instr
 
 # this is needed to get the location of McStas executables and libraries
 my_configurator = functions.Configurator()
@@ -29,12 +14,6 @@ from institutes.ILL.sources.HEAD.mcstas import Full as source
 
 from institutes.ILL.sources.HEAD.mcstas import Gauss as sourcesimple
 
-# from institutes.ILL.sources.HEAD.mcstas import Gauss_div as sourcesimple
-
-# from institutes.ILL.sources.HEAD.mcstas import Gauss as source
-
-# from institutes.ILL.samples.vanadium import set_vanadium_sample
-
 # ------------------------------ Mandatory classes to use
 from libpyvinyl.Instrument import Instrument
 from libpyvinyl.Parameters import Parameter
@@ -42,9 +21,6 @@ from mcstas.McStasInstrumentBase import McStasInstrumentBase
 
 # ------------------------------ Extras
 # import os  # to add the path of custom mcstas components
-
-# for operations
-import math
 
 # list here all the common parts to be imported
 from typing import List, Optional, Any
@@ -59,14 +35,11 @@ ureg = pint.get_application_registry()
 ############## Mandatory method
 def get_flavours():
     return [
-        "None",
-        "full",
-        "nosection",
-        "Borkron_1972",
-        "Borkron_2003",
-        "Borofloat_2001",
+        # "None",
+        # "full",
+        # "nosection",
         "simple",
-        "simplefull",
+        "simpleNS",
     ]
 
 
@@ -76,231 +49,16 @@ def def_instrument(flavour: Optional[str] = None):
     if flavour not in get_flavours() and flavour != "":
         raise RuntimeError(f"Flavour {flavour} not in the flavour list")
 
-    movable_guide_config = {
-        "Borkron_1972": {
-            "l": [20, 0, 0, 0, 0, 4, 3, 3, 2.5, 0, 2.5, 0, 1.5, 0, 1.5, 0, 0],
-            "n": [40, 0, 0, 0, 0, 8, 6, 6, 5, 0, 5, 0, 3, 0, 3, 0, 0],
-            "g": [0, 0],
-            "chamfers": 0.0002,
-            "waviness": 2.5e-5,
-        },
-        "Borkron_2003": {
-            "l": [6.5, 0, 6, 7.5, 0, 4, 3, 3, 2.5, 0, 2.5, 0, 1.5, 0, 1.5, 0, 1],
-            "n": [13, 0, 12, 15, 0, 8, 6, 6, 5, 0, 5, 0, 3, 0, 3, 0, 2],
-            "g": [0.002, 0.002],
-            "chamfers": 0.0002,
-            "waviness": 1e-4,
-        },
-        "Borofloat_2001": {
-            "l": [0.5, 6, 6, 0.5, 7, 4, 3, 3, 2, 0.5, 2, 0.5, 0.5, 1, 0.5, 1, 1],
-            "n": [1, 6, 6, 1, 7, 4, 3, 3, 2, 1, 2, 1, 1, 1, 1, 1, 1],
-            "g": [0.002, 0.002],
-            "chamfers": 0.0008,
-            "waviness": 8e-4,
-        },
-        # 2e-4                Waviness [rad]
-        # 0.2                 Chamfers [mm]
-    }
-
-    if flavour in [None, "None", "", "full", "Borkron_1972"]:
-        return D11(movable_guide_config["Borofloat_2001"], do_section=True)
-    if flavour in movable_guide_config:
-        return D11(movable_guide_config[flavour], do_section=True)
-    if flavour == "nosection":
-        return D11(movable_guide_config["Borofloat_2001"], False)
+    # if flavour in [None, "None", "", "full"]:
+    #    return D11(do_section=True)
+    # if flavour == "nosection":
+    #    return D11(False)
     if flavour == "simple":
-        return D11(
-            movable_guide_config["Borofloat_2001"], do_section=True, remove_H15=True
-        )
-    if flavour == "simplefull":
-        return D11(
-            movable_guide_config["Borofloat_2001"], do_section=False, remove_H15=True
-        )
+        return D11(do_section=True, remove_H15=True)
+    if flavour == "simpleNS":
+        return D11(do_section=False, remove_H15=True)
     else:
         raise RuntimeError(f"Flavour {flavour} not implement")
-
-
-def H15(mycalculator, mysource, SourceTarget):
-    """
-    Description of the H15 guide
-      return: calculator, lastcomponent
-    """
-    gElementGap = 0.004
-    PinkCarter = mycalculator.add_component(
-        "pinkcarter", "Guide_gravity", AT=0, RELATIVE=SourceTarget
-    )
-    PinkCarter.set_parameters(
-        w1=0.038,
-        h1=0.2,
-        w2=0.032,
-        h2=0.2,
-        l=3.170,
-        R0=0.995,
-        Qc=0.0218,
-        alpha=4.07,
-        m=1,
-        W=1.0 / 300.0,
-    )
-    SourceTarget = PinkCarter
-    # mysource.focus_xw = SourceTarget.w1
-    # mysource.focus_yh = SourceTarget.h1
-
-    AlWindow2 = mycalculator.add_component(
-        "Alw2", "Al_window", AT=3.522 + 0.001, RELATIVE=SourceTarget
-    )
-    AlWindow2.set_parameters(thickness=0.002)
-
-    # /* Followed by a 228 mm guide (for H1) in Obturator, after at 10 mm gap, ends at 5.952 m from source after 80 mm gap */
-
-    LeadShutter = mycalculator.copy_component(
-        "LeadShutter", PinkCarter, AT=3.522 + 0.01, RELATIVE=SourceTarget
-    )
-
-    LeadShutter.set_parameters(w1=PinkCarter.w2, l=0.228)
-
-    AlWindow3 = mycalculator.copy_component(
-        "Alw3", AlWindow2, AT=0.228 + 0.005, RELATIVE=LeadShutter
-    )  # TODO: controllare lo spessore
-
-    # /*-------------------------*/
-    # /*  Curved Guide  ("MAN")  */
-    # /*-------------------------*/
-
-    # /* curvature radius is 2700 m , start at XR=5.913 m from source */
-
-    CurvedGuideStart = mycalculator.add_component(
-        "CurvedGuideStart", "Arm", AT=0.228 + 0.08, RELATIVE=LeadShutter
-    )
-
-    # /* curved part 1, 25 elements : should be 25.5 m long, rho=2700 */
-    #  double gGuideWidth        = 0.03;
-    gLength1 = 25.5  # 25 pieces
-    gElmtLength1 = gLength1 / 25
-    gCurvatureRadius = 2700.0
-    gElmtRot1 = gElmtLength1 / gCurvatureRadius * 180 / math.pi
-
-    cg1 = mycalculator.copy_component(
-        "cg1",
-        PinkCarter,
-        AT=[0, 0, 0],
-        RELATIVE=CurvedGuideStart,
-        ROTATED=[0, gElmtRot1, 0],
-    )
-    cg1.set_parameters(w1=0.03, w2=0.03, l=gElmtLength1 - 0.004, m=1)
-
-    for i in range(2, 26):
-        cg_next = mycalculator.copy_component(
-            "cg" + str(i),
-            cg1,
-            AT=[0, 0, gElmtLength1],
-            RELATIVE="PREVIOUS",
-            ROTATED=[0, gElmtRot1, 0],
-        )
-
-    # /* gap V.T.E. 0.260 at 27408 */
-
-    AlWindow4 = mycalculator.copy_component(
-        "Alw4", AlWindow3, AT=gElmtLength1 + 0.001, RELATIVE="PREVIOUS"
-    )
-
-    PSD_VTE = mycalculator.add_component(
-        "PSD_VTE", "Monitor_nD", AT=0.13, RELATIVE=AlWindow4
-    )
-    PSD_VTE.set_parameters(xwidth=cg1.w1, yheight=cg1.h1, options='"xy"')
-
-    AlWindow5 = mycalculator.copy_component(
-        "Alw5", AlWindow4, AT=0.26 - 0.003, RELATIVE=AlWindow4
-    )
-
-    VTEtoIN6GuideStart = mycalculator.add_component(
-        "VTEtoIN6GuideStart", "Arm", AT=0.003, RELATIVE=AlWindow5
-    )
-
-    gLength2 = 22.284  # 22 pieces
-    gElmtLength2 = gLength2 / 22
-
-    gLength3 = 5.4  # 5 pieces
-    gElmtLength3 = gLength3 / 5
-
-    # /* Ni guide -> IN6: 22.284 m long at 27.588, 22 elements */
-    sg1 = mycalculator.copy_component(
-        "sg1", cg1, AT=[0, 0, 0], RELATIVE=VTEtoIN6GuideStart
-    )
-    sg1.set_parameters(
-        l=gElmtLength2 - gElementGap,
-    )
-    for i in range(2, 23):
-        sg_next = mycalculator.copy_component(
-            "sg" + str(i), sg1, AT=gElmtLength2, RELATIVE="PREVIOUS"
-        )
-
-    # /* gap 0.3 m  OT, OS IN6 H15 */
-
-    AlWindow6 = mycalculator.copy_component(
-        "Alw6", AlWindow2, AT=gElmtLength2 + 0.001, RELATIVE="PREVIOUS"
-    )
-
-    PSD_IN6 = mycalculator.copy_component(
-        "PSD_IN6", PSD_VTE, AT=0.15, RELATIVE=AlWindow6
-    )
-
-    AlWindow7 = mycalculator.copy_component(
-        "Alw7", AlWindow2, AT=0.29, RELATIVE=AlWindow6
-    )
-
-    IN6toD7GuideStart = mycalculator.add_component(
-        "IN6toD7GuideStart", "Arm", AT=0.30, RELATIVE=AlWindow6
-    )
-
-    # /* Ni guide -> D7 Carter Man 2 L=5.4 */
-
-    sg23 = mycalculator.copy_component(
-        "sg23", sg1, AT=[0, 0, 0], RELATIVE=IN6toD7GuideStart
-    )
-
-    sg23.l = gElmtLength3 - gElementGap
-
-    for i in range(24, 28):
-        sg_next = mycalculator.copy_component(
-            "sg" + str(i), sg1, AT=gElmtLength3, RELATIVE="PREVIOUS"
-        )
-
-    # /* gap 0.3 m OS D7/D11 at 55572 */
-
-    AlWindow8 = mycalculator.copy_component(
-        "Alw8", AlWindow2, AT=gElmtLength3 + 0.001, RELATIVE="PREVIOUS"
-    )
-
-    PSD_D7 = mycalculator.copy_component("PSD_D7", PSD_VTE, AT=0.15, RELATIVE=AlWindow8)
-
-    AlWindow9 = mycalculator.copy_component(
-        "Alw9", AlWindow2, AT=0.29, RELATIVE=AlWindow8
-    )
-
-    D7toD11GuideStart = mycalculator.add_component(
-        "D7toD11GuideStart", "Arm", AT=[0, -0.065, 0.30], RELATIVE=AlWindow8
-    )
-
-    # /* Glass guide SPRI 1.25 m h=0.05 AT (0,-0.065,0.3) */
-
-    sg28 = mycalculator.copy_component(
-        "sg28", sg1, AT=[0, 0, 0], RELATIVE=D7toD11GuideStart
-    )
-
-    sg28.set_parameters(h1=0.05, h2=0.05, l=1.25 - gElementGap, m=0.65)
-    # /* Glass guide  0.68 h=0.05 */
-
-    sg29 = mycalculator.copy_component("sg29", sg28, AT=1.25, RELATIVE=sg28)
-    sg29.l = 0.5 - gElementGap
-
-    # /* Velocity selector 0.3. Path in atm is 7 cm */
-
-    AlWindow10 = mycalculator.copy_component(
-        "Alw10", AlWindow2, AT=0.5 + 0.001, RELATIVE=sg29
-    )
-    AlWindow10.thickness = 0.004
-
-    return mycalculator, AlWindow10
 
 
 class D11(McStasInstrumentBase):
@@ -309,7 +67,32 @@ class D11(McStasInstrumentBase):
     # ------------------------------ utility methods made available for the users
 
     # ------------------------------ Internal methods (not available to users)
-    gElementGap = 0.004
+    def add_moving_guide(self, calculator, name, copy_component, AT, RELATIVE, l=None):
+        newcomp = calculator.copy_component(
+            name, copy_component, AT=AT, RELATIVE=RELATIVE
+        )
+        if l is not None:
+            newcomp.l = l
+        newpar = calculator.add_parameter("int", name + "_index", value=0)
+        self.add_parameter_to_master(newpar.name, calculator, newpar)
+        self.master[newpar.name] = 0
+        newcomp.m = newpar
+
+        return newcomp
+
+    def add_slit(self, calc, name, AT, RELATIVE):
+        slit = calc.add_component(name, "Slit", AT=AT, RELATIVE=RELATIVE)
+        xwidth = calc.add_parameter(
+            "double", "{}_xwidth", comment="Width of the slit", value=0
+        )
+        yheight = calc.add_parameter(
+            "double", "{}_yheight", comment="Height of the slit", value=0
+        )
+        slit.set_parameters(xwidth=xwidth, yheight=yheight)
+        self.add_parameter_to_master(xwidth.name, calc, xwidth)
+        self.add_parameter_to_master(yheight.name, calc, yheight)
+        return slit
+
     # attenuators
     attenuation_values = [
         1,  # no attenuator (attenuator out)
@@ -340,7 +123,7 @@ class D11(McStasInstrumentBase):
     ]
 
     # ------------------------------ The instrument definition goes in the __init__
-    def __init__(self, movable_guide_config, do_section=True, remove_H15=False):
+    def __init__(self, do_section=True, remove_H15=True):
         """Here the real definition of the instrument is performed"""
 
         super().__init__("D11", do_section)
@@ -366,11 +149,7 @@ class D11(McStasInstrumentBase):
                 flux=1e11,
             )
         else:
-            mysource = source.VCS_source(mycalculator)
-            mysource.set_parameters(
-                xwidth=0.10,
-                zdepth=0.1,
-            )
+            raise RuntimeError(f"H15 not implemented")
 
         lambda0 = mycalculator.parameters["lambda"]
         lambda0.value = 6 * ureg.angstrom
@@ -404,8 +183,8 @@ class D11(McStasInstrumentBase):
         )
         # mysource.dist = AlWindow1.AT_data[2]
 
-        if remove_H15 is False:
-            mycalculator, lastcomponent = H15(mycalculator, mysource, SourceTarget)
+        # if remove_H15 is False:
+        #    mycalculator, lastcomponent = H15(mycalculator, mysource, SourceTarget)
         # ------------------------------
         velocity_selector_mcpl_arm = mycalculator.add_component(
             "velocity_selector_mcpl_arm",
@@ -476,9 +255,7 @@ class D11(McStasInstrumentBase):
         sg30 = mycalculator.add_component(
             "sg30", "Guide_gravity", AT=0.15 + 0.02, RELATIVE=Dolores
         )
-        sg30.set_parameters(
-            w1=0.03, w2=0.03, h1=0.05, h2=0.05, l=0.5 - self.gElementGap, m=0.65
-        )
+        sg30.set_parameters(w1=0.03, w2=0.03, h1=0.05, h2=0.05, l=0.5 - 0.001, m=0.65)
 
         # /* Gap 16 cm, start of movable guide */
         AlWindow12 = mycalculator.copy_component(
@@ -495,260 +272,191 @@ class D11(McStasInstrumentBase):
         )
 
         # ----------------------------------------
-        CollimationCalc = mycalculator
-        collimation = mycalculator.add_parameter(
-            "double",
-            "collimation",
-            comment="Collimation length: free path between end of the guide and sample",
-            unit="m",
-            value=1.5,
-        )
-        self.add_parameter_to_master(collimation.name, mycalculator, collimation)
-        collimation.add_option(self.collimation_options, True)
-
-        mycalculator.add_declare_var(
-            "double",
-            "collimation_options",
-            array=len(self.collimation_options),
-            value=self.collimation_options,
-            comment="accepted values for collimation",
-        )
-
-        icollimation = mycalculator.add_declare_var(
-            "int",
-            "icollimation",
-            comment="index of the chosen collimation within the array of accepted values",
-            value=0,
-        )
-        mycalculator.append_initialize(
-            "while(collimation_options[icollimation]>collimation)icollimation++;"
-        )
-        mycalculator.append_initialize(
-            "if(collimation!=collimation_options[icollimation]){"
-        )
-        mycalculator.append_initialize(
-            'printf("[ERROR] chosen collimation not within accepted values, exiting\\n");exit(EXIT_FAILURE);}'
-        )
-        # ----------------------------------------
-
-        disk_index = self.add_multislit(
-            mycalculator,
-            "disk6",
-            [
-                {"x": None, "y": None, "r": 0.010},  # 0°
-                {"x": 0.035, "y": 0.055, "r": None},  # 45°
-            ],
-            0.65,
-            sg30,
-        )
-        disk_index.value = 1
-        # self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        # self.master[disk_index.name] = 1
 
         MovableGuideStart = mycalculator.add_component(
             "MovableGuideStart", "Arm", AT=0.66, RELATIVE=sg30
         )
 
-        # /* D11 Movable guide start */
-        microGap = 0.0001
+        # ----------------------------------------
+        # TODO: set the distance w.r.t. previous element
+        S01 = self.add_slit(mycalculator, "S01", AT=0, RELATIVE=MovableGuideStart)
 
-        def inactive_coll(i, collimation_length, movable_guide_config):
-            # print(
-            #     i,
-            #     "("
-            #     + str(collimation_length)
-            #     + " - collimation)>0 ? "
-            #     + str(movable_guide_config["n"][i])
-            #     + " : 0",
-            # )
-
-            return (
-                "("
-                + str(collimation_length)
-                + " - collimation)>0 ? "
-                + str(movable_guide_config["n"][i])
-                + " : 0"
-            )
-
-        collimation_length = self.collimation_options[0]
-        mg0 = mycalculator.copy_component("mg0", sg30, AT=0, RELATIVE=MovableGuideStart)
-        mg0.set_parameters(
-            l=movable_guide_config["l"][0],
-            chamfers_tb=movable_guide_config["chamfers"],
-            chamfers_z=movable_guide_config["chamfers"],
-            nelements=inactive_coll(0, collimation_length, movable_guide_config),
-            wavy=movable_guide_config["waviness"],
+        M01 = mycalculator.add_component("M01", "Monitor_nD", AT=0.1, RELATIVE=S01)
+        T01 = mycalculator.add_component("T01", "Guide_gravity", AT=0.1, RELATIVE=M01)
+        T01.set_parameters(
+            w1=0.03,
+            w2=0.03,
+            h1=0.05,
+            h2=0.05,
+            l=2.5,
+            chamfers=0.0008,  # TODO: check with Sylvain
+            wavy=8e-4,  # TODO: check with Sylvain
+            # nelements=1,  # sections
+            # nslit=1,  # channels,
+            R0=0.995,  # TODO: check with Sylvain
+            Qc=0.0218,  # TODO: check with Sylvain
+            alpha=4.07,  # TODO: check with Sylvain
+            m=1,  # TODO: check with Sylvain
+            W=1.0 / 300.0,  # TODO: check with Sylvain
         )
-        collimation_length = collimation_length - movable_guide_config["l"][0]
-
-        mg1 = mycalculator.copy_component(
-            "mg1", mg0, AT=microGap + movable_guide_config["l"][0], RELATIVE="PREVIOUS"
+        T01_index = mycalculator.add_parameter(
+            "int",
+            "T01_index",
+            comment="0 if absorbing tube, 1 for reflective tube, 2 for no-tube",
+            value=0,
         )
-        mg1.set_parameters(
-            l=movable_guide_config["l"][1],
-            nelements=inactive_coll(1, collimation_length, movable_guide_config),
+        self.add_parameter_to_master("T01_index", mycalculator, T01_index)
+        T01.m = T01_index
+
+        T02 = self.add_moving_guide(
+            mycalculator, "T02", T01, AT=0.010 + T01.l, RELATIVE=T01
         )
-        collimation_length = collimation_length - movable_guide_config["l"][1]
+        T03 = self.add_moving_guide(
+            mycalculator, "T03", T01, AT=0.010 + T02.l, RELATIVE=T02
+        )
 
-        for i in range(2, 4):
-            mg_next = mycalculator.copy_component(
-                "mg" + str(i),
-                mg1,
-                AT=microGap
-                + movable_guide_config["l"][i - 1]
-                + movable_guide_config["g"][i - 2],
-                RELATIVE="PREVIOUS",
-            )
-            mg_next.set_parameters(
-                l=movable_guide_config["l"][i],
-                nelements=inactive_coll(i, collimation_length, movable_guide_config),
-            )
-            collimation_length = collimation_length - movable_guide_config["l"][i]
-
-        dist = [
-            0,
-            0,
-            0,
-            0,
-            0.0,
-            0.017,
-            0.002,
-            0.002,
-            0.017,
-            0.0,
-            0.002,
-            0.0,
-            0.017,
-            0.0,
-            0.002,
-            0.0,
-            0.002,
-        ]
-        for i in range(4, 17):
-            mg_next = mycalculator.copy_component(
-                "mg" + str(i),
-                mg1,
-                AT=microGap + movable_guide_config["l"][i - 1] + dist[i],
-                RELATIVE="PREVIOUS",
-            )
-            mg_next.set_parameters(
-                l=movable_guide_config["l"][i],
-                nelements=inactive_coll(i, collimation_length, movable_guide_config),
-            )
-            collimation_length = collimation_length - movable_guide_config["l"][i]
-
-        # /* Gap 17 mm at 20.5 m collimation */
-        gap = 0.001
-        # ------------------------------ Disk 5
-        disk_index = self.add_multislit(
+        D02_index, D02 = self.add_multislit(
             mycalculator,
-            "disk5",
+            "D02",
             [
-                {"x": 0.045, "y": 0.082, "r": None},  # 0°
-                {"x": 0.050, "y": 0.055, "r": None},  # 45°
-                {"x": None, "y": None, "r": 0.030},  # 90°
-                {"x": None, "y": None, "r": 0.020},  # 135°
-                {"x": None, "y": None, "r": 0.010},  # 180°
-                {"x": None, "y": None, "r": 0.000},  # 225°
-                {"x": 0.0385, "y": 0.055, "r": None},  # 270°
-                {"x": None, "y": None, "r": 0.000},  # 315°
+                {"x": 0.045, "y": 0.088, "r": None},  # t1
+                {"x": None, "y": None, "r": 0.010},  # t2
+                {"x": None, "y": None, "r": 0.020},  # t3
+                {"x": None, "y": None, "r": 0.030},  # t4
+                {"x": 0.045, "y": 0.045, "r": None},  # b1
+                {"x": 0.045, "y": 0.015, "r": None},  # b2
+                {"x": None, "y": None, "r": 0.005},  # b3
+                {"x": 1, "y": 1, "r": None},  # b4 N/A completely open
             ],
-            movable_guide_config["l"][5] + gap,
-            "mg5",
-            align="b",
-            after="mg5",
+            at=0.030,
+            relative=T03,
         )
-        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        self.master[disk_index.name] = 1
+        D02_index.value = 1
+        self.add_parameter_to_master(D02_index.name, mycalculator, D02_index)
+        self.master[D02_index.name] = 1
 
-        # ------------------------------ Disk 4
-        disk_index = self.add_multislit(
-            mycalculator,
-            "disk4",
-            [
-                {"x": 0.043, "y": 0.080, "r": None},  # 0°
-                {"x": 0.050, "y": 0.055, "r": None},  # 45°
-                {"x": None, "y": None, "r": 0.030},  # 90°
-                {"x": None, "y": None, "r": 0.020},  # 135°
-                {"x": None, "y": None, "r": 0.010},  # 180°
-                {"x": None, "y": None, "r": 0.000},  # 225°
-                {"x": 0.0395, "y": 0.055, "r": None},  # 270°
-                {"x": None, "y": None, "r": 0.000},  # 315°
-            ],
-            movable_guide_config["l"][8] + gap,
-            "mg8",
-            align="b",
-            after="mg8",
+        T04 = self.add_moving_guide(
+            mycalculator, "T04", T01, AT=0.020, RELATIVE=D02, l=2.000
         )
-        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        self.master[disk_index.name] = 1
-        # ------------------------------ Disk 3
-        disk_index = self.add_multislit(
-            mycalculator,
-            "disk3",
-            [
-                {"x": 0.050, "y": 0.080, "r": None},  # 0°
-                {"x": 0.050, "y": 0.055, "r": None},  # 45°
-                {"x": None, "y": None, "r": 0.030},  # 90°
-                {"x": None, "y": None, "r": 0.020},  # 135°
-                {"x": None, "y": None, "r": 0.010},  # 180°
-                {"x": None, "y": None, "r": 0.005},  # 225°
-                {"x": 0.038, "y": 0.055, "r": None},  # 270°
-                {"x": None, "y": None, "r": 0.000},  # 315°
-            ],
-            movable_guide_config["l"][12] + gap,
-            "mg12",
-            align="b",
-            after="mg12",
+        T05 = self.add_moving_guide(
+            mycalculator, "T05", T04, AT=0.010 + T04.l, RELATIVE=T04
         )
-        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        self.master[disk_index.name] = 6
-        # ------------------------------ Disk 2
-        disk_index = self.add_multislit(
-            mycalculator,
-            "disk2",
-            [
-                {"x": 0.0365, "y": 0.040, "r": None},  # 0°
-                {"x": 0.050, "y": 0.055, "r": None},  # 45°
-                {"x": None, "y": None, "r": 0.030},  # 90°
-                {"x": None, "y": None, "r": 0.020},  # 135°
-                {"x": None, "y": None, "r": 0.010},  # 180°
-                {"x": None, "y": None, "r": 0.005},  # 225°
-                {"x": 0.0285, "y": 0.031, "r": None},  # 270°
-                {"x": None, "y": None, "r": 0.000},  # 315°
-            ],
-            movable_guide_config["l"][15] + 2.5 - 1.5,
-            "mg15",
-            align="b",
+        T06 = self.add_moving_guide(
+            mycalculator, "T06", T05, AT=0.010 + T05.l, RELATIVE=T05, l=2.500
         )
-        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        self.master[disk_index.name] = 6
-        # ------------------------------ Disk 1
-        disk_index = self.add_multislit(
+
+        # ------------------------------
+        D03_index, D03 = self.add_multislit(
             mycalculator,
-            "disk1",
+            "D03",
             [
-                {"x": 0.035, "y": 0.035, "r": None},  # 0°
-                {"x": 0.020, "y": 0.020, "r": None},  # 45°
-                {"x": 0.015, "y": 0.015, "r": None},  # 90°
-                {"x": None, "y": None, "r": 0.020},  # 135°
-                {"x": None, "y": None, "r": 0.015},  # 180°
-                {"x": None, "y": None, "r": 0.010},  # 225°
-                {"x": 0.025, "y": 0.040, "r": None},  # 270°
-                {"x": 0.030, "y": 0.030, "r": None},  # 315°
+                {"x": 0.045, "y": 0.088, "r": None},  # t1
+                {"x": None, "y": None, "r": 0.010},  # t2
+                {"x": None, "y": None, "r": 0.020},  # t3
+                {"x": None, "y": None, "r": 0.030},  # t4
+                {"x": 0.045, "y": 0.045, "r": None},  # b1
+                {"x": 0.045, "y": 0.015, "r": None},  # b2
+                {"x": None, "y": None, "r": None},  # b3 USANS
+                {"x": None, "y": None, "r": None},  # b4 USANS
             ],
-            movable_guide_config["l"][15] + 2.5 - 0.5,
-            "mg15",
-            align="b",
+            at=T06.l,
+            relative=T06,
+            # align="b",
+            # after="mg5",
         )
-        self.add_parameter_to_master(disk_index.name, mycalculator, disk_index)
-        self.master[disk_index.name] = 2
+        self.add_parameter_to_master(D03_index.name, mycalculator, D03_index)
+        self.master[D03_index.name] = 1
+
+        T07 = self.add_moving_guide(mycalculator, "T07", T06, AT=0.020, RELATIVE=D03)
+        S04 = self.add_slit(mycalculator, "S04", AT=T07.l, RELATIVE=T07)
+        T08 = self.add_moving_guide(
+            mycalculator, "T08", T07, AT=0.050, RELATIVE=S04, l=1.180
+        )
+        # Bride épaisse 0.140m
+        T09 = self.add_moving_guide(
+            mycalculator, "T09", T08, AT=0.140 + T08.l, RELATIVE=T08
+        )
+        D05_index, D05 = self.add_multislit(
+            mycalculator,
+            "D05",
+            [
+                {"x": 0.045, "y": 0.088, "r": None},  # t1
+                {"x": None, "y": None, "r": 0.010},  # t2
+                {"x": None, "y": None, "r": 0.020},  # t3
+                {"x": None, "y": None, "r": 0.030},  # t4
+                {"x": 0.045, "y": 0.045, "r": None},  # b1
+                {"x": 0.045, "y": 0.015, "r": None},  # b2
+                {"x": None, "y": None, "r": 0.005},  # b3
+                {"x": 1.000, "y": 1.000, "r": None},  # b4 N/A completely open
+            ],
+            at=T09.l,
+            relative=T09,
+            # align="b",
+            # after="mg5",
+        )
+        self.add_parameter_to_master(D05_index.name, mycalculator, D05_index)
+        self.master[D05_index.name] = 1
+
+        T10 = self.add_moving_guide(
+            mycalculator, "T10", T09, AT=0.020, RELATIVE=D05, l=2.500
+        )
+        T11 = self.add_moving_guide(
+            mycalculator, "T11", T10, AT=0.010 + T10.l, RELATIVE=T10
+        )
+        D06_index, D06 = self.add_multislit(
+            mycalculator,
+            "D06",
+            [
+                {"x": 0.045, "y": 0.088, "r": None},  # t1
+                {"x": None, "y": None, "r": 0.010},  # t2
+                {"x": None, "y": None, "r": 0.020},  # t3
+                {"x": None, "y": None, "r": 0.030},  # t4
+                {"x": 0.045, "y": 0.045, "r": None},  # b1
+                {"x": 0.045, "y": 0.015, "r": None},  # b2
+                {"x": None, "y": None, "r": None},  # b3 USANS
+                {"x": None, "y": None, "r": None},  # b4 USANS
+            ],
+            at=T11.l,
+            relative=T11,
+            # align="b",
+            # after="mg5",
+        )
+        self.add_parameter_to_master(D06_index.name, mycalculator, D06_index)
+        self.master[D06_index.name] = 1
+
+        T12 = self.add_moving_guide(mycalculator, "T12", T11, AT=0.020, RELATIVE=D06)
+        T13 = self.add_moving_guide(
+            mycalculator, "T13", T12, AT=0.010 + T12.l, RELATIVE=T12, l=1.000
+        )
+        S07 = self.add_slit(mycalculator, "S07", AT=T13.l, RELATIVE=T13)
+        T14 = self.add_moving_guide(mycalculator, "T14", T13, AT=0.050, RELATIVE=S07)
+        D08_index, D08 = self.add_multislit(
+            mycalculator,
+            "D08",
+            [
+                {"x": 0.045, "y": 0.088, "r": None},  # t1
+                {"x": None, "y": None, "r": 0.010},  # t2
+                {"x": None, "y": None, "r": 0.020},  # t3
+                {"x": None, "y": None, "r": 0.030},  # t4
+                {"x": 0.045, "y": 0.045, "r": None},  # b1
+                {"x": 0.045, "y": 0.015, "r": None},  # b2
+                {"x": None, "y": None, "r": 0.005},  # b3
+                {"x": 1.000, "y": 1.000, "r": None},  # b4 N/A completely open
+            ],
+            at=T14.l,
+            relative=T14,
+            # align="b",
+            # after="mg5",
+        )
+        self.add_parameter_to_master(D08_index.name, mycalculator, D08_index)
+        self.master[D08_index.name] = 1
+
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
             "Arm",
-            AT=movable_guide_config["l"][15] + 2.5 - 0.05,
-            RELATIVE="mg15",
+            AT=T14.l + 2.5 - 0.05,
+            RELATIVE=T14,
         )
 
         # ------------------------------------------------------------
@@ -932,48 +640,3 @@ class D11(McStasInstrumentBase):
             max(detector_central.yheight, detector_left.yheight),
             detpos,
         )
-
-        # ------------------------------ instrument parameters
-
-    def set_test(self, test_number: Optional[int] = None):
-        myinstrument = self
-        myinstrument.master["lambda"] = 6 * ureg.angstrom
-        myinstrument.master["detpos"] = 2 * ureg.m
-        myinstrument.master["attenuator_index"] = 0
-        myinstrument.master["collimation"] = 8 * ureg.m
-        myinstrument.master["bs_index"] = 0
-        myinstrument.sample_holder(
-            material="quartz", shape="box", w=0.02, h=0.03, d=0.0135, th=0.00125
-        )
-        myinstrument.sample_shape("holder")
-        if test_number == 0:  # direct attenuated beam
-            myinstrument.set_sample_by_name("None")
-            myinstrument.sample_holder(None, None)
-            myinstrument.master["attenuator_index"] = 6
-            myinstrument.master["bs_index"] = -1
-        elif test_number == 1:  # direct beam with empty sample holder
-            myinstrument.set_sample_by_name("None")
-        elif test_number == 2:  # with sample
-            myinstrument.set_sample_by_name("qSq")
-            myinstrument.master["sqw_file"] = (
-                '"./institutes/ILL/instruments/D11/HEAD/mcstas/data/simul_5711.sq"'
-            )
-        elif test_number == -1:  # direct beam no beamstop
-            myinstrument.set_sample_by_name("None")
-            myinstrument.sample_holder(None, None)
-            myinstrument.master["attenuator_index"] = 6
-            myinstrument.master["bs_index"] = -1
-        else:
-            raise RuntimeError(f"Test number {test_number} out of range")
-
-    def test_datafile(self, test_number: Optional[int] = None):
-        file = ""
-        if test_number == 0 or test_number == -1:  # direct attenuated beam
-            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005708.nxs"
-        elif test_number == 1:  # direct beam with empty sample holder
-            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005721.nxs"
-        elif test_number >= 2:
-            file = "institutes/ILL/instruments/D11/HEAD/mcstas/data/005711.nxs"
-        else:
-            raise RuntimeError(f"Test number {test_number} out of range")
-        return file
