@@ -24,7 +24,7 @@ mcpl_lib  = library('mcpl',
 mcpl_dep = declare_dependency(
   #sources: cameo_main_header_file,
   link_with: mcpl_lib,
-  include_directories: [public_headers_inc, meson.current_build_dir()],
+  include_directories: [public_headers_inc],
   #dependencies: m_dep,
 )
 
