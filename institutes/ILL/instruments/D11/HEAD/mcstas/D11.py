@@ -361,8 +361,7 @@ class D11(McStasInstrumentBase):
                 focus_yh=0.05,
                 dist=2.3,
                 # flux=2.22e12,
-                # flux=16.0e12,
-                flux=1e11,
+                flux=16.0e12,
             )
         else:
             mysource = source.VCS_source(mycalculator)
