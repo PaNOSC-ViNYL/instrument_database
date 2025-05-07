@@ -124,7 +124,7 @@ class PlotHelper:
 
         y, w = self.marginal(axis)
         if y.sum() == 0:
-            ax.plot(np.NaN, np.NaN, "-", color="none", label=label)
+            ax.plot(np.nan, np.nan, "-", color="none", label=label)
             return
         x = None
         if self.__xmin is not None:

@@ -374,6 +374,7 @@ class McStasInstrumentBase(Instrument):
         ]
 
         """
+        diaphragm_arm = mycalculator.add_component("{}_arm".format(name), "Arm", AT=at, RELATIVE=relative, after=after )
 
         disk_index = mycalculator.add_parameter(
             "int",
@@ -403,9 +404,8 @@ class McStasInstrumentBase(Instrument):
             diaph = mycalculator.add_component(
                 "{}_{:d}".format(name, i),
                 "Slit",
-                AT=at,
-                RELATIVE=relative,
-                after=after,
+                AT=0,
+                RELATIVE=diaphragm_arm,
                 WHEN="{}=={:d}".format(disk_index.name, i),
             )
 
@@ -424,7 +424,7 @@ class McStasInstrumentBase(Instrument):
                     xwidth=size["x"], yheight=size["y"], radius=size["r"]
                 )
 
-        return disk_index
+        return disk_index, diaphragm_arm
 
     def add_parameter_to_master(
         self, mastername: str, calc: BaseCalculator, par: Parameter

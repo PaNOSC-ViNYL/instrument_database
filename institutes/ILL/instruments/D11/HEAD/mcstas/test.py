@@ -229,6 +229,13 @@ def config0(set_instr):
     myinstrument.master["lambda"] = 6 * ureg.angstrom
     myinstrument.master["detpos"] = 2 * ureg.m
     myinstrument.master["attenuator_index"] = 0
+    myinstrument.master["S01_xwidth"] = 0.100
+    myinstrument.master["S01_yheight"] = 0.100
+    # myinstrument.master["S04_xwidth"] = 0.100
+    # myinstrument.master["S04_yheight"] = 0.100
+    # myinstrument.master["S07_xwidth"] = 0.100
+    # myinstrument.master["S07_yheight"] = 0.100
+
     #myinstrument.master["collimation"] = 8 * ureg.m
     myinstrument.master["bs_index"] = 0
     myinstrument.set_sample_by_name("None")
@@ -371,6 +378,10 @@ def test_master_parameters(config0):
 "D05_index",
 "D06_index",
 "D08_index",
+"S01_xwidth", "S01_yheight",
+"S04_xwidth", "S04_yheight",
+"S07_xwidth", "S07_yheight",
+#"S01_xwidth", "S01_yheight",
         #"disk1_index",
         #"disk2_index",
         #"disk3_index",

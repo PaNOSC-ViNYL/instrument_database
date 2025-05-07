@@ -83,10 +83,10 @@ class D11(McStasInstrumentBase):
     def add_slit(self, calc, name, AT, RELATIVE):
         slit = calc.add_component(name, "Slit", AT=AT, RELATIVE=RELATIVE)
         xwidth = calc.add_parameter(
-            "double", "{}_xwidth", comment="Width of the slit", value=0
+            "double", "{}_xwidth".format(name), comment="Width of the slit", value=0
         )
         yheight = calc.add_parameter(
-            "double", "{}_yheight", comment="Height of the slit", value=0
+            "double", "{}_yheight".format(name), comment="Height of the slit", value=0
         )
         slit.set_parameters(xwidth=xwidth, yheight=yheight)
         self.add_parameter_to_master(xwidth.name, calc, xwidth)
@@ -315,6 +315,7 @@ class D11(McStasInstrumentBase):
             mycalculator, "T03", T01, AT=0.010 + T02.l, RELATIVE=T02
         )
 
+        """
         D02_index, D02 = self.add_multislit(
             mycalculator,
             "D02",
@@ -356,8 +357,8 @@ class D11(McStasInstrumentBase):
                 {"x": None, "y": None, "r": 0.030},  # t4
                 {"x": 0.045, "y": 0.045, "r": None},  # b1
                 {"x": 0.045, "y": 0.015, "r": None},  # b2
-                {"x": None, "y": None, "r": None},  # b3 USANS
-                {"x": None, "y": None, "r": None},  # b4 USANS
+                # {"x": None, "y": None, "r": None},  # b3 USANS
+                # {"x": None, "y": None, "r": None},  # b4 USANS
             ],
             at=T06.l,
             relative=T06,
@@ -413,8 +414,8 @@ class D11(McStasInstrumentBase):
                 {"x": None, "y": None, "r": 0.030},  # t4
                 {"x": 0.045, "y": 0.045, "r": None},  # b1
                 {"x": 0.045, "y": 0.015, "r": None},  # b2
-                {"x": None, "y": None, "r": None},  # b3 USANS
-                {"x": None, "y": None, "r": None},  # b4 USANS
+                # {"x": None, "y": None, "r": None},  # b3 USANS
+                # {"x": None, "y": None, "r": None},  # b4 USANS
             ],
             at=T11.l,
             relative=T11,
@@ -451,11 +452,14 @@ class D11(McStasInstrumentBase):
         self.add_parameter_to_master(D08_index.name, mycalculator, D08_index)
         self.master[D08_index.name] = 1
 
+        """
+        T14 = mycalculator.add_component("T14", "Arm", AT=2, RELATIVE="PREVIOUS")
         # ------------------------------
         sample_mcpl_arm = mycalculator.add_component(
             "sample_mcpl_arm",
             "Arm",
-            AT=T14.l + 2.5 - 0.05,
+            #AT=T14.l + 2.5 - 0.05,
+            AT=2,
             RELATIVE=T14,
         )
 
