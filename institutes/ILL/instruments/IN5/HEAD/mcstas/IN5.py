@@ -212,76 +212,69 @@ class IN5(McStasInstrumentBase):
         mysource.dist = SourceTarget.AT_data[2]
 
         ## CHOPPER TIME-RESET##########################/
+        phase_init = 0
         Chopper0 = mycalculator.add_component(
-            "Chopper0", "DiskChopper", AT=0.2, RELATIVE="PREVIOUS"
+            "Chopper0", "DiskChopper", AT=0.2, RELATIVE="PREVIOUS", ROTATE=[0, 0, 180]
         )
         Chopper0.set_parameters(
-            theta_0=20.222,
-            radius=0.285,
-            yheight=0.2,
+            theta_0=9.0,
+            radius=0.750 / 2,
+            yheight=0.180,
             nu="(speed/60)",
             nslit=2,
-            delay=0.01,
+            phase=phase_init,
             isfirst=1,
         )
 
         Guide1 = mycalculator.add_component(
-            "Guide1", "Guide_channeled", AT=L_gap, RELATIVE=Chopper0
+            "Guide1", "Guide_simple", AT=L_gap, RELATIVE=Chopper0
         )
         Guide1.set_parameters(
-            w1=0.03000,
-            h1=0.20000,
-            w2=0.03000,
+            w1=0.030,
+            h1=0.200,
+            w2=0.030,
             h2=0.17415,
-            l=L_Guide1,
-            R0=Guide_Ro,
-            Qcx=Guide_Qc,
-            Qcy=Guide_Qc,
-            alphax=Guide_alpha,
-            alphay=Guide_alpha,
-            mx=1,
-            my=2,
-            W=Guide_W,
+            l=4.390,
+            Qc=0.02275,  # TODO: check
+            R0=0.996,  # TODO: check
+            alpha=5.75,  # TODO: check
+            W=0.00125,  # TODO: check
+            m=2,  # TODO: check
         )
 
         Guide21 = mycalculator.copy_component(
-            "Guide21", Guide1, AT=L_Guide1 + 0.0003, RELATIVE=Guide1
+            "Guide2", Guide_C6, AT=Guide_C6.l, RELATIVE=Guide_C6
         )
         Guide21.set_parameters(
-            h1=Guide1.h2,
-            h2=0.17000,
-            l=L_Guide21,
+            h1=Guide_C6.h2,
+            h2=0.170,
+            l=0.695,
         )
 
         # P1
-        Chopper1 = mycalculator.add_component(
-            "Chopper1", "DiskChopper", AT=L_Guide21 + disk_gap / 2, RELATIVE=Guide21
+        Chopper1 = mycalculator.copy_component(
+            "Chopper1", Chopper0, AT=Guide21.l + 0.010, RELATIVE=Guide21
         )
         Chopper1.set_parameters(
-            theta_0=0.17,
-            radius=0.285,
-            yheight=0.17,
             nu="(speed/60)",
-            nslit=2,
-            delay=tofdelay(Chopper0, Chopper1, Chopper0.delay),  # Ch_phase[1]
+            # delay=tofdelay(Chopper0, Chopper1, Chopper0.delay),  # Ch_phase[1]
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                dist=dist, phase_init=phase_init, omega=BC1.nu
+            ),
         )
 
         ###GUIDE TO CHOPPER2#######################
         Guide22 = mycalculator.copy_component(
-            "Guide22", Guide21, AT=L_Guide21 + disk_gap, RELATIVE=Guide21
+            "Guide22", Guide21, AT=Guide21.l + 0.020, RELATIVE=Guide21
         )
-        Guide22.set_parameters(h1=Guide21.h2, h2=0.16813, l=L_Guide22)
+        Guide22.set_parameters(h1=Guide21.h2, h2=0.16813, l=0.130)
 
         # P2
-        Chopper2 = mycalculator.add_component(
-            "Chopper2", "DiskChopper", AT=L_Guide22 + disk_gap / 2, RELATIVE=Guide22
+        Chopper2 = mycalculator.copy_component(
+            "Chopper2", Chopper0, AT=Guide22.l + 0.010, RELATIVE=Guide22
         )
         Chopper2.set_parameters(
-            theta_0=9.0,
-            radius=0.285,
-            yheight=0.16813,
             nu="(speed/60)",
-            nslit=2,
             delay=tofdelay(Chopper0, Chopper2, Chopper0.delay),  # Ch_phase[2]
         )
 
@@ -290,100 +283,85 @@ class IN5(McStasInstrumentBase):
         # AT (0,0, disk_gap/4+0.002) RELATIVE Chopper2
 
         Guide23 = mycalculator.copy_component(
-            "Guide23", Guide22, AT=L_Guide22 + disk_gap, RELATIVE=Guide22
+            "Guide23", Guide22, AT=Guide22.l + 0.020, RELATIVE=Guide22
         )
-        Guide23.set_parameters(
-            h1=Guide22.h2, w2=0.02856, h2=0.15931, l=L_Guide23, mx=2, my=3
-        )
+        Guide23.set_parameters(h1=0.168, w2=0.02856, h2=0.15931, l=0.695, mx=2, my=3)
 
         Guide3 = mycalculator.copy_component(
-            "Guide3", Guide23, AT=L_Guide23 + 0.0003, RELATIVE=Guide23
+            "Guide3", Guide23, AT=Guide23.l + 0.0003, RELATIVE=Guide23
         )
         Guide3.set_parameters(
-            w1=Guide23.w2, h1=Guide23.h2, w2=0.01733, h2=0.09041, l=L_Guide3
+            w1=Guide23.w2, h1=Guide23.h2, w2=0.01733, h2=0.09041, l=5.5125
         )
 
         Guide41 = mycalculator.copy_component(
-            "Guide41", Guide3, AT=L_Guide3 + 0.0003, RELATIVE=Guide3
+            "Guide41", Guide3, AT=Guide3.l + 0.0003, RELATIVE=Guide3
         )
         Guide41.set_parameters(
-            w1=Guide3.w2, h1=Guide3.h2, w2=0.01579, h2=0.08100, l=L_Guide41
+            w1=Guide3.w2, h1=Guide3.h2, w2=0.01579, h2=0.08100, l=0.7425
         )
 
-        Chopper3 = mycalculator.add_component(
-            "Chopper3", "DiskChopper", AT=L_Guide41 + disk_gap / 2, RELATIVE=Guide41
+        Chopper3 = mycalculator.copy_component(
+            "Chopper3", Chopper0, AT=L_Guide41 + 0.010, RELATIVE=Guide41
         )
         Chopper3.set_parameters(
             theta_0=9.5,
-            radius=0.299,
-            yheight=0.081,
+            radius=0.690,
+            yheight=0.092,
             nu="(speed/60.0 * ratio)",
-            nslit=2,
             delay=tofdelay(Chopper0, Chopper3, Chopper0.delay),  # Ch_phase[3]
         )
 
         Guide42 = mycalculator.copy_component(
-            "Guide42", Guide41, AT=L_Guide41 + disk_gap, RELATIVE=Guide41
+            "Guide42", Guide41, AT=Guide41.l + disk_gap, RELATIVE=Guide41
         )
-        Guide42.set_parameters(
-            w1=0.01577, h1=0.08088, w2=0.01568, h2=0.08031, l=L_Guide42
-        )
+        Guide42.set_parameters(w1=0.01577, h1=0.08088, w2=0.01568, h2=0.08031, l=0.035)
 
-        Chopper4 = mycalculator.add_component(
-            "Chopper4", "DiskChopper", AT=L_Guide42 + disk_gap / 2, RELATIVE=Guide42
+        Chopper4 = mycalculator.copy_component(
+            "Chopper4", Chopper3, AT=L_Guide42 + disk_gap / 2, RELATIVE=Guide42
         )
         Chopper4.set_parameters(
-            theta_0=9.5,
-            radius=0.299,
-            yheight=0.08031,
             nu="(speed/60.0)",
-            nslit=2,
             delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
         )
 
         Guide43 = mycalculator.copy_component(
-            "Guide43", Guide42, AT=L_Guide42 + disk_gap, RELATIVE=Guide42
+            "Guide43", Guide42, AT=Guide42.l + disk_gap, RELATIVE=Guide42
         )
         Guide43.set_parameters(
             w1=0.01566,
             h1=0.08019,
             w2=0.01411,
             h2=0.07069,
-            l=L_Guide43,
+            l=0.750,
         )
 
-        Chopper5 = mycalculator.add_component(
-            "Chopper5", "DiskChopper", AT=L_Guide43 + disk_gap / 2, RELATIVE=Guide43
+        Chopper5 = mycalculator.copy_component(
+            "Chopper5", Chopper4, AT=L_Guide43 + disk_gap / 2, RELATIVE=Guide43
         )
         Chopper5.set_parameters(
             theta_0=3.25,
-            radius=0.304,
-            yheight=0.07069,
+            yheight=0.082,
             nu="(speed/60.0)",
-            nslit=2,
             delay=tofdelay(Chopper0, Chopper5, Chopper0.delay),  # Ch_phase[5]
         )
 
         Guide44 = mycalculator.copy_component(
-            "Guide44", Guide43, AT=L_Guide43 + disk_gap, RELATIVE=Guide43
+            "Guide44", Guide43, AT=Guide43.l + disk_gap, RELATIVE=Guide43
         )
         Guide44.set_parameters(
-            w1=0.01413,
-            h1=0.07081,
-            w2=0.01400,
+            w1=0.01409,
+            h1=0.07056,
+            w2=0.0140,
             h2=0.0700,
-            l=L_Guide44,
+            l=0.035,
         )
 
         Chopper6 = mycalculator.add_component(
             "Chopper6", "DiskChopper", AT=L_Guide44 + disk_gap / 2, RELATIVE=Guide44
         )
         Chopper6.set_parameters(
-            theta_0=3.25,
-            radius=0.304,
-            yheight=0.0700,
             nu="(speed/60.0)",
-            nslit=2,
             delay=tofdelay(Chopper0, Chopper6, Chopper0.delay),  # Ch_phase[6]
         )
 
@@ -394,23 +372,23 @@ class IN5(McStasInstrumentBase):
             w1=Guide44.w2,
             h1=0.06983,
             w2=0.01400,
-            h2=0.05663,
-            l=L_Guide45,
+            h2=0.05780,
+            l=0.3255,
         )
 
-        Collimator = mycalculator.copy_component(
-            "Collimator", Guide45, AT=L_Guide45 + mono_gap, RELATIVE=Guide45
-        )
-        Collimator.set_parameters(
-            w1=Guide45.w2,
-            h1=0.05617,
-            w2=Guide45.w2,
-            h2=0.05400,
-            l=L_Collimator,
-        )
+        # Collimator = mycalculator.copy_component(
+        #     "Collimator", Guide45, AT=L_Guide45 + mono_gap, RELATIVE=Guide45
+        # )
+        # Collimator.set_parameters(
+        #     w1=Guide45.w2,
+        #     h1=0.05617,
+        #     w2=Guide45.w2,
+        #     h2=0.05400,
+        #     l=L_Collimator,
+        # )
 
         Det_sample_t = mycalculator.add_component(
-            "Detector", "Monitor_nD", AT=L_Collimator + 0.0002, RELATIVE=Collimator
+            "Detector", "Monitor_nD", AT=Guide45.l + 0.005, RELATIVE=Guide45
         )
         Det_sample_t.set_parameters(
             xwidth=0.014, yheight=0.054, options='"auto t bins=20"', restore_neutron=1

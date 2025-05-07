@@ -354,7 +354,7 @@ class ThALES(McStasInstrumentBase):
             H53_7out.set_AT([0, 0, H53_7.l], RELATIVE=H53_7)
 
         else:
-            HCS.flux = 5.5e12
+            HCS.flux = 5.5e11
             HCS.dist = 20
             HCS.focus_xw = 0.04
             HCS.focus_yh = 0.12
