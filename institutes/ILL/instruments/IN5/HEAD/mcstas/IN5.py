@@ -82,14 +82,19 @@ class IN5(McStasInstrumentBase):
 
         nu = mycalculator.add_parameter(
             "double",  # "int"
-            "speed",
+            "rpm",
             comment="Rotation frequency of disk choppers RPM",
             value=8500,
             unit="",
         )
         nu.add_interval(2000, 17000, True)  # must be positive
 
-        ratio = mycalculator.add_parameter("double", "ratio", comment="", value=0.5)
+        ratio = mycalculator.add_parameter(
+            "double",
+            "ratio",
+            comment="Rotation frequency ratio of FO chopper w.r.t. others ",
+            value=0.75,
+        )
 
         # coh = mycalculator.add_parameter(
         #    "string", "coh", comment="", value="Y3Fe5O12_YIG.laz"
@@ -129,11 +134,11 @@ class IN5(McStasInstrumentBase):
         #                 Choppers
         # ==========================================================================
 
-        mycalculator.append_initialize(
-            "if ("
-            + nu.name
-            + '==0){ printf("FATAL ERROR: Chopper nu = 0 !"); exit(-1); } '
-        )
+        # mycalculator.append_initialize(
+        #     "if ("
+        #     + nu.name
+        #     + '==0){ printf("FATAL ERROR: Chopper nu = 0 !"); exit(-1); } '
+        # )
 
         # ----------------------------------------------------------------
         # Compute the phases of each choppers
@@ -213,21 +218,13 @@ class IN5(McStasInstrumentBase):
 
         ## CHOPPER TIME-RESET##########################/
         phase_init = 0
-        Chopper0 = mycalculator.add_component(
-            "Chopper0", "DiskChopper", AT=0.2, RELATIVE="PREVIOUS", ROTATE=[0, 0, 180]
-        )
-        Chopper0.set_parameters(
-            theta_0=9.0,
-            radius=0.750 / 2,
-            yheight=0.180,
-            nu="(speed/60)",
-            nslit=2,
-            phase=phase_init,
-            isfirst=1,
+
+        OT_H16 = mycalculator.add_component(
+            "OT_H16", "Arm", AT=0, RELATIVE=SourceTarget
         )
 
         Guide1 = mycalculator.add_component(
-            "Guide1", "Guide_simple", AT=L_gap, RELATIVE=Chopper0
+            "Guide1", "Guide_simple", AT=L_gap, RELATIVE=OT_H16
         )
         Guide1.set_parameters(
             w1=0.030,
@@ -243,24 +240,34 @@ class IN5(McStasInstrumentBase):
         )
 
         Guide21 = mycalculator.copy_component(
-            "Guide2", Guide_C6, AT=Guide_C6.l, RELATIVE=Guide_C6
+            "Guide2", Guide1, AT=Guide1.l, RELATIVE=Guide1
         )
         Guide21.set_parameters(
-            h1=Guide_C6.h2,
+            h1=Guide1.h2,
             h2=0.170,
             l=0.695,
         )
 
         # P1
-        Chopper1 = mycalculator.copy_component(
-            "Chopper1", Chopper0, AT=Guide21.l + 0.010, RELATIVE=Guide21
+        Chopper1 = mycalculator.add_component(
+            "Chopper1",
+            "DiskChopper",
+            AT=Guide21.l + 0.010,
+            RELATIVE=Guide21,
+            ROTATED=[0, 0, 180],
         )
+
         Chopper1.set_parameters(
-            nu="(speed/60)",
-            # delay=tofdelay(Chopper0, Chopper1, Chopper0.delay),  # Ch_phase[1]
-            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
-                dist=dist, phase_init=phase_init, omega=BC1.nu
+            theta_0=9.0,
+            radius=0.750 / 2,
+            yheight=0.180,
+            nu="(rpm/60)",
+            nslit=2,
+            delay="{phase_init}/({omega})/360".format(
+                phase_init=phase_init, omega="(rpm/60)"
             ),
+            isfirst=1,
+            abs_out=1,
         )
 
         ###GUIDE TO CHOPPER2#######################
@@ -270,22 +277,41 @@ class IN5(McStasInstrumentBase):
         Guide22.set_parameters(h1=Guide21.h2, h2=0.16813, l=0.130)
 
         # P2
+
+        distChop12 = Guide22.l + 0.020
+        ch2_rpm = "(rpm/60)"
         Chopper2 = mycalculator.copy_component(
-            "Chopper2", Chopper0, AT=Guide22.l + 0.010, RELATIVE=Guide22
+            "Chopper2", Chopper1, AT=distChop12, RELATIVE=Chopper1
         )
+
         Chopper2.set_parameters(
-            nu="(speed/60)",
-            delay=tofdelay(Chopper0, Chopper2, Chopper0.delay),  # Ch_phase[2]
+            nu=ch2_rpm,
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                dist=distChop12, phase_init=phase_init, omega=ch2_rpm
+            ),
+            isfirst=0,
         )
 
         # COMPONENT M1 = Monitor_nD(xwidth=0.03, yheight=0.17,
         #  options="auto time")
         # AT (0,0, disk_gap/4+0.002) RELATIVE Chopper2
 
-        Guide23 = mycalculator.copy_component(
-            "Guide23", Guide22, AT=Guide22.l + 0.020, RELATIVE=Guide22
+        Guide23 = mycalculator.add_component(
+            "Guide23", "Guide_channeled", AT=Guide22.l + 0.020, RELATIVE=Guide22
         )
-        Guide23.set_parameters(h1=0.168, w2=0.02856, h2=0.15931, l=0.695, mx=2, my=3)
+        Guide23.set_parameters(
+            h1=0.168,
+            w1=Guide22.w2,
+            w2=0.02856,
+            h2=0.15931,
+            l=0.695,
+            mx=2,
+            my=3,
+            Qc=0.02275,  # TODO: check
+            R0=0.996,  # TODO: check
+            alpha=5.75,  # TODO: check
+            W=0.00125,  # TODO: check
+        )
 
         Guide3 = mycalculator.copy_component(
             "Guide3", Guide23, AT=Guide23.l + 0.0003, RELATIVE=Guide23
@@ -301,15 +327,18 @@ class IN5(McStasInstrumentBase):
             w1=Guide3.w2, h1=Guide3.h2, w2=0.01579, h2=0.08100, l=0.7425
         )
 
+        distChop13 = distChop12 + Guide23.l + Guide3.l + Guide41.l + 0.003
         Chopper3 = mycalculator.copy_component(
-            "Chopper3", Chopper0, AT=L_Guide41 + 0.010, RELATIVE=Guide41
+            "Chopper3", Chopper1, AT=L_Guide41 + 0.010, RELATIVE=Guide41
         )
         Chopper3.set_parameters(
             theta_0=9.5,
             radius=0.690,
             yheight=0.092,
-            nu="(speed/60.0 * ratio)",
-            delay=tofdelay(Chopper0, Chopper3, Chopper0.delay),  # Ch_phase[3]
+            nu="(rpm/60.0 * ratio)",
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                dist=distChop12, phase_init=phase_init, omega=ch2_rpm
+            ),
         )
 
         Guide42 = mycalculator.copy_component(
@@ -321,8 +350,8 @@ class IN5(McStasInstrumentBase):
             "Chopper4", Chopper3, AT=L_Guide42 + disk_gap / 2, RELATIVE=Guide42
         )
         Chopper4.set_parameters(
-            nu="(speed/60.0)",
-            delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
+            nu="(rpm/60.0)",
+            # delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
         )
 
         Guide43 = mycalculator.copy_component(
@@ -342,8 +371,8 @@ class IN5(McStasInstrumentBase):
         Chopper5.set_parameters(
             theta_0=3.25,
             yheight=0.082,
-            nu="(speed/60.0)",
-            delay=tofdelay(Chopper0, Chopper5, Chopper0.delay),  # Ch_phase[5]
+            nu="(rpm/60.0)",
+            # delay=tofdelay(Chopper0, Chopper5, Chopper1.delay),  # Ch_phase[5]
         )
 
         Guide44 = mycalculator.copy_component(
@@ -357,12 +386,12 @@ class IN5(McStasInstrumentBase):
             l=0.035,
         )
 
-        Chopper6 = mycalculator.add_component(
-            "Chopper6", "DiskChopper", AT=L_Guide44 + disk_gap / 2, RELATIVE=Guide44
+        Chopper6 = mycalculator.copy_component(
+            "Chopper6", Chopper5, AT=L_Guide44 + disk_gap / 2, RELATIVE=Guide44
         )
         Chopper6.set_parameters(
-            nu="(speed/60.0)",
-            delay=tofdelay(Chopper0, Chopper6, Chopper0.delay),  # Ch_phase[6]
+            nu="(rpm/60.0)",
+            # delay=tofdelay(Chopper1, Chopper6, Chopper1.delay),  # Ch_phase[6]
         )
 
         Guide45 = mycalculator.copy_component(
@@ -416,13 +445,13 @@ class IN5(McStasInstrumentBase):
         # self._sample_environment.set_ROTATED([0, det_angle, 0])
 
         # default sample
-        self.set_sample_focus(8, 3, 8)  # FIXME
+        self.sample_focus(4, 3.5, 4)
         sample = self.set_sample_by_name("vanadium")
 
         Sample_Out = mycalculator.add_component(
             "Sample_Out", "Arm", AT=0, RELATIVE=self._sample_arm
         )
-
+        """
         # arm2 = self._sample_arm
 
         # COMPONENT SAMPLE = Isotropic_Sqw(
@@ -524,7 +553,7 @@ class IN5(McStasInstrumentBase):
         in5_t.set_parameters(
             options='"banana, t limits=[0.0206 0.0216] bins=41, parallel, previous"'
         )
-
+"""
         # ------------------------------ instrument parameters
 
         OriginCalc = self.calculators["OriginCalc"]
@@ -535,10 +564,10 @@ class IN5(McStasInstrumentBase):
             DetectorCalc = OriginCalc
 
         self.add_master_parameter(
-            "speed",
-            {OriginCalc.name: "speed"},
-            unit=OriginCalc.parameters["speed"].unit,
-            comment=OriginCalc.parameters["speed"].comment,
+            "rpm",
+            {OriginCalc.name: "rpm"},
+            unit=OriginCalc.parameters["rpm"].unit,
+            comment=OriginCalc.parameters["rpm"].comment,
         )
 
         self.add_master_parameter(
@@ -555,37 +584,36 @@ class IN5(McStasInstrumentBase):
             comment=OriginCalc.parameters["lambda"].comment,
         )
 
-        self.add_master_parameter(
-            "nt",
-            {DetectorCalc.name: "nt"},
-            unit=DetectorCalc.parameters["nt"].unit,
-            comment=DetectorCalc.parameters["nt"].comment,
-        )
+        # self.add_master_parameter(
+        #     "nt",
+        #     {DetectorCalc.name: "nt"},
+        #     unit=DetectorCalc.parameters["nt"].unit,
+        #     comment=DetectorCalc.parameters["nt"].comment,
+        # )
 
-        self.add_master_parameter(
-            "epchannel",
-            {DetectorCalc.name: "epchannel"},
-            unit=DetectorCalc.parameters["epchannel"].unit,
-            comment=DetectorCalc.parameters["epchannel"].comment,
-        )
+        # self.add_master_parameter(
+        #     "epchannel",
+        #     {DetectorCalc.name: "epchannel"},
+        #     unit=DetectorCalc.parameters["epchannel"].unit,
+        #     comment=DetectorCalc.parameters["epchannel"].comment,
+        # )
 
-        for c in [
-            "Chopper0",
-            "Chopper1",
-            "Chopper2",
-            "Chopper3",
-            "Chopper4",
-            "Chopper5",
-            "Chopper6",
-        ]:
-            print(c + " L=" + str(self.calcLtof(mycalculator, "Chopper0", c)))
+        # for c in [
+        #     "Chopper1",
+        #     "Chopper2",
+        #     "Chopper3",
+        #     "Chopper4",
+        #     "Chopper5",
+        #     "Chopper6",
+        # ]:
+        #     print(c + " L=" + str(self.calcLtof(mycalculator, "Chopper0", c)))
 
         self.master["ratio"] = 0.5
-        self.master["speed"] = 8500
-        self.master["lambda"] = 4.5
-        self.master["nt"] = 512
-        self.master["epchannel"] = 295
-        #        myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
+        self.master["rpm"] = 8500
+        self.master["lambda"] = 4.5 * ureg.angstrom
+        # self.master["nt"] = 512
+        # self.master["epchannel"] = 295
+        # #        myinstr.add_master_parameter("a4", {"SampleCalc": "a4"}, unit="degree")
         #        myinstr.add_master_parameter("a6", {"AnalyzerCalc": "a6"}, unit="degree")
         #        myinstr.master["a2"] = 79.10 * ureg.degree
         #        myinstr.master["a3"] = 0 * ureg.degree
