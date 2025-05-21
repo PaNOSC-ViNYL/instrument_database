@@ -658,7 +658,7 @@ def test_BCs(config0, tmp_path):
 
     def create_diag(mycalc):
         diag = ms.Diagnostics(mycalc)
-        diag.settings(ncount=1e5, suppress_output=False, mpi=1)
+        diag.settings(ncount=1e6, suppress_output=False, mpi=1)
         diag.show_settings()
         diag.clear_points()
 
@@ -678,18 +678,31 @@ def test_BCs(config0, tmp_path):
     counts = []
     intensity = []
     phases = [30]
+    phases = range(-4, 4, 2)
+    IBCs = [
+        "Chopper1",
+        "Chopper2",
+        "Chopper3",
+        "Chopper4",
+        "Chopper5",
+        "Chopper6",
+    ]
+
+    delays_orig = {}
+    for ibc in IBCs:
+        delays_orig[ibc] = mycalc.get_component(ibc).delay
 
     for energy in [4]:
         myinstrument.master["lambda"] = energy * ureg.angstrom
 
         for phase in phases:
-            for ibc in [1, 2, 3, 4, 5, 6]:
+            for ibc in [5, 6]:
                 bc = mycalc.get_component("Chopper{}".format(ibc))
                 # bc.phase = "{}+{}".format(bc.phase, phase)
                 # del bc.phase
                 # d = myinstrument.distances()["L1{}".format(ibc)]
                 bc.delay = "{delay} + {phase_adj}/({omega})/360".format(
-                    delay=bc.delay,
+                    delay=delays_orig[bc.name],
                     phase_adj=phase,
                     omega=bc.nu,
                 )
@@ -705,7 +718,8 @@ def test_BCs(config0, tmp_path):
             diag.run()
 
             diag.clear_views()
-            diag.add_view("e", same_scale=False)
+            # diag.add_view("l", left_min=0, right_min=10, same_scale=False)
+            diag.add_view("e", same_scale=True)
             diag.add_view(
                 "t",
                 same_scale=True,
@@ -714,12 +728,13 @@ def test_BCs(config0, tmp_path):
             diag.add_view("t", "x", same_scale=False, log=True)
             diag.add_view("t", "y", same_scale=False)
             diag.add_view("x", "y", same_scale=False, log=True)
+            diag.add_view("vz", same_scale=False, log=False)
 
             print(diag)
             fig = diag.plot()
             fig.savefig(
                 os.path.join(
-                    tmp_path, "diagnostics_bc1_e{}_ph{}.pdf".format(phase, energy)
+                    tmp_path, "diagnostics_bc1_e{}_ph{}.pdf".format(energy, phase)
                 )
             )
 

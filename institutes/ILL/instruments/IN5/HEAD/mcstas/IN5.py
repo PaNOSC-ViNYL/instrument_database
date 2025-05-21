@@ -217,7 +217,7 @@ class IN5(McStasInstrumentBase):
         mysource.dist = SourceTarget.AT_data[2]
 
         ## CHOPPER TIME-RESET##########################/
-        phase_init = 0
+        phase_init = 9
 
         OT_H16 = mycalculator.add_component(
             "OT_H16", "Arm", AT=0, RELATIVE=SourceTarget
@@ -285,7 +285,7 @@ class IN5(McStasInstrumentBase):
         )
 
         Chopper2.set_parameters(
-            nu=ch2_rpm,
+            nu="-{}".format(ch2_rpm),
             delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
                 dist=distChop12, phase_init=phase_init, omega=ch2_rpm
             ),
@@ -329,7 +329,7 @@ class IN5(McStasInstrumentBase):
 
         distChop13 = distChop12 + Guide23.l + Guide3.l + Guide41.l + 0.003
         Chopper3 = mycalculator.copy_component(
-            "Chopper3", Chopper1, AT=L_Guide41 + 0.010, RELATIVE=Guide41
+            "Chopper3", Chopper2, AT=L_Guide41 + 0.010, RELATIVE=Guide41
         )
         Chopper3.set_parameters(
             theta_0=9.5,
@@ -337,7 +337,7 @@ class IN5(McStasInstrumentBase):
             yheight=0.092,
             nu="(rpm/60.0 * ratio)",
             delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
-                dist=distChop12, phase_init=phase_init, omega=ch2_rpm
+                dist=distChop13, phase_init=phase_init, omega="(rpm/60.0 * ratio)"
             ),
         )
 
@@ -346,11 +346,16 @@ class IN5(McStasInstrumentBase):
         )
         Guide42.set_parameters(w1=0.01577, h1=0.08088, w2=0.01568, h2=0.08031, l=0.035)
 
+        distChop14 = distChop13 + Guide42.l
+
         Chopper4 = mycalculator.copy_component(
             "Chopper4", Chopper3, AT=L_Guide42 + disk_gap / 2, RELATIVE=Guide42
         )
         Chopper4.set_parameters(
-            nu="(rpm/60.0)",
+            nu="(-rpm/60.0)",
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                dist=distChop12, phase_init=phase_init, omega=ch2_rpm
+            ),
             # delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
         )
 
@@ -366,7 +371,7 @@ class IN5(McStasInstrumentBase):
         )
 
         Chopper5 = mycalculator.copy_component(
-            "Chopper5", Chopper4, AT=L_Guide43 + disk_gap / 2, RELATIVE=Guide43
+            "Chopper5", Chopper3, AT=L_Guide43 + disk_gap / 2, RELATIVE=Guide43
         )
         Chopper5.set_parameters(
             theta_0=3.25,
@@ -390,7 +395,7 @@ class IN5(McStasInstrumentBase):
             "Chopper6", Chopper5, AT=L_Guide44 + disk_gap / 2, RELATIVE=Guide44
         )
         Chopper6.set_parameters(
-            nu="(rpm/60.0)",
+            nu="(-rpm/60.0)",
             # delay=tofdelay(Chopper1, Chopper6, Chopper1.delay),  # Ch_phase[6]
         )
 
