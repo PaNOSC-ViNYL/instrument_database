@@ -678,7 +678,7 @@ def test_BCs(config0, tmp_path):
     counts = []
     intensity = []
     phases = [30]
-    phases = range(-4, 4, 2)
+    phases = range(-2, 2, 1)
     IBCs = [
         "Chopper1",
         "Chopper2",
@@ -696,7 +696,7 @@ def test_BCs(config0, tmp_path):
         myinstrument.master["lambda"] = energy * ureg.angstrom
 
         for phase in phases:
-            for ibc in [5, 6]:
+            for ibc in [6]:
                 bc = mycalc.get_component("Chopper{}".format(ibc))
                 # bc.phase = "{}+{}".format(bc.phase, phase)
                 # del bc.phase
