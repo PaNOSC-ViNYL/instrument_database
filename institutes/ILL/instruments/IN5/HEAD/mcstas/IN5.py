@@ -352,11 +352,10 @@ class IN5(McStasInstrumentBase):
             "Chopper4", Chopper3, AT=L_Guide42 + disk_gap / 2, RELATIVE=Guide42
         )
         Chopper4.set_parameters(
-            nu="(-rpm/60.0)",
+            nu="-{}".format(ch2_rpm),
             delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
-                dist=distChop12, phase_init=phase_init, omega=ch2_rpm
+                dist=distChop14, phase_init=phase_init + 9, omega=ch2_rpm
             ),
-            # delay=tofdelay(Chopper0, Chopper4, Chopper0.delay),  # Ch_phase[4]
         )
 
         Guide43 = mycalculator.copy_component(
@@ -369,6 +368,7 @@ class IN5(McStasInstrumentBase):
             h2=0.07069,
             l=0.750,
         )
+        distChop15 = distChop14 + Guide43.l
 
         Chopper5 = mycalculator.copy_component(
             "Chopper5", Chopper3, AT=L_Guide43 + disk_gap / 2, RELATIVE=Guide43
@@ -377,7 +377,9 @@ class IN5(McStasInstrumentBase):
             theta_0=3.25,
             yheight=0.082,
             nu="(rpm/60.0)",
-            # delay=tofdelay(Chopper0, Chopper5, Chopper1.delay),  # Ch_phase[5]
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                dist=distChop15, phase_init=phase_init + 11, omega=ch2_rpm
+            ),
         )
 
         Guide44 = mycalculator.copy_component(
@@ -390,13 +392,16 @@ class IN5(McStasInstrumentBase):
             h2=0.0700,
             l=0.035,
         )
+        distChop16 = distChop15 + Guide44.l
 
         Chopper6 = mycalculator.copy_component(
             "Chopper6", Chopper5, AT=L_Guide44 + disk_gap / 2, RELATIVE=Guide44
         )
         Chopper6.set_parameters(
             nu="(-rpm/60.0)",
-            # delay=tofdelay(Chopper1, Chopper6, Chopper1.delay),  # Ch_phase[6]
+            delay="{dist}/neutron_velocity + {phase_init}/({omega})/360".format(
+                dist=distChop16, phase_init=phase_init + 12, omega=ch2_rpm
+            ),
         )
 
         Guide45 = mycalculator.copy_component(
