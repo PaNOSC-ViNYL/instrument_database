@@ -3,3 +3,7 @@ __pycache__
 python_packages
 McStasScript/
 libpyvinyl/
+*.c
+# pixi environments
+.pixi/*
+!.pixi/config.toml
