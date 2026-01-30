@@ -1,0 +1,28 @@
+#pixi run pip install --no-deps --force-reinstall git+https://github.com/PaNOSC-ViNYL/McStasScript.git@custom_component_dir#egg=mcstasscript
+[project]
+authors = [{name = "Shervin Nourbakhsh", email = "shervin86@posteo.net"}]
+dependencies = []
+name = "instrument_database"
+requires-python = ">= 3.11,<3.13"
+version = "0.1.0"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+instrument_database = { path = ".", editable = true }
+instrumentdatabaseapi = { path = "./instrumentDataBaseAPI"}
+libpyvinyl = { git = "https://github.com/PaNOSC-ViNYL/libpyvinyl.git", branch = "hash2" }
+mcstasscript = { git = "https://github.com/PaNOSC-ViNYL/McStasScript.git", branch = "custom_component_dir" }
+
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+mcstas = "3.6.5.*"
+ipykernel = ">=7.2.0"
