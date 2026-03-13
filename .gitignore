@@ -7,3 +7,4 @@ libpyvinyl/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+doc/
