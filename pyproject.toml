@@ -15,7 +15,7 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
-instrument_database = { path = ".", editable = true }
+#instrument_database = { path = ".", editable = true }
 instrumentdatabaseapi = { path = "./instrumentDataBaseAPI"}
 
 
@@ -25,7 +25,7 @@ deps_libpyvinyl = { cmd = [ "pip", "install", "--no-deps", "--force-reinstall", 
 deps = { cmd = [ "pip", "install", "--no-deps", "--force-reinstall", "git+https://github.com/PaNOSC-ViNYL/McStasScript.git@custom_component_dir#egg=mcstasscript" ], description="Update mcstasscript with custom branch", depends-on=["deps_libpyvinyl"] }
 
 [tool.pixi.dependencies]
-mcstas = "3.6.5.*"
+mcstas = ">3.6.5,<3.7"
 ipykernel = ">=7.2.0"
 pytest = ">=9.0.2,<10"
 pytest_check = ">=2.7.6,<3"

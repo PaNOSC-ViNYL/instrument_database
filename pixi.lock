@@ -497,7 +497,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - pypi: https://files.pythonhosted.org/packages/a0/61/5c78b91c3143ed5c14207f463aecfc8f9dbb5092fb2869baf37c273b2705/gitdb-4.0.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/09/e21df6aef1e1ffc0c816f0522ddc3f6dcded766c3261813131c78a704470/gitpython-3.1.46-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/31/77/3781f65cafe55480b56914def99022a5d2965a4bb269655c89ef2f1de3cd/importlib-1.0.4.zip
       - pypi: https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl
       - pypi: ./
       - pypi: ./instrumentDataBaseAPI
@@ -2080,10 +2079,6 @@ packages:
   purls: []
   size: 160289
   timestamp: 1759983212466
-- pypi: https://files.pythonhosted.org/packages/31/77/3781f65cafe55480b56914def99022a5d2965a4bb269655c89ef2f1de3cd/importlib-1.0.4.zip
-  name: importlib
-  version: 1.0.4
-  sha256: b6ee7066fea66e35f8d0acee24d98006de1a0a8a94a8ce6efe73a9a23c8d9826
 - conda: https://conda.anaconda.org/conda-forge/noarch/importlib-metadata-8.7.0-pyhe01879c_1.conda
   sha256: c18ab120a0613ada4391b15981d86ff777b5690ca461ea7e9e49531e8f374745
   md5: 63ccfdc3a3ce25b027b8767eb722fca8
@@ -2140,14 +2135,11 @@ packages:
   requires_python: '>=3.11,<3.13'
 - pypi: ./instrumentDataBaseAPI
   name: instrumentdatabaseapi
-  version: 0.0.0
-  sha256: 4d1943f4f0a93a5aef1f47cca05ae8037e0248d57fdcb2c046ffb2153bcefe68
+  version: 0.1.0
+  sha256: 8e79e8b679f843d6da06b9b0df7fa24847e930cc9d56c7822768aeae3473f802
   requires_dist:
-  - wheel
-  - gitpython>=3.1.18
-  - libpyvinyl
-  - importlib>=1.0.4
-  requires_python: '>=3.6'
+  - gitpython>=3.1.46,<4
+  requires_python: '>=3.12'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/ipopt-3.14.19-h0804adb_0.conda
   sha256: f561b9982bcf4c6fceaf467a8f2f5b9e02c7d34f2d6f544958f4f14e1caeb0fc
   md5: 0a2ef4d1be0625a06d74b08829d4ef1f
