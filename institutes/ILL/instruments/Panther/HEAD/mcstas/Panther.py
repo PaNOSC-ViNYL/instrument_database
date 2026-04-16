@@ -292,7 +292,7 @@ class Panther(McStasInstrumentBase):
             "double",
             "a2",
             comment="Angle between beam reflected by monochromator and incident beam: internally calculated if a2=0",
-            unit="degree",
+            #unit="degree",
             value=0,
         )
         a2.add_option(0, True)  # for automatic calculation
