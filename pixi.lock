@@ -149,7 +149,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/jupyter_events-0.12.0-pyh29332c3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/jupyter_server-2.17.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/jupyter_server_terminals-0.5.4-pyhcf101f3_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab-4.5.3-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab-4.5.6-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab_pygments-0.3.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab_server-2.28.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab_widgets-3.0.16-pyhcf101f3_1.conda
@@ -288,11 +288,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mcpl-extra-2.2.6-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mcpl-lib-2.2.6-h4dac143_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mcpl-python-2.2.6-pyh8af1aa0_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-3.6.5-ha770c72_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-core-3.6.5-hb03c661_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/mcstas-data-3.6.5-hca7485f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-mcgui-3.6.5-ha770c72_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-vis-3.6.5-ha770c72_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-3.6.14-ha770c72_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-core-3.6.14-hb03c661_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/mcstas-data-3.6.14-hff2d567_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-mcgui-3.6.14-ha770c72_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-vis-3.6.14-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mcstasscript-0.0.77-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mdit-py-plugins-0.5.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
@@ -324,6 +324,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nlohmann_json-3.12.0-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nlopt-2.10.1-np2py312h0f77346_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nodejs-24.12.0-h36edbcc_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.5.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nspr-4.38-h29cc59b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nss-3.118-h445c969_0.conda
@@ -498,7 +499,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a0/61/5c78b91c3143ed5c14207f463aecfc8f9dbb5092fb2869baf37c273b2705/gitdb-4.0.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6a/09/e21df6aef1e1ffc0c816f0522ddc3f6dcded766c3261813131c78a704470/gitpython-3.1.46-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c1/d4/59e74daffcb57a07668852eeeb6035af9f32cbfd7a1d2511f17d2fe6a738/smmap-5.0.3-py3-none-any.whl
-      - pypi: ./
       - pypi: ./instrumentDataBaseAPI
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -2128,11 +2128,6 @@ packages:
   - pkg:pypi/iniconfig?source=compressed-mapping
   size: 13387
   timestamp: 1760831448842
-- pypi: ./
-  name: instrument-database
-  version: 0.1.0
-  sha256: 9c0f01fc6a5864ce63381e01e08f4b0a58e276a1653e76c8ab6d6874e14f0513
-  requires_python: '>=3.11,<3.13'
 - pypi: ./instrumentDataBaseAPI
   name: instrumentdatabaseapi
   version: 0.1.0
@@ -2522,9 +2517,9 @@ packages:
   - pkg:pypi/jupyter-server-terminals?source=compressed-mapping
   size: 22052
   timestamp: 1768574057200
-- conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab-4.5.3-pyhd8ed1ab_0.conda
-  sha256: 18b5bff46717023ef5e81ae6ba71b254c1aca474db32c6dc21897c46ea26fa75
-  md5: 106f4e36e14797b9c2abfc3849d9e92f
+- conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab-4.5.6-pyhd8ed1ab_0.conda
+  sha256: 436a70259a9b4e13ce8b15faa8b37342835954d77a0a74d21dd24547e0871088
+  md5: bcbb401d6fa84e0cee34d4926b0e9e93
   depends:
   - async-lru >=1.0.0
   - httpx >=0.25.0,<1
@@ -2544,9 +2539,9 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/jupyterlab?source=compressed-mapping
-  size: 8554335
-  timestamp: 1769190054941
+  - pkg:pypi/jupyterlab?source=hash-mapping
+  size: 8245973
+  timestamp: 1773240966438
 - conda: https://conda.anaconda.org/conda-forge/noarch/jupyterlab_pygments-0.3.0-pyhd8ed1ab_2.conda
   sha256: dc24b900742fdaf1e077d9a3458fd865711de80bca95fe3c6d46610c532c6ef0
   md5: fd312693df06da3578383232528c468d
@@ -4367,9 +4362,9 @@ packages:
   - pkg:pypi/mcpl-python?source=hash-mapping
   size: 34625
   timestamp: 1767726662293
-- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-3.6.5-ha770c72_0.conda
-  sha256: 68ccfe23198148d08c2b7e683cafbc3d66dee3d140fd5d66f2a839df7797b09a
-  md5: eb621e2517de74f78fecdeef9403df82
+- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-3.6.14-ha770c72_0.conda
+  sha256: efd37dd187ccd2549a1d1648e93e565430fd87ff0033a8676b91018c2046b163
+  md5: f297b3e58b564037e8c69823e9b778ca
   depends:
   - cif2hkl
   - gsl
@@ -4377,10 +4372,10 @@ packages:
   - mcpl >=2.2.0
   - mcpl-core >=2.2.0
   - mcpl-extra >=2.2.0
-  - mcstas-core >=3.6.5,<3.6.6.0a0
-  - mcstas-data >=3.6.5,<3.6.6.0a0
-  - mcstas-mcgui >=3.6.5,<3.6.6.0a0
-  - mcstas-vis >=3.6.5,<3.6.6.0a0
+  - mcstas-core >=3.6.14,<3.6.15.0a0
+  - mcstas-data >=3.6.14,<3.6.15.0a0
+  - mcstas-mcgui >=3.6.14,<3.6.15.0a0
+  - mcstas-vis >=3.6.14,<3.6.15.0a0
   - ncrystal >=4.2.0
   - ncrystal-extra
   - nexpy
@@ -4389,48 +4384,49 @@ packages:
   license: GPL-3.0-only
   license_family: GPL3
   purls: []
-  size: 23397
-  timestamp: 1767800655519
-- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-core-3.6.5-hb03c661_0.conda
-  sha256: e0f3fd42cb3cf97b407893f7119e97c646904302c366071259e627a9e24b0fe5
-  md5: 810bac67fc3c23ab2ca0b8965d7d8b66
+  size: 23719
+  timestamp: 1776024632038
+- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-core-3.6.14-hb03c661_0.conda
+  sha256: 9c432a7ea59a6e4bf9ef4cc1e5284333eb9e4d5d4af4ff8d76f6c42494c60955
+  md5: 091f4570905cf48a405ff60a6a50a275
   depends:
   - __glibc >=2.17,<3.0.a0
   - bash
   - c-compiler
   - libgcc >=14
   - numpy
+  - psutil
   - pyaml
   - python
   - sysroot_linux-64 2.17.*
   license: GPL-3.0-only
   license_family: GPL3
   purls: []
-  size: 10208061
-  timestamp: 1767799632887
-- conda: https://conda.anaconda.org/conda-forge/noarch/mcstas-data-3.6.5-hca7485f_0.conda
-  sha256: 838cbe9619c66792fb58c1f8b363ef7d320f5bfe6e4e279a7926e3e470d5b7ff
-  md5: e539d991fa4af7432ba510330364a8f9
+  size: 10058488
+  timestamp: 1776024034500
+- conda: https://conda.anaconda.org/conda-forge/noarch/mcstas-data-3.6.14-hff2d567_0.conda
+  sha256: b578e790760c2d6c3b914687ea49c7abcfa60002d5b9328a5652689f38d88b2e
+  md5: 33823f5e44c0a69f82281648201bb186
   license: GPL-3.0-only
   license_family: GPL3
   purls: []
-  size: 47754434
-  timestamp: 1767800418124
-- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-mcgui-3.6.5-ha770c72_0.conda
-  sha256: c71cecccadb83a8b3ec1c36f50c13ae14a945b27d174033acc6d87ab9f96d082
-  md5: 2f47929215d05ee3e88ea1f3d09ec37a
+  size: 48236627
+  timestamp: 1776024490431
+- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-mcgui-3.6.14-ha770c72_0.conda
+  sha256: eff812870903c9180b2a4c825fa01b5f30423b625043a2a92d753c8dba575386
+  md5: 8a68416b413976637665b3dd96f6dd2b
   depends:
   - mcstas-core
-  - pyqt
+  - pyqt >=5.10
   - qscintilla2
   license: GPL-3.0-only
   license_family: GPL3
   purls: []
-  size: 23046
-  timestamp: 1767800654939
-- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-vis-3.6.5-ha770c72_0.conda
-  sha256: f4198d7947f1cbeef99782c0ae327f33d250035cbf9cfd3825ab03d2497b58be
-  md5: b5cd984ad6c44a35196fff5cf64ac8cb
+  size: 23375
+  timestamp: 1776024631694
+- conda: https://conda.anaconda.org/conda-forge/linux-64/mcstas-vis-3.6.14-ha770c72_0.conda
+  sha256: 906d1d2ea6b8fc68b375104b6e7320ab6b27adb498edad4c5b3810ca0b84ce02
+  md5: 67a9420a8aa1f1ca0d47421f1fde5948
   depends:
   - cadquery
   - jinja2
@@ -4452,8 +4448,8 @@ packages:
   license: GPL-3.0-only
   license_family: GPL3
   purls: []
-  size: 23142
-  timestamp: 1767800655208
+  size: 23470
+  timestamp: 1776024631862
 - conda: https://conda.anaconda.org/conda-forge/noarch/mcstasscript-0.0.77-pyhd8ed1ab_0.conda
   sha256: ccbd2e70557e5073def21460ea1a6ce9231a628779159f570941113faaa37d1a
   md5: 855727454751d09663bdeb2cedff0a10
@@ -4897,6 +4893,24 @@ packages:
   purls: []
   size: 17538321
   timestamp: 1766137768828
+- conda: https://conda.anaconda.org/conda-forge/noarch/notebook-7.5.5-pyhcf101f3_0.conda
+  sha256: 11cfeabc41ed73bb088315d96cfdfeaaa10470c06ce6332bae368590e3047ef6
+  md5: 471096452091ae8c460928ad5ff143cc
+  depends:
+  - importlib_resources >=5.0
+  - jupyter_server >=2.4.0,<3
+  - jupyterlab >=4.5.6,<4.6
+  - jupyterlab_server >=2.28.0,<3
+  - notebook-shim >=0.2,<0.3
+  - python >=3.10
+  - tornado >=6.2.0
+  - python
+  license: BSD-3-Clause
+  license_family: BSD
+  purls:
+  - pkg:pypi/notebook?source=compressed-mapping
+  size: 10113914
+  timestamp: 1773250273088
 - conda: https://conda.anaconda.org/conda-forge/noarch/notebook-shim-0.2.4-pyhd8ed1ab_1.conda
   sha256: 7b920e46b9f7a2d2aa6434222e5c8d739021dbc5cc75f32d124a8191d86f9056
   md5: e7f89ea5f7ea9401642758ff50a2d9c1
